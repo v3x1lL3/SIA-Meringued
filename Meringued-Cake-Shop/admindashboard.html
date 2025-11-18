@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Meringued</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        
+        :root {
+            --gold: #D4AF37;
+            --gold-dark: #B8941E;
+            --cream: #FFF8F0;
+            --light-pink: #FFF0F5;
+            --soft-peach: #FFE5E0;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #FFF8F0 0%, #FFE5E0 50%, #FFF0F5 100%);
+            min-height: 100vh;
+        }
+        
+        .font-display { 
+            font-family: 'Playfair Display', serif; 
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.4);
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            border: 2px solid rgba(212, 175, 55, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+        
+        .sidebar-active {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            color: white !important;
+        }
+        
+        .sidebar-active:hover {
+            background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%);
+            color: white !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
+        <!-- Logo -->
+        <div class="p-6 border-b-2 border-[#D4AF37]/20">
+            <a href="admindashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">
+                Meringued
+            </a>
+            <p class="text-xs text-gray-500 mt-1">Admin Panel</p>
+        </div>
+        
+        <!-- Menu Items -->
+        <nav class="flex-1 p-6">
+            <ul class="space-y-2">
+                <li>
+                    <a href="adminordering.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-shopping-bag w-5"></i>
+                        <span>Orders</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminhistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium w-full cursor-pointer">
+                        <i class="fas fa-history w-5"></i>
+                        <span>Logs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-users w-5"></i>
+                        <span>Customers</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-cog w-5"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <!-- Logout -->
+        <div class="p-6 border-t-2 border-[#D4AF37]/20">
+            <button onclick="openLogoutModal()" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium w-full">
+                <i class="fas fa-sign-out-alt w-5"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="ml-64 min-h-screen">
+        <!-- Main Content -->
+        <div class="px-6 py-8 md:py-12">
+            <!-- Header -->
+            <div class="mb-8">
+                <h1 class="font-display text-4xl md:text-5xl font-bold mb-2 text-[#D4AF37]">
+                    <i class="fas fa-chart-line mr-3"></i>Dashboard
+                </h1>
+                <p class="text-gray-600 text-lg">Overview of your cake shop</p>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Total Orders -->
+                <div class="stat-card p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium mb-2">Total Orders</p>
+                            <p class="font-display text-4xl font-bold text-[#D4AF37]" id="totalOrders">0</p>
+                        </div>
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);">
+                            <i class="fas fa-shopping-bag text-white text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pending Orders -->
+                <div class="stat-card p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium mb-2">Pending</p>
+                            <p class="font-display text-4xl font-bold text-yellow-600" id="pendingOrders">0</p>
+                        </div>
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center bg-yellow-100">
+                            <i class="fas fa-clock text-yellow-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Processing Orders -->
+                <div class="stat-card p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium mb-2">Processing</p>
+                            <p class="font-display text-4xl font-bold text-blue-600" id="processingOrders">0</p>
+                        </div>
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center bg-blue-100">
+                            <i class="fas fa-tasks text-blue-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Completed Orders -->
+                <div class="stat-card p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium mb-2">Completed</p>
+                            <p class="font-display text-4xl font-bold text-green-600" id="completedOrders">0</p>
+                        </div>
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center bg-green-100">
+                            <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="stat-card p-6 md:p-8 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
+                        Recent Orders
+                    </h2>
+                    <a href="adminordering.html" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg text-sm">
+                        <i class="fas fa-list mr-2"></i>View All Orders
+                    </a>
+                </div>
+                
+                <div id="recentOrdersList">
+                    <!-- Recent orders will be populated here -->
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-shopping-bag text-6xl mb-4 opacity-30"></i>
+                        <h3 class="text-xl font-semibold mb-2">No Orders Yet</h3>
+                        <p>Orders from customers will appear here</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Today's Orders -->
+                <div class="stat-card p-6">
+                    <h3 class="font-display text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-calendar-day mr-2 text-[#D4AF37]"></i>Today's Orders
+                    </h3>
+                    <p class="font-display text-5xl font-bold text-[#D4AF37]" id="todayOrders">0</p>
+                    <p class="text-sm text-gray-500 mt-2">Orders received today</p>
+                </div>
+                
+                <!-- Revenue Overview -->
+                <div class="stat-card p-6">
+                    <h3 class="font-display text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-peso-sign mr-2 text-[#D4AF37]"></i>Total Revenue
+                    </h3>
+                    <p class="font-display text-5xl font-bold text-[#D4AF37]" id="totalRevenue">₱0</p>
+                    <p class="text-sm text-gray-500 mt-2">From all completed orders</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">
+                <i class="fas fa-sign-out-alt text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2" style="color: #D4AF37;">Logout?</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to logout from admin panel?</p>
+            <div class="flex space-x-4 justify-center">
+                <button onclick="closeLogoutModal()" class="px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+                <button onclick="confirmLogout()" class="px-6 py-3 rounded-lg text-white font-semibold btn-primary">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let orders = [];
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrders();
+            updateStatistics();
+            renderRecentOrders();
+        });
+
+        // Load orders from localStorage
+        function loadOrders() {
+            const storedOrders = localStorage.getItem('customerOrders');
+            if (storedOrders) {
+                orders = JSON.parse(storedOrders);
+            }
+        }
+
+        // Update dashboard statistics
+        function updateStatistics() {
+            const total = orders.length;
+            const pending = orders.filter(order => order.status === 'Pending').length;
+            const processing = orders.filter(order => 
+                order.status === 'Acknowledge' || order.status === 'Baking'
+            ).length;
+            const completed = orders.filter(order => 
+                order.status === 'Completed'
+            ).length;
+            
+            // Today's orders
+            const today = new Date().toLocaleDateString();
+            const todayOrders = orders.filter(order => order.date === today).length;
+            
+            // Total revenue from completed orders
+            const revenue = orders
+                .filter(order => order.status === 'Completed')
+                .reduce((sum, order) => sum + (order.price || 0), 0);
+            
+            document.getElementById('totalOrders').textContent = total;
+            document.getElementById('pendingOrders').textContent = pending;
+            document.getElementById('processingOrders').textContent = processing;
+            document.getElementById('completedOrders').textContent = completed;
+            document.getElementById('todayOrders').textContent = todayOrders;
+            document.getElementById('totalRevenue').textContent = '₱' + revenue.toFixed(2);
+        }
+
+        // Render recent orders
+        function renderRecentOrders() {
+            const container = document.getElementById('recentOrdersList');
+            
+            // Filter out cancelled orders
+            const activeOrders = orders.filter(order => order.status !== 'Cancelled');
+            
+            if (activeOrders.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-shopping-bag text-6xl mb-4 opacity-30"></i>
+                        <h3 class="text-xl font-semibold mb-2">No Orders Yet</h3>
+                        <p>Orders from customers will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const ordersHTML = activeOrders
+                .slice()
+                .reverse()
+                .slice(0, 5)
+                .map(order => {
+                    const statusColor = getStatusColor(order.status);
+                    return `
+                        <div class="border-2 border-gray-100 rounded-xl p-5 hover:border-[#D4AF37] hover:shadow-md transition-all duration-300">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-gray-800 text-lg mb-1">${escapeHtml(order.name || order.cake || 'Custom Order')}</h3>
+                                    <p class="text-sm text-gray-500">
+                                        <i class="fas fa-tag mr-1"></i> ${escapeHtml(order.size || 'N/A')} | Qty: ${order.quantity || 1}
+                                    </p>
+                                    <p class="text-sm text-gray-500 mt-1">
+                                        ${escapeHtml(order.deliveryType || 'Pick up')} • ${escapeHtml(order.paymentMethod || 'Online Payment')}
+                                    </p>
+                                </div>
+                                <span class="px-4 py-1 rounded-full text-xs font-semibold ${statusColor}">
+                                    ${escapeHtml(order.status || 'Pending')}
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-center text-sm pt-3 border-t border-gray-100">
+                                <span class="text-gray-500">
+                                    <i class="far fa-calendar mr-1"></i> ${escapeHtml(order.date || new Date().toLocaleDateString())}
+                                </span>
+                                <span class="font-bold text-[#D4AF37] text-lg">
+                                    ₱${(order.price || 0).toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            
+            container.innerHTML = `<div class="space-y-4">${ordersHTML}</div>`;
+        }
+
+        // Get status badge color
+        function getStatusColor(status) {
+            const statusColors = {
+                'Pending': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
+                'Acknowledge': 'bg-blue-100 text-blue-700 border border-blue-300',
+                'Baking': 'bg-purple-100 text-purple-700 border border-purple-300',
+                'Ready': 'bg-green-100 text-green-700 border border-green-300',
+                'Completed': 'bg-gray-100 text-gray-700 border border-gray-300',
+                'Cancelled': 'bg-red-100 text-red-700 border border-red-300'
+            };
+            return statusColors[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Logout Functions
+        function openLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('hidden');
+            document.getElementById('logoutModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.getElementById('logoutModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        function confirmLogout() {
+            window.location.href = 'index.html';
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('logoutModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeLogoutModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const logoutModal = document.getElementById('logoutModal');
+                if (logoutModal && !logoutModal.classList.contains('hidden')) {
+                    closeLogoutModal();
+                }
+            }
+        });
+
+        // Update dashboard when page becomes visible
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                loadOrders();
+                updateStatistics();
+                renderRecentOrders();
+            }
+        });
+
+        window.addEventListener('focus', function() {
+            loadOrders();
+            updateStatistics();
+            renderRecentOrders();
+        });
+    </script>
+</body>
+</html>

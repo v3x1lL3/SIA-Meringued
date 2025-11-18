@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders Management - Meringued Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        
+        :root {
+            --gold: #D4AF37;
+            --gold-dark: #B8941E;
+            --cream: #FFF8F0;
+            --light-pink: #FFF0F5;
+            --soft-peach: #FFE5E0;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #FFF8F0 0%, #FFE5E0 50%, #FFF0F5 100%);
+        }
+        
+        .font-display { font-family: 'Playfair Display', serif; }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.4);
+        }
+        
+        #ordersTable {
+            border-collapse: collapse;
+        }
+        
+        #ordersTable thead {
+            background-color: #FFF8F0;
+        }
+        
+        #ordersTable tbody tr:hover {
+            background-color: #FFF8F0;
+        }
+        
+        .sidebar-active {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            color: white !important;
+        }
+        
+        .sidebar-active:hover {
+            background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%);
+            color: white !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
+        <!-- Logo -->
+        <div class="p-6 border-b-2 border-[#D4AF37]/20">
+            <a href="admindashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">
+                Meringued
+            </a>
+            <p class="text-xs text-gray-500 mt-1">Admin Panel</p>
+        </div>
+        
+        <!-- Menu Items -->
+        <nav class="flex-1 p-6">
+            <ul class="space-y-2">
+                <li>
+                    <a href="adminordering.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium sidebar-active">
+                        <i class="fas fa-shopping-bag w-5"></i>
+                        <span>Orders</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminhistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium w-full cursor-pointer">
+                        <i class="fas fa-history w-5"></i>
+                        <span>Logs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-users w-5"></i>
+                        <span>Customers</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-cog w-5"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <!-- Logout -->
+        <div class="p-6 border-t-2 border-[#D4AF37]/20">
+            <button onclick="openLogoutModal()" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium w-full">
+                <i class="fas fa-sign-out-alt w-5"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="ml-64 min-h-screen">
+        <!-- Main Content -->
+        <div class="px-6 py-12">
+            <div class="max-w-7xl mx-auto">
+                <!-- Header -->
+                <div class="mb-8">
+                    <h1 class="font-display text-4xl md:text-5xl font-bold mb-2" style="color: #D4AF37;">
+                        Orders Management
+                    </h1>
+                    <p class="text-gray-600">Manage all customer orders and update their status</p>
+                </div>
+
+                <!-- Orders Table -->
+                <div class="bg-white/90 rounded-2xl shadow-lg p-6 md:p-8 border-2 border-[#D4AF37]/20">
+                    <h2 class="font-display text-2xl md:text-3xl font-bold mb-6 text-[#D4AF37]">
+                        <i class="fas fa-list-alt mr-2"></i> All Orders
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <table id="ordersTable" class="w-full">
+                            <thead>
+                                <tr class="border-b-2 border-[#D4AF37]/20">
+                                    <th class="text-left py-4 px-4 font-semibold text-gray-700">Order ID</th>
+                                    <th class="text-left py-4 px-4 font-semibold text-gray-700">Date Ordered</th>
+                                    <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
+                                    <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery</th>
+                                    <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
+                                    <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
+                                    <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
+                                    <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                                    <th class="text-left py-4 px-4 font-semibold text-gray-700">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody">
+                                <!-- Orders will be populated here -->
+                            </tbody>
+                        </table>
+                        <div id="emptyOrders" class="text-center py-12 text-gray-400 hidden">
+                            <i class="fas fa-box-open text-6xl mb-4 opacity-30"></i>
+                            <h3 class="text-xl font-semibold mb-2">No Orders</h3>
+                            <p>Customer orders will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div id="orderDetailsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-info-circle mr-2"></i> Order Details
+                </h2>
+                <button onclick="closeOrderDetailsModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div id="orderDetailsContent">
+                    <!-- Order details will be displayed here -->
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <button onclick="closeOrderDetailsModal()" class="w-full px-6 py-3 rounded-lg text-white font-semibold btn-primary">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Status Modal -->
+    <div id="statusModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-edit mr-2"></i> Change Order Status
+                </h2>
+                <button onclick="closeStatusModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6">
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 rounded">
+                    <p class="text-xs text-blue-700">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Status can only move forward. You cannot revert to a previous status.
+                    </p>
+                </div>
+                <label class="block text-gray-700 font-semibold mb-3">Select New Status</label>
+                <select id="newStatus" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
+                    <option value="Pending">Pending</option>
+                    <option value="Acknowledge">Acknowledge</option>
+                    <option value="Baking">Baking</option>
+                    <option value="Ready">Ready for Pickup/Delivery</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <div class="flex space-x-4">
+                    <button onclick="closeStatusModal()" class="flex-1 px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                        Cancel
+                    </button>
+                    <button onclick="confirmStatusChange()" class="flex-1 btn-primary text-white font-semibold py-3 rounded-lg shadow-lg">
+                        <i class="fas fa-check mr-2"></i>Update Status
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt View Modal -->
+    <div id="receiptViewModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-file-image mr-2"></i> Payment Receipt
+                </h2>
+                <button onclick="closeReceiptViewModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div id="receiptViewContent" class="text-center">
+                    <!-- Receipt image will be displayed here -->
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <button onclick="closeReceiptViewModal()" class="w-full px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">
+                <i class="fas fa-sign-out-alt text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2" style="color: #D4AF37;">Logout?</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to logout from admin panel?</p>
+            <div class="flex space-x-4 justify-center">
+                <button onclick="closeLogoutModal()" class="px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+                <button onclick="confirmLogout()" class="px-6 py-3 rounded-lg text-white font-semibold btn-primary">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let orders = [];
+        let currentOrderId = null; // For status change
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrders();
+            renderOrdersTable();
+        });
+
+        // Load orders from localStorage
+        function loadOrders() {
+            const storedOrders = localStorage.getItem('customerOrders');
+            if (storedOrders) {
+                orders = JSON.parse(storedOrders);
+            }
+        }
+
+        // Render orders table
+        function renderOrdersTable() {
+            const tbody = document.getElementById('ordersTableBody');
+            const emptyDiv = document.getElementById('emptyOrders');
+            const table = document.getElementById('ordersTable');
+            
+            // Filter out cancelled orders - they have their own section/logs
+            const activeOrders = orders.filter(order => order.status !== 'Cancelled');
+            
+            if (activeOrders.length === 0) {
+                tbody.innerHTML = '';
+                table.classList.add('hidden');
+                emptyDiv.classList.remove('hidden');
+                return;
+            }
+            
+            table.classList.remove('hidden');
+            emptyDiv.classList.add('hidden');
+            
+            const rowsHTML = activeOrders
+                .slice()
+                // Group by Order ID then newest first within group
+                .sort((a, b) => {
+                    const gidA = a.orderGroupId || '';
+                    const gidB = b.orderGroupId || '';
+                    if (gidA !== gidB) return gidB.localeCompare(gidA);
+                    const da = new Date(a.date || 0).getTime();
+                    const db = new Date(b.date || 0).getTime();
+                    return db - da;
+                })
+                .map(order => {
+                    const statusColor = getStatusColor(order.status);
+                    return `
+                        <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
+                            <td class="py-4 px-4 text-gray-700 text-sm font-mono">${escapeHtml(order.orderGroupId || '-')}</td>
+                            <td class="py-4 px-4 text-gray-600 text-sm">${escapeHtml(order.date || new Date().toLocaleDateString())}</td>
+                            <td class="py-4 px-4">
+                                <button onclick="viewOrderDetails(${order.id})" class="text-left">
+                                    <div class="font-semibold text-gray-800 hover:text-[#D4AF37] transition cursor-pointer">${escapeHtml(order.name || order.cake || 'Custom Order')}</div>
+                                    <div class="text-xs text-gray-500 mt-1">Click to view details</div>
+                                </button>
+                            </td>
+                            <td class="py-4 px-4 text-gray-700">
+                                ${escapeHtml(order.deliveryType || 'Pick up')}
+                            </td>
+                            <td class="py-4 px-4 text-gray-700">
+                                ${order.paymentMethod === 'Online Payment' && order.receipt ? 
+                                    `<button onclick="viewReceipt(${order.id})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">
+                                        ${escapeHtml(order.paymentMethod || 'Online Payment')}
+                                    </button>` :
+                                    `${escapeHtml(order.paymentMethod || 'Online Payment')}`
+                                }
+                            </td>
+                            <td class="py-4 px-4 text-gray-700">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : '—'}</td>
+                            <td class="py-4 px-4 font-bold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</td>
+                            <td class="py-4 px-4">
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusColor}">
+                                    ${escapeHtml(order.status || 'Pending')}
+                                </span>
+                            </td>
+                            <td class="py-4 px-4">
+                                <button onclick="openStatusModal(${order.id})" class="px-3 py-1 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white transition-all font-medium text-sm">
+                                    <i class="fas fa-edit mr-1"></i>Change Status
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            
+            tbody.innerHTML = rowsHTML;
+        }
+
+        // Get status badge color
+        function getStatusColor(status) {
+            const statusColors = {
+                'Pending': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
+                'Acknowledge': 'bg-blue-100 text-blue-700 border border-blue-300',
+                'Baking': 'bg-purple-100 text-purple-700 border border-purple-300',
+                'Ready': 'bg-green-100 text-green-700 border border-green-300',
+                'Completed': 'bg-gray-100 text-gray-700 border border-gray-300',
+                'Cancelled': 'bg-red-100 text-red-700 border border-red-300'
+            };
+            return statusColors[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
+        }
+
+        // ===== ORDER DETAILS MODAL FUNCTIONS =====
+        
+        // View order details
+        function viewOrderDetails(orderId) {
+            // Find the order by ID
+            const order = orders.find(o => o.id === orderId);
+            
+            if (!order) {
+                alert('Order not found');
+                return;
+            }
+            
+            // Display order details in modal
+            const detailsContent = document.getElementById('orderDetailsContent');
+            detailsContent.innerHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Cake</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.name || order.cake || 'Custom Order')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Size</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.size || 'N/A')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Quantity</p>
+                            <p class="font-semibold text-gray-800">${order.quantity || 1}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Date Needed</p>
+                            <p class="font-semibold text-gray-800">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : 'N/A'}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Flavor</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.flavor || 'N/A')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Frosting</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.frosting || 'N/A')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Price</p>
+                            <p class="font-semibold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</p>
+                        </div>
+                    </div>
+                    
+                    ${order.cakeDesign || order.designImage ? `
+                    <div class="bg-[#FFF8F0] rounded-lg p-4">
+                        <p class="text-xs text-gray-500 mb-2"><i class="fas fa-palette mr-1 text-[#D4AF37]"></i>Cake Design</p>
+                        ${order.cakeDesign ? `<p class="text-gray-800 mb-2">${escapeHtml(order.cakeDesign)}</p>` : ''}
+                        ${order.designImage ? `
+                            <div class="mt-2">
+                                <p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference Image: ${escapeHtml(order.designImageName || 'design.jpg')}</p>
+                                <img src="${order.designImage}" alt="Design Reference" class="max-w-full h-auto rounded-lg shadow-md border-2 border-gray-200">
+                            </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+                    
+                    ${order.dedication ? `
+                    <div class="bg-[#FFF8F0] rounded-lg p-4">
+                        <p class="text-xs text-gray-500 mb-1"><i class="fas fa-pen-fancy mr-1 text-[#D4AF37]"></i>Dedication Message</p>
+                        <p class="text-gray-800 italic">"${escapeHtml(order.dedication)}"</p>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Delivery Type</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.deliveryType || 'Pick up')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Payment Method</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.paymentMethod || 'Online Payment')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Status</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.status || 'Pending')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Order Date</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.date || new Date().toLocaleDateString())}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Show modal
+            document.getElementById('orderDetailsModal').classList.remove('hidden');
+            document.getElementById('orderDetailsModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Close order details modal
+        function closeOrderDetailsModal() {
+            document.getElementById('orderDetailsModal').classList.add('hidden');
+            document.getElementById('orderDetailsModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            // Clear content
+            document.getElementById('orderDetailsContent').innerHTML = '';
+        }
+
+        // ===== RECEIPT VIEW MODAL FUNCTIONS =====
+        
+        // View receipt
+        function viewReceipt(orderId) {
+            // Find the order by ID
+            const order = orders.find(o => o.id === orderId);
+            
+            if (!order || !order.receipt) {
+                alert('Receipt not found for this order');
+                return;
+            }
+            
+            // Display receipt in modal
+            const receiptContent = document.getElementById('receiptViewContent');
+            const receiptFileName = order.receiptFileName || 'receipt';
+            
+            // Check if receipt is base64 image or PDF
+            if (order.receipt.startsWith('data:image/')) {
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-file-image mr-1"></i> ${escapeHtml(receiptFileName)}
+                        </p>
+                        <img src="${order.receipt}" alt="Payment Receipt" class="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-gray-200">
+                    </div>
+                `;
+            } else if (order.receipt.startsWith('data:application/pdf')) {
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-file-pdf mr-1"></i> ${escapeHtml(receiptFileName)}
+                        </p>
+                        <iframe src="${order.receipt}" class="w-full h-[600px] rounded-lg shadow-lg border-2 border-gray-200" frameborder="0"></iframe>
+                    </div>
+                `;
+            } else {
+                // Assume it's an image if it starts with data:
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-file-image mr-1"></i> ${escapeHtml(receiptFileName)}
+                        </p>
+                        <img src="${order.receipt}" alt="Payment Receipt" class="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-gray-200">
+                    </div>
+                `;
+            }
+            
+            // Show modal
+            document.getElementById('receiptViewModal').classList.remove('hidden');
+            document.getElementById('receiptViewModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Close receipt view modal
+        function closeReceiptViewModal() {
+            document.getElementById('receiptViewModal').classList.add('hidden');
+            document.getElementById('receiptViewModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            // Clear content
+            document.getElementById('receiptViewContent').innerHTML = '';
+        }
+
+        // ===== STATUS CHANGE MODAL FUNCTIONS =====
+        
+        // Open status modal
+        function openStatusModal(orderId) {
+            currentOrderId = orderId;
+            const order = orders.find(o => o.id === orderId);
+
+            const statusHierarchy = {
+                'Pending': 0,
+                'Acknowledge': 1,
+                'Baking': 2,
+                'Ready': 3,
+                'Completed': 4,
+                'Cancelled': 99
+            };
+
+            const select = document.getElementById('newStatus');
+
+            // Build options showing only remaining steps (forward statuses).
+            if (order && select) {
+                const currentStatus = order.status || 'Pending';
+                const currentLevel = statusHierarchy[currentStatus] ?? 0;
+                const allStatuses = ['Pending', 'Acknowledge', 'Baking', 'Ready', 'Completed', 'Cancelled'];
+
+                const labelFor = (s) => s === 'Ready' ? 'Ready for Pickup/Delivery' : s;
+
+                // If current is final (Completed/Cancelled), lock selection
+                if (currentStatus === 'Completed' || currentStatus === 'Cancelled') {
+                    select.innerHTML = `<option value="${currentStatus}" selected>${labelFor(currentStatus)}</option>`;
+                    select.disabled = true;
+                } else {
+                    // Show all statuses, checkmark and disable those already reached; allow forward ones and Cancelled.
+                    select.disabled = false;
+                    const optionsHtml = allStatuses.map(s => {
+                        const lvl = statusHierarchy[s] ?? 0;
+                        const reached = (s !== 'Cancelled') && (lvl <= currentLevel); // reached/current
+                        const checked = reached ? '✓ ' : '';
+                        const disabledAttr = reached ? 'disabled' : '';
+                        return `<option value="${s}" ${disabledAttr}>${checked}${labelFor(s)}</option>`;
+                    }).join('');
+                    // Placeholder selected
+                    select.innerHTML = `<option value="" disabled selected>Update Status</option>` + optionsHtml;
+                }
+
+            }
+
+            document.getElementById('statusModal').classList.remove('hidden');
+            document.getElementById('statusModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Close status modal
+        function closeStatusModal() {
+            document.getElementById('statusModal').classList.add('hidden');
+            document.getElementById('statusModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            currentOrderId = null;
+        }
+        
+        // Confirm status change
+        function confirmStatusChange() {
+            if (!currentOrderId) return;
+            
+            const newStatus = document.getElementById('newStatus').value;
+            
+            // Find order
+            const orderIndex = orders.findIndex(o => o.id === currentOrderId);
+            if (orderIndex === -1) return;
+            
+            const currentStatus = orders[orderIndex].status || 'Pending';
+            
+            // Define status hierarchy (lower number = earlier stage)
+            const statusHierarchy = {
+                'Pending': 0,
+                'Acknowledge': 1,
+                'Baking': 2,
+                'Ready': 3,
+                'Completed': 4,
+                'Cancelled': 99 // Can be set from any status
+            };
+            
+            const currentLevel = statusHierarchy[currentStatus] || 0;
+            const newLevel = statusHierarchy[newStatus] || 0;
+            
+            // Validate: can only move forward (or to cancelled)
+            if (newLevel < currentLevel && newStatus !== 'Cancelled') {
+                alert('You cannot revert to a previous status. Status can only move forward.');
+                return;
+            }
+            
+            // Validate: cannot change from Completed/Cancelled
+            if ((currentStatus === 'Completed' || currentStatus === 'Cancelled') && newStatus !== currentStatus) {
+                alert(`Cannot change status from ${currentStatus}. This order is already finalized.`);
+                return;
+            }
+            
+            // Update order status
+            orders[orderIndex].status = newStatus;
+            localStorage.setItem('customerOrders', JSON.stringify(orders));
+            renderOrdersTable();
+            closeStatusModal();
+            
+            // Show success message
+            showToast('Order status updated successfully!');
+        }
+
+        // Show toast notification
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-6 right-6 bg-green-500 text-white px-6 py-4 rounded-xl shadow-2xl z-50 transform transition-all';
+            toast.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-check-circle text-2xl"></i>
+                    <span class="font-medium">${message}</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Logout Functions
+        function openLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('hidden');
+            document.getElementById('logoutModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.getElementById('logoutModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        function confirmLogout() {
+            window.location.href = 'index.html';
+        }
+
+        // Close modals when clicking outside
+        document.getElementById('orderDetailsModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeOrderDetailsModal();
+            }
+        });
+        
+        document.getElementById('receiptViewModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReceiptViewModal();
+            }
+        });
+        
+        document.getElementById('statusModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeStatusModal();
+            }
+        });
+        
+        document.getElementById('logoutModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeLogoutModal();
+            }
+        });
+
+        // Close modals on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const orderDetailsModal = document.getElementById('orderDetailsModal');
+                if (orderDetailsModal && !orderDetailsModal.classList.contains('hidden')) {
+                    closeOrderDetailsModal();
+                    return;
+                }
+                const receiptViewModal = document.getElementById('receiptViewModal');
+                if (receiptViewModal && !receiptViewModal.classList.contains('hidden')) {
+                    closeReceiptViewModal();
+                    return;
+                }
+                const statusModal = document.getElementById('statusModal');
+                if (statusModal && !statusModal.classList.contains('hidden')) {
+                    closeStatusModal();
+                    return;
+                }
+                const logoutModal = document.getElementById('logoutModal');
+                if (logoutModal && !logoutModal.classList.contains('hidden')) {
+                    closeLogoutModal();
+                    return;
+                }
+            }
+        });
+
+        // Update orders when page becomes visible
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                loadOrders();
+                renderOrdersTable();
+            }
+        });
+
+        window.addEventListener('focus', function() {
+            loadOrders();
+            renderOrdersTable();
+        });
+    </script>
+</body>
+</html>
+

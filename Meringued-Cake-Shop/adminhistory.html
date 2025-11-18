@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Logs - Admin - Meringued</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        :root {
+            --gold: #D4AF37;
+            --gold-dark: #B8941E;
+            --cream: #FFF8F0;
+        }
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #FFF8F0 0%, #FFE5E0 50%, #FFF0F5 100%); }
+        .font-display { font-family: 'Playfair Display', serif; }
+        .sidebar-active { background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); color: white !important; }
+        .sidebar-active:hover { background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%); color: white !important; }
+    </style>
+    <script>
+        // Tailwind config for colors if needed
+        tailwind.config = { theme: { extend: {} } }
+    </script>
+    <script>
+        // Shared helpers
+        function getStatusColor(status) {
+            const map = {
+                'Pending': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
+                'Acknowledge': 'bg-blue-100 text-blue-700 border border-blue-300',
+                'Baking': 'bg-purple-100 text-purple-700 border border-purple-300',
+                'Ready': 'bg-green-100 text-green-700 border border-green-300',
+                'Completed': 'bg-gray-100 text-gray-700 border border-gray-300',
+                'Cancelled': 'bg-red-100 text-red-700 border border-red-300'
+            };
+            return map[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
+        }
+        function escapeHtml(text) {
+            const div = document.createElement('div'); div.textContent = text ?? ''; return div.innerHTML;
+        }
+    </script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
+        <!-- Logo -->
+        <div class="p-6 border-b-2 border-[#D4AF37]/20">
+            <a href="admindashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">
+                Meringued
+            </a>
+            <p class="text-xs text-gray-500 mt-1">Admin Panel</p>
+        </div>
+
+        <!-- Menu -->
+        <nav class="flex-1 p-6">
+            <ul class="space-y-2">
+                <li>
+                    <a href="adminordering.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-shopping-bag w-5"></i><span>Orders</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminhistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium sidebar-active">
+                        <i class="fas fa-history w-5"></i><span>Logs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-users w-5"></i><span>Customers</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-cog w-5"></i><span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Logout -->
+        <div class="p-6 border-t-2 border-[#D4AF37]/20">
+            <button onclick="openLogoutModal()" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium w-full">
+                <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="ml-64 min-h-screen">
+        <div class="px-6 py-8 md:py-12">
+            <!-- Header -->
+            <div class="mb-8 flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                    <h1 class="font-display text-4xl md:text-5xl font-bold mb-2 text-[#D4AF37]">
+                        <i class="fas fa-history mr-3"></i>Order Logs
+                    </h1>
+                    <p class="text-gray-600">Review all completed and cancelled orders.</p>
+                </div>
+                <button onclick="openResetModal()" class="px-4 py-2 rounded-lg text-white font-semibold"
+                    style="background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);">
+                    <i class="fas fa-trash-alt mr-2"></i> Clear All Orders
+                </button>
+            </div>
+
+            <!-- Subheader -->
+            <p class="text-gray-600 text-lg mb-4">View your completed and cancelled orders</p>
+
+            <!-- Tabs -->
+            <div class="mb-6 flex space-x-4 border-b-2 border-[#D4AF37]/20">
+                <button onclick="showTab('completed')" id="tabCompleted" class="px-6 py-3 font-semibold text-[#D4AF37] border-b-2 border-[#D4AF37] transition">
+                    <i class="fas fa-check-circle mr-2"></i>Completed
+                </button>
+                <button onclick="showTab('cancelled')" id="tabCancelled" class="px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#D4AF37] transition">
+                    <i class="fas fa-times-circle mr-2"></i>Cancelled
+                </button>
+            </div>
+
+            <!-- Completed Orders -->
+            <section id="completedSection" class="bg-white/90 rounded-2xl shadow-lg p-6 md:p-8 border-2 border-[#D4AF37]/20">
+                <div class="overflow-x-auto">
+                    <table id="completedTable" class="w-full">
+                        <thead>
+                            <tr class="border-b-2 border-[#D4AF37]/20">
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Order ID</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Date Ordered</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="completedBody"></tbody>
+                    </table>
+                    <div id="emptyCompleted" class="text-center py-12 text-gray-400 hidden">
+                        <i class="fas fa-box-open text-6xl mb-4 opacity-30"></i>
+                        <h3 class="text-xl font-semibold mb-2">No Completed Orders Yet</h3>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cancelled Orders -->
+            <section id="cancelledSection" class="bg-white/90 rounded-2xl shadow-lg p-6 md:p-8 border-2 border-[#D4AF37]/20 hidden">
+                <div class="overflow-x-auto">
+                    <table id="cancelledTable" class="w-full">
+                        <thead>
+                            <tr class="border-b-2 border-[#D4AF37]/20">
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Order ID</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Date Ordered</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cancelledBody"></tbody>
+                    </table>
+                    <div id="emptyCancelled" class="text-center py-12 text-gray-400 hidden">
+                        <i class="fas fa-box-open text-6xl mb-4 opacity-30"></i>
+                        <h3 class="text-xl font-semibold mb-2">No Cancelled Orders</h3>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div id="orderDetailsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden transform transition-all">
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-info-circle mr-2"></i> Order Details
+                </h2>
+                <button onclick="closeOrderDetailsModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div id="orderDetailsContent"></div>
+            </div>
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <button onclick="closeOrderDetailsModal()" class="w-full px-6 py-3 rounded-lg text-white font-semibold" style="background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt View Modal -->
+    <div id="receiptViewModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden transform transition-all">
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-file-image mr-2"></i> Payment Receipt
+                </h2>
+                <button onclick="closeReceiptViewModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div id="receiptViewContent" class="text-center"></div>
+            </div>
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <button onclick="closeReceiptViewModal()" class="w-full px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div id="logoutModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">
+                <i class="fas fa-sign-out-alt text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2" style="color: #D4AF37;">Logout?</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to logout?</p>
+            <div class="flex space-x-4 justify-center">
+                <button onclick="closeLogoutModal()" class="px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">Cancel</button>
+                <button onclick="confirmLogout()" class="px-6 py-3 rounded-lg text-white font-semibold" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Orders Modal -->
+    <div id="resetModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);">
+                <i class="fas fa-trash text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2" style="color: #DC2626;">Clear all orders?</h3>
+            <p class="text-gray-600 mb-6">This removes every order from the system (including logs). This action cannot be undone.</p>
+            <div class="flex space-x-4 justify-center">
+                <button onclick="closeResetModal()" class="px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+                <button onclick="confirmResetOrders()" class="px-6 py-3 rounded-lg text-white font-semibold" style="background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);">
+                    Yes, clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let orders = [];
+
+        let currentTab = 'completed';
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOrders();
+            showTab('completed');
+            setupModalOutsideClose();
+        });
+
+        function loadOrders() {
+            // Admin reads the same storage used by client
+            const stored = localStorage.getItem('customerOrders');
+            orders = stored ? JSON.parse(stored) : [];
+        }
+
+        function renderCompletedOrders() {
+            const tbody = document.getElementById('completedBody');
+            const emptyDiv = document.getElementById('emptyCompleted');
+            const table = document.getElementById('completedTable');
+            const list = orders.filter(o => o.status === 'Completed');
+            if (list.length === 0) {
+                tbody.innerHTML = '';
+                table.classList.add('hidden');
+                emptyDiv.classList.remove('hidden');
+                return;
+            }
+            table.classList.remove('hidden');
+            emptyDiv.classList.add('hidden');
+            tbody.innerHTML = list.slice().reverse().map(order => rowHtml(order)).join('');
+        }
+
+        function renderCancelledOrders() {
+            const tbody = document.getElementById('cancelledBody');
+            const emptyDiv = document.getElementById('emptyCancelled');
+            const table = document.getElementById('cancelledTable');
+            const list = orders.filter(o => o.status === 'Cancelled');
+            if (list.length === 0) {
+                tbody.innerHTML = '';
+                table.classList.add('hidden');
+                emptyDiv.classList.remove('hidden');
+                return;
+            }
+            table.classList.remove('hidden');
+            emptyDiv.classList.add('hidden');
+            tbody.innerHTML = list.slice().reverse().map(order => rowHtml(order)).join('');
+        }
+
+        function rowHtml(order) {
+            const paymentHtml = (order.paymentMethod === 'Online Payment' && order.receipt)
+                ? `<button onclick="viewReceipt(${order.id})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">${escapeHtml(order.paymentMethod || 'Online Payment')}</button>`
+                : `${escapeHtml(order.paymentMethod || '')}`;
+            return `
+                <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
+                    <td class="py-4 px-4 text-gray-700 text-sm font-mono">${escapeHtml(order.orderGroupId || '-')}</td>
+                    <td class="py-4 px-4 text-gray-600 text-sm">${escapeHtml(order.date || '')}</td>
+                    <td class="py-4 px-4">
+                        <button onclick="viewOrderDetails(${order.id})" class="text-left">
+                            <div class="font-semibold text-gray-800 hover:text-[#D4AF37] transition cursor-pointer">${escapeHtml(order.name || order.cake || 'Custom Order')}</div>
+                            <div class="text-xs text-gray-500 mt-1">Click to view details</div>
+                        </button>
+                    </td>
+                    <td class="py-4 px-4 text-gray-700">${escapeHtml(order.deliveryType || '')}</td>
+                    <td class="py-4 px-4 text-gray-700">${paymentHtml}</td>
+                    <td class="py-4 px-4 text-gray-700">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : '—'}</td>
+                    <td class="py-4 px-4 font-bold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</td>
+                    <td class="py-4 px-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}">${escapeHtml(order.status || '')}</span>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Tabs
+        function showTab(tab) {
+            currentTab = tab;
+            // Update buttons
+            document.getElementById('tabCompleted').classList.remove('text-[#D4AF37]', 'border-[#D4AF37]');
+            document.getElementById('tabCompleted').classList.add('text-gray-500', 'border-transparent');
+            document.getElementById('tabCancelled').classList.remove('text-[#D4AF37]', 'border-[#D4AF37]');
+            document.getElementById('tabCancelled').classList.add('text-gray-500', 'border-transparent');
+
+            if (tab === 'completed') {
+                document.getElementById('tabCompleted').classList.remove('text-gray-500', 'border-transparent');
+                document.getElementById('tabCompleted').classList.add('text-[#D4AF37]', 'border-[#D4AF37]');
+                document.getElementById('completedSection').classList.remove('hidden');
+                document.getElementById('cancelledSection').classList.add('hidden');
+            } else {
+                document.getElementById('tabCancelled').classList.remove('text-gray-500', 'border-transparent');
+                document.getElementById('tabCancelled').classList.add('text-[#D4AF37]', 'border-[#D4AF37]');
+                document.getElementById('completedSection').classList.add('hidden');
+                document.getElementById('cancelledSection').classList.remove('hidden');
+            }
+
+            // Re-render tables
+            renderCompletedOrders();
+            renderCancelledOrders();
+        }
+
+        // Order details modal
+        function viewOrderDetails(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+            const el = document.getElementById('orderDetailsContent');
+            el.innerHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Cake</p><p class="font-semibold text-gray-800">${escapeHtml(order.name || order.cake || 'Custom Order')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Size</p><p class="font-semibold text-gray-800">${escapeHtml(order.size || 'N/A')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Quantity</p><p class="font-semibold text-gray-800">${order.quantity || 1}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Date Needed</p><p class="font-semibold text-gray-800">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : 'N/A'}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Flavor</p><p class="font-semibold text-gray-800">${escapeHtml(order.flavor || 'N/A')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Frosting</p><p class="font-semibold text-gray-800">${escapeHtml(order.frosting || 'N/A')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Delivery Type</p><p class="font-semibold text-gray-800">${escapeHtml(order.deliveryType || 'Pick up')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Payment Method</p><p class="font-semibold text-gray-800">${escapeHtml(order.paymentMethod || 'Online Payment')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Status</p><p class="font-semibold text-gray-800">${escapeHtml(order.status || 'Pending')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Order Date</p><p class="font-semibold text-gray-800">${escapeHtml(order.date || '')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Price</p><p class="font-semibold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</p></div>
+                    </div>
+                    ${order.cakeDesign || order.designImage ? `
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-2"><i class="fas fa-palette mr-1 text-[#D4AF37]"></i>Cake Design</p>
+                            ${order.cakeDesign ? `<p class="text-gray-800 mb-2">${escapeHtml(order.cakeDesign)}</p>` : ''}
+                            ${order.designImage ? `
+                                <div class="mt-2">
+                                    <p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference Image: ${escapeHtml(order.designImageName || 'design.jpg')}</p>
+                                    <img src="${order.designImage}" alt="Design Reference" class="max-w-full h-auto rounded-lg shadow-md border-2 border-gray-200">
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                    ${order.dedication ? `
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1"><i class="fas fa-pen-fancy mr-1 text-[#D4AF37]"></i>Dedication Message</p>
+                            <p class="text-gray-800 italic">"${escapeHtml(order.dedication)}"</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            const modal = document.getElementById('orderDetailsModal');
+            modal.classList.remove('hidden'); modal.classList.add('flex'); document.body.style.overflow = 'hidden';
+        }
+        function closeOrderDetailsModal() {
+            const modal = document.getElementById('orderDetailsModal');
+            modal.classList.add('hidden'); modal.classList.remove('flex'); document.body.style.overflow = 'auto';
+            document.getElementById('orderDetailsContent').innerHTML = '';
+        }
+
+        // Receipt view
+        function viewReceipt(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order || !order.receipt) return;
+            const receiptContent = document.getElementById('receiptViewContent');
+            const receiptFileName = order.receiptFileName || 'receipt';
+            if (order.receipt.startsWith('data:image/')) {
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2"><i class="fas fa-file-image mr-1"></i> ${escapeHtml(receiptFileName)}</p>
+                        <img src="${order.receipt}" alt="Payment Receipt" class="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-gray-200">
+                    </div>`;
+            } else if (order.receipt.startsWith('data:application/pdf')) {
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2"><i class="fas fa-file-pdf mr-1"></i> ${escapeHtml(receiptFileName)}</p>
+                        <iframe src="${order.receipt}" class="w-full h-[600px] rounded-lg shadow-lg border-2 border-gray-200" frameborder="0"></iframe>
+                    </div>`;
+            } else {
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2"><i class="fas fa-file-image mr-1"></i> ${escapeHtml(receiptFileName)}</p>
+                        <img src="${order.receipt}" alt="Payment Receipt" class="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-gray-200">
+                    </div>`;
+            }
+            const modal = document.getElementById('receiptViewModal');
+            modal.classList.remove('hidden'); modal.classList.add('flex'); document.body.style.overflow = 'hidden';
+        }
+        function closeReceiptViewModal() {
+            const modal = document.getElementById('receiptViewModal');
+            modal.classList.add('hidden'); modal.classList.remove('flex'); document.body.style.overflow = 'auto';
+            document.getElementById('receiptViewContent').innerHTML = '';
+        }
+
+        // Logout modal
+        function openLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('hidden');
+            document.getElementById('logoutModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.getElementById('logoutModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+        function confirmLogout() {
+            window.location.href = 'index.html';
+        }
+
+        function setupModalOutsideClose() {
+            document.getElementById('orderDetailsModal')?.addEventListener('click', (e) => { if (e.target === e.currentTarget) closeOrderDetailsModal(); });
+            document.getElementById('receiptViewModal')?.addEventListener('click', (e) => { if (e.target === e.currentTarget) closeReceiptViewModal(); });
+            document.getElementById('logoutModal')?.addEventListener('click', (e) => { if (e.target === e.currentTarget) closeLogoutModal(); });
+            document.getElementById('resetModal')?.addEventListener('click', (e) => { if (e.target === e.currentTarget) closeResetModal(); });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const modals = ['orderDetailsModal','receiptViewModal','logoutModal','resetModal'];
+                    for (const id of modals) {
+                        const m = document.getElementById(id);
+                        if (m && !m.classList.contains('hidden')) {
+                            if (id === 'orderDetailsModal') closeOrderDetailsModal();
+                            if (id === 'receiptViewModal') closeReceiptViewModal();
+                            if (id === 'logoutModal') closeLogoutModal();
+                            if (id === 'resetModal') closeResetModal();
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+
+        // Reset orders handlers
+        function openResetModal() {
+            document.getElementById('resetModal').classList.remove('hidden');
+            document.getElementById('resetModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeResetModal() {
+            document.getElementById('resetModal').classList.add('hidden');
+            document.getElementById('resetModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+        function confirmResetOrders() {
+            // Clear orders and cart from localStorage
+            localStorage.removeItem('customerOrders');
+            localStorage.removeItem('cart');
+            // Refresh local data and UI
+            orders = [];
+            renderCompletedOrders();
+            renderCancelledOrders();
+            closeResetModal();
+            alert('All orders have been cleared.');
+        }
+    </script>
+</body>
+</html>
+

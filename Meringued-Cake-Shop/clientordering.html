@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Cake - Meringued</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        
+        :root {
+            --gold: #D4AF37;
+            --cream: #FFF8F0;
+            --light-pink: #FFF0F5;
+            --soft-peach: #FFE5E0;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #FFF8F0 0%, #FFE5E0 50%, #FFF0F5 100%);
+        }
+        
+        .font-display { font-family: 'Playfair Display', serif; }
+        
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 9999px;
+            min-width: 20px;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold) 0%, #B8941E 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.4);
+        }
+        
+        /* Table Styles */
+        #ordersTable {
+            border-collapse: collapse;
+        }
+        
+        #ordersTable thead {
+            background-color: #FFF8F0;
+        }
+        
+        #ordersTable tbody tr:hover {
+            background-color: #FFF8F0;
+        }
+        
+        @media (max-width: 768px) {
+            #ordersTable {
+                font-size: 0.875rem;
+            }
+            
+            #ordersTable th,
+            #ordersTable td {
+                padding: 0.5rem;
+            }
+        }
+        
+        .sidebar-active {
+            background: linear-gradient(135deg, var(--gold) 0%, #B8941E 100%);
+            color: white !important;
+        }
+        
+        .sidebar-active:hover {
+            background: linear-gradient(135deg, #B8941E 0%, var(--gold) 100%);
+            color: white !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Sidebar -->
+    <aside id="clientSidebar" class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-300">
+        <!-- Logo -->
+        <div class="p-6 border-b-2 border-[#D4AF37]/20">
+            <a href="clientdashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">
+                Meringued
+            </a>
+            </div>
+        
+        <!-- User Profile -->
+        <div class="p-6 border-b-2 border-[#D4AF37]/20">
+            <div class="flex items-center space-x-3 px-4 py-3 rounded-lg bg-[#FFF8F0]">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white" style="background: linear-gradient(135deg, var(--gold) 0%, #B8941E 100%);">
+                    <i class="fas fa-user"></i>
+        </div>
+                <div>
+                    <p class="text-xs text-gray-500">Welcome</p>
+                    <p id="sidebarCustomerName" class="font-semibold text-gray-800">Guest</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Menu Items -->
+        <nav class="flex-1 p-6">
+            <ul class="space-y-2">
+                <li>
+                    <a href="clientordering.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium sidebar-active">
+                        <i class="fas fa-shopping-bag w-5"></i>
+                        <span>Order</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="clienthistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-history w-5"></i>
+                        <span>Logs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-cog w-5"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+    </nav>
+        
+        <!-- Logout -->
+        <div class="p-6 border-t-2 border-[#D4AF37]/20">
+            <button onclick="openLogoutModal()" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium w-full">
+                <i class="fas fa-sign-out-alt w-5"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Overlay for mobile -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden md:hidden"></div>
+
+    <!-- Main Content Area -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Bar with Cart -->
+        <div class="bg-white/80 backdrop-blur-sm shadow-sm border-b border-[#D4AF37]/10 sticky top-0 z-40 pl-0 pr-72 py-10">
+            <div class="flex justify-between items-center">
+                <button id="openSidebarBtn" class="md:hidden text-gray-700 hover:text-[#D4AF37] transition px-3 py-2">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+                <button onclick="openCartModal()" class="fixed top-6 right-6 z-50 text-gray-700 hover:text-[#D4AF37] transition">
+                    <i class="fas fa-shopping-cart text-2xl"></i>
+                    <span id="cartBadge" class="cart-badge hidden">0</span>
+                </button>
+            </div>
+        </div>
+
+    <!-- Main Content -->
+    <div class="px-6 py-12">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="mb-8 md:mb-12 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                <div>
+                    <h1 class="font-display text-4xl md:text-5xl font-bold mb-2" style="color: #D4AF37;">
+                Order Your Dream Cake
+            </h1>
+                    <p class="text-gray-600 text-center md:text-left">Track your orders and place new ones</p>
+                </div>
+                <button onclick="openOrderModal()" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg whitespace-nowrap">
+                    <i class="fas fa-plus-circle mr-2"></i> New Order
+                </button>
+            </div>
+
+            <!-- Orders Table -->
+            <div class="bg-white/90 rounded-2xl shadow-lg p-6 md:p-8 border-2 border-[#D4AF37]/20">
+                <h2 class="font-display text-2xl md:text-3xl font-bold mb-6 text-[#D4AF37]">
+                    <i class="fas fa-list-alt mr-2"></i> Placed Orders
+                </h2>
+                <div class="overflow-x-auto">
+                    <table id="ordersTable" class="w-full">
+                        <thead>
+                            <tr class="border-b-2 border-[#D4AF37]/20">
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Order ID</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Date Ordered</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <!-- Orders will be populated here -->
+                        </tbody>
+                    </table>
+                    <div id="emptyOrders" class="text-center py-12 text-gray-400 hidden">
+                        <i class="fas fa-box-open text-6xl mb-4 opacity-30"></i>
+                        <h3 class="text-xl font-semibold mb-2">No Orders Yet</h3>
+                        <p class="mb-6">Start by placing your first order!</p>
+                        <button onclick="openOrderModal()" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg">
+                            Place Your First Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Order Form Modal -->
+    <div id="orderModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center sticky top-0 z-10">
+                <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-birthday-cake mr-2"></i> Customize Your Cake
+                </h2>
+                <button onclick="closeOrderModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 md:p-8 overflow-y-auto max-h-[calc(90vh-200px)]">
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Order Form -->
+                <div class="lg:col-span-2">
+                        <form id="orderForm" class="space-y-4">
+                            <!-- Product Selection -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-birthday-cake mr-2" style="color: #D4AF37;"></i>
+                                    Select Cake
+                                </label>
+                                <select id="cakeProduct" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
+                                    <option value="">Choose a cake...</option>
+                                    <option value="Chocolate Delight" data-base="400">Chocolate Delight (₱400)</option>
+                                    <option value="Vanilla Dream" data-base="400">Vanilla Dream (₱400)</option>
+                                    <option value="Red Velvet Special" data-base="450">Red Velvet Special (₱450)</option>
+                                    <option value="Lemon Zest" data-base="420">Lemon Zest (₱420)</option>
+                                    <option value="Strawberry Bliss" data-base="430">Strawberry Bliss (₱430)</option>
+                                </select>
+                            </div>
+
+                            <!-- Quantity -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-shopping-cart mr-2" style="color: #D4AF37;"></i>
+                                    Quantity
+                                </label>
+                                <input type="number" id="quantity" value="1" min="1" max="10" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
+                            </div>
+
+                            <!-- Date Needed -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-calendar-heart mr-2" style="color: #D4AF37;"></i>
+                                    I want to eat it on <span class="text-red-500">*</span>
+                                </label>
+                                <input type="date" id="dateNeeded" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" required>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <i class="fas fa-heart mr-1" style="color: #D4AF37;"></i>
+                                    Pick the special day for your cake! 🎂
+                                </p>
+                            </div>
+
+                            <!-- Size -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-ruler mr-2" style="color: #D4AF37;"></i>
+                                    Size
+                                </label>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <label class="relative cursor-pointer">
+                                        <input type="radio" name="size" value="Small" data-price="450" class="peer sr-only" checked>
+                                        <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
+                                            <p class="font-semibold">Small</p>
+                                            <p class="text-sm text-gray-500">6-8 servings</p>
+                                            <p class="text-sm font-bold text-[#D4AF37] mt-1">₱450</p>
+                                        </div>
+                                    </label>
+                                    <label class="relative cursor-pointer">
+                                        <input type="radio" name="size" value="Medium" data-price="810" class="peer sr-only">
+                                        <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
+                                            <p class="font-semibold">Medium</p>
+                                            <p class="text-sm text-gray-500">12-15 servings</p>
+                                            <p class="text-sm font-bold text-[#D4AF37] mt-1">₱810</p>
+                                        </div>
+                                    </label>
+                                    <label class="relative cursor-pointer">
+                                        <input type="radio" name="size" value="Large" data-price="1125" class="peer sr-only">
+                                        <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
+                                            <p class="font-semibold">Large</p>
+                                            <p class="text-sm text-gray-500">20-25 servings</p>
+                                            <p class="text-sm font-bold text-[#D4AF37] mt-1">₱1,125</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Flavor -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-cookie-bite mr-2" style="color: #D4AF37;"></i>
+                                    Flavor
+                                </label>
+                                <select id="flavor" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
+                                    <option>Chocolate</option>
+                                    <option>Vanilla</option>
+                                    <option>Strawberry</option>
+                                    <option>Red Velvet</option>
+                                    <option>Lemon</option>
+                                    <option>Carrot</option>
+                                </select>
+                            </div>
+
+                            <!-- Frosting -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-ice-cream mr-2" style="color: #D4AF37;"></i>
+                                    Frosting
+                                </label>
+                                <select id="frosting" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
+                                    <option>Buttercream</option>
+                                    <option>Fondant (+₱15)</option>
+                                    <option>Cream Cheese</option>
+                                    <option>Whipped Cream</option>
+                                    <option>Ganache (+₱10)</option>
+                                </select>
+                            </div>
+
+                            <!-- Cake Design Description -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-palette mr-2" style="color: #D4AF37;"></i>
+                                    Cake Design <span class="text-xs text-gray-500 font-normal">(Required for Fondant - Description and/or Image)</span>
+                                </label>
+                                <textarea 
+                                    id="cakeDesign" 
+                                    rows="4" 
+                                    class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition resize-none" 
+                                    placeholder="Describe how you want your cake to look like... e.g., Theme, colors, decorations, characters, patterns, or any specific design elements you have in mind"
+                                ></textarea>
+                                <p class="text-xs text-gray-500 mt-2 mb-3">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Provide a description and/or upload a reference image
+                                </p>
+                                
+                                <!-- Design Image Upload -->
+                                <div class="mt-3">
+                                    <label class="block text-gray-700 font-medium mb-2 text-sm">
+                                        <i class="fas fa-image mr-1" style="color: #D4AF37;"></i>
+                                        Reference Image <span class="text-xs text-gray-500 font-normal">(Optional)</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input type="file" id="designImage" accept="image/*" class="hidden">
+                                        <label for="designImage" class="flex items-center justify-center w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#D4AF37] transition">
+                                            <div class="text-center">
+                                                <i class="fas fa-cloud-upload-alt text-xl text-gray-400 mb-1"></i>
+                                                <p class="text-sm text-gray-600">
+                                                    <span class="text-[#D4AF37] font-semibold">Click to upload</span> or drag and drop
+                                                </p>
+                                                <p class="text-xs text-gray-500 mt-1">PNG, JPG (Max 5MB)</p>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div id="designImageFileName" class="mt-2 text-sm text-gray-600 hidden">
+                                        <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-2">
+                                            <div class="flex items-center">
+                                                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                                <span id="designImageName" class="font-medium"></span>
+                                            </div>
+                                            <button type="button" onclick="removeDesignImage()" class="text-red-500 hover:text-red-700 transition">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Dedication Text -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-pen-fancy mr-2" style="color: #D4AF37;"></i>
+                                    Dedication Message (Optional)
+                                </label>
+                                <input type="text" id="dedication" placeholder="e.g., Happy Birthday John!" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
+                            </div>
+
+                            <!-- Pickup or Delivery -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-truck mr-2" style="color: #D4AF37;"></i>
+                                    Pick up or Deliver
+                                </label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="relative cursor-pointer">
+                                        <input type="radio" name="deliveryType" value="Pick up" class="peer sr-only" checked>
+                                        <div class="border-2 border-gray-200 rounded-lg p-3 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
+                                            <i class="fas fa-store text-xl mb-1 text-gray-600 peer-checked:text-[#D4AF37] transition"></i>
+                                            <p class="font-semibold text-sm">Pick up</p>
+                                            <p class="text-xs text-gray-500 mt-0.5">Collect from store</p>
+                    </div>
+                                    </label>
+                                    <label class="relative cursor-pointer">
+                                        <input type="radio" name="deliveryType" value="Deliver" class="peer sr-only">
+                                        <div class="border-2 border-gray-200 rounded-lg p-3 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
+                                            <i class="fas fa-truck text-xl mb-1 text-gray-600 peer-checked:text-[#D4AF37] transition"></i>
+                                            <p class="font-semibold text-sm">Deliver</p>
+                                            <p class="text-xs text-gray-500 mt-0.5">We'll deliver to you</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Payment Method -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-credit-card mr-2" style="color: #D4AF37;"></i>
+                                    Payment Method
+                                </label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="relative cursor-pointer">
+                                        <input type="radio" name="paymentMethod" value="Online Payment" class="peer sr-only" checked>
+                                        <div class="border-2 border-gray-200 rounded-lg p-3 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
+                                            <i class="fas fa-credit-card text-xl mb-1 text-gray-600 peer-checked:text-[#D4AF37] transition"></i>
+                                            <p class="font-semibold text-sm">Online Payment</p>
+                                            <p class="text-xs text-gray-500 mt-0.5">Pay online</p>
+                                        </div>
+                                    </label>
+                                    <label class="relative cursor-pointer">
+                                        <input type="radio" name="paymentMethod" value="Cash on Delivery" class="peer sr-only">
+                                        <div class="border-2 border-gray-200 rounded-lg p-3 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
+                                            <i class="fas fa-money-bill-wave text-xl mb-1 text-gray-600 peer-checked:text-[#D4AF37] transition"></i>
+                                            <p class="font-semibold text-sm">Cash on Delivery</p>
+                                            <p class="text-xs text-gray-500 mt-0.5">Pay on arrival</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                        </form>
+                        
+                        <!-- Action Buttons moved under Order Summary -->
+                </div>
+
+                <!-- Order Summary -->
+                <div class="lg:col-span-1">
+                        <div class="bg-gray-50 rounded-2xl shadow-lg p-6 border-2 border-[#D4AF37]/20 sticky top-6">
+                        <h2 class="font-display text-2xl font-bold mb-6" style="color: #D4AF37;">Order Summary</h2>
+                        
+                        <div class="space-y-3 mb-6">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Cake:</span>
+                                <span id="summaryProduct" class="font-semibold">-</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Size:</span>
+                                <span id="summarySize" class="font-semibold">Small</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Quantity:</span>
+                                <span id="summaryQty" class="font-semibold">1</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Flavor:</span>
+                                <span id="summaryFlavor" class="font-semibold">Chocolate</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Frosting:</span>
+                                <span id="summaryFrosting" class="font-semibold">Buttercream</span>
+                            </div>
+                            <div id="summaryDesignContainer" class="hidden">
+                                <div class="flex flex-col text-sm pt-2 border-t border-gray-200">
+                                    <span class="text-gray-600 mb-1">Design:</span>
+                                    <span id="summaryDesign" class="font-semibold text-xs text-gray-700"></span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
+                                <span class="text-gray-600">Delivery:</span>
+                                <span id="summaryDelivery" class="font-semibold">Pick up</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Payment:</span>
+                                <span id="summaryPayment" class="font-semibold">Online Payment</span>
+                            </div>
+                        </div>
+
+                        <div class="border-t-2 border-gray-200 pt-4 mb-4">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-lg">Total Price:</span>
+                                <span id="totalPrice" class="font-display text-3xl font-bold" style="color: #D4AF37;">₱0</span>
+                            </div>
+                        </div>
+
+                        <!-- Actions under summary -->
+                        <div class="grid grid-cols-2 gap-3 mt-4">
+                            <button type="submit" form="orderForm" class="btn-primary text-white font-bold py-3 rounded-lg shadow-lg">
+                                <i class="fas fa-cart-plus mr-2"></i>
+                                Add to Cart
+                            </button>
+                            <button onclick="placeOrderDirectly()" id="placeOrderDirectBtn" class="btn-primary text-white font-bold py-3 rounded-lg shadow-lg">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                Place Order
+                            </button>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+                            </div>
+                        </div>
+
+    <!-- Cart Modal -->
+    <div id="cartModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-shopping-cart mr-2"></i> Your Cart
+                </h2>
+                <button onclick="closeCartModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto max-h-[60vh]">
+                <div id="cartItems">
+                    <!-- Cart items will be populated here -->
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-shopping-cart text-6xl mb-4 opacity-30"></i>
+                        <p class="text-lg">Your cart is empty</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xl font-bold text-gray-700">Total:</span>
+                    <span id="cartTotal" class="font-display text-3xl font-bold text-[#D4AF37]">₱0</span>
+                </div>
+                <button onclick="placeOrder()" id="placeOrderBtn" class="w-full btn-primary text-white font-bold py-4 rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-check-circle mr-2"></i> Place Order
+                </button>
+            </div>
+                            </div>
+                        </div>
+
+    <!-- Receipt Upload Modal -->
+    <div id="receiptUploadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center rounded-t-2xl">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-file-upload mr-2"></i> Upload Payment Receipt
+                </h2>
+                <button onclick="closeReceiptUploadModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6">
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700 font-medium">
+                                You chose <strong>Online Payment</strong> as your payment method. Please upload a screenshot of your payment receipt.
+                            </p>
+                            <p class="text-xs text-yellow-600 mt-2">
+                                <strong>Note:</strong> Incorrect payment receipts or unrelated images will cause your order to be automatically dismissed.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-semibold mb-3">
+                        Payment Receipt <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="file" id="receiptUploadFile" accept="image/*,.pdf" class="hidden">
+                        <label for="receiptUploadFile" class="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#D4AF37] transition">
+                            <div class="text-center">
+                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                <p class="text-sm text-gray-600">
+                                    <span class="text-[#D4AF37] font-semibold">Click to upload</span> or drag and drop
+                                </p>
+                                <p class="text-xs text-gray-500 mt-2">PNG, JPG, PDF (Max 5MB)</p>
+            </div>
+                        </label>
+                    </div>
+                    <div id="receiptUploadFileName" class="mt-3 text-sm text-gray-600 hidden">
+                        <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                <span id="receiptUploadName" class="font-medium"></span>
+                            </div>
+                            <button onclick="removeReceiptUpload()" class="text-red-500 hover:text-red-700 transition">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50 rounded-b-2xl">
+                <div class="flex space-x-4">
+                    <button onclick="closeReceiptUploadModal()" class="flex-1 px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                        Cancel
+                    </button>
+                    <button onclick="confirmPlaceOrderWithReceipt()" id="confirmReceiptBtn" class="flex-1 btn-primary text-white font-semibold py-3 rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fas fa-check-circle mr-2"></i> Confirm Order
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">
+                <i class="fas fa-check text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2" style="color: #D4AF37;">Order Placed!</h3>
+            <p class="text-gray-600 mb-6">Your order has been successfully placed. Check your dashboard for updates!</p>
+            <button onclick="closeSuccessModal()" class="px-8 py-3 rounded-lg text-white font-semibold btn-primary">
+                Continue Shopping
+            </button>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div id="orderDetailsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-info-circle mr-2"></i> Order Details
+                </h2>
+                <button onclick="closeOrderDetailsModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div id="orderDetailsContent">
+                    <!-- Order details will be displayed here -->
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <button onclick="closeOrderDetailsModal()" class="w-full px-6 py-3 rounded-lg text-white font-semibold btn-primary">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt View Modal -->
+    <div id="receiptViewModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-file-image mr-2"></i> Payment Receipt
+                </h2>
+                <button onclick="closeReceiptViewModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div id="receiptViewContent" class="text-center">
+                    <!-- Receipt image will be displayed here -->
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <button onclick="closeReceiptViewModal()" class="w-full px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Order Confirmation Modal -->
+    <div id="cancelOrderModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);">
+                <i class="fas fa-times text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2" style="color: #DC2626;">Cancel this order?</h3>
+            <p class="text-gray-600 mb-6">This action cannot be undone.</p>
+            <div class="flex space-x-4 justify-center">
+                <button onclick="closeCancelOrderModal()" class="px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Keep Order
+                </button>
+                <button onclick="confirmCancelOrder()" class="px-6 py-3 rounded-lg text-white font-semibold bg-red-600 hover:bg-red-700 transition">
+                    Cancel Order
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Modal -->
+    <div id="alertModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div id="alertIcon" class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">
+                <i id="alertIconClass" class="fas fa-exclamation-triangle text-white text-3xl"></i>
+            </div>
+            <h3 id="alertTitle" class="font-display text-2xl font-bold mb-2" style="color: #D4AF37;">Alert</h3>
+            <p id="alertMessage" class="text-gray-600 mb-6">Please check your input.</p>
+            <button onclick="closeAlertModal()" class="px-8 py-3 rounded-lg text-white font-semibold btn-primary">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">
+                <i class="fas fa-sign-out-alt text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2" style="color: #D4AF37;">Logout?</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to logout? You'll need to login again to access your account.</p>
+            <div class="flex space-x-4 justify-center">
+                <button onclick="closeLogoutModal()" class="px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+                <button onclick="confirmLogout()" class="px-6 py-3 rounded-lg text-white font-semibold btn-primary">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white/50 border-t-2 border-[#D4AF37]/20 mt-12 py-8">
+        <div class="container mx-auto px-6 text-center">
+            <p class="text-gray-600 font-display text-lg font-semibold mb-2" style="color: #D4AF37;">Meringued</p>
+            <p class="text-gray-600 text-sm">📧 info@meringued.com | 📞 (555) 123-4567</p>
+            <p class="text-gray-500 text-xs mt-2">© 2024 Meringued. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize cart from localStorage
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        // Track selections in the cart modal
+        let selectedCartIndexes = new Set();
+        let orders = [];
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCustomerName();
+            updateCartBadge();
+            calculatePrice();
+            loadOrders();
+            renderOrdersTable();
+            setMinDate();
+
+            // Sidebar responsive toggle
+            const sidebar = document.getElementById('clientSidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const openSidebarBtn = document.getElementById('openSidebarBtn');
+            if (openSidebarBtn) {
+                openSidebarBtn.addEventListener('click', () => {
+                    sidebar.classList.remove('-translate-x-full');
+                    sidebarOverlay.classList.remove('hidden');
+                });
+            }
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarOverlay.classList.add('hidden');
+                });
+            }
+            
+            // Check if we should open the order modal automatically
+            if (window.location.hash === '#new') {
+                // Small delay to ensure page is fully loaded
+                setTimeout(() => {
+                    openOrderModal();
+                    // Remove hash from URL after opening modal
+                    window.history.replaceState(null, null, window.location.pathname);
+                }, 100);
+            }
+        });
+
+        // Generate a group Order ID shared by items in one placement
+        function generateOrderGroupId() {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const h = String(now.getHours()).padStart(2, '0');
+            const mi = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            const rand = Math.floor(Math.random() * 900) + 100;
+            return `ORD-${y}${m}${d}${h}${mi}${s}-${rand}`;
+        }
+        
+        // Update cart when page becomes visible (when switching tabs)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                cart = JSON.parse(localStorage.getItem('cart')) || [];
+                updateCartBadge();
+            }
+        });
+        
+        // Update cart when window regains focus
+        window.addEventListener('focus', function() {
+            cart = JSON.parse(localStorage.getItem('cart')) || [];
+            updateCartBadge();
+        });
+        
+        // ===== ORDER MODAL FUNCTIONS =====
+        
+        // Open order modal
+        function openOrderModal() {
+            document.getElementById('orderModal').classList.remove('hidden');
+            document.getElementById('orderModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close order modal
+        function closeOrderModal() {
+            document.getElementById('orderModal').classList.add('hidden');
+            document.getElementById('orderModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            // Reset form
+            document.getElementById('orderForm').reset();
+            removeDesignImage();
+            calculatePrice();
+            setMinDate(); // Reset date to minimum
+        }
+        
+        // Set minimum date to today
+        function setMinDate() {
+            const dateInput = document.getElementById('dateNeeded');
+            if (dateInput) {
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const minDate = tomorrow.toISOString().split('T')[0];
+                dateInput.min = minDate;
+                dateInput.value = minDate;
+            }
+        }
+        
+        // Load customer name from localStorage
+        function loadCustomerName() {
+            const customerName = localStorage.getItem('userName') || 'Guest';
+            const sidebarName = document.getElementById('sidebarCustomerName');
+            if (sidebarName) {
+                sidebarName.textContent = customerName;
+            }
+        }
+        
+        // Load orders from localStorage
+        function loadOrders() {
+            const storedOrders = localStorage.getItem('customerOrders');
+            if (storedOrders) {
+                orders = JSON.parse(storedOrders);
+            }
+        }
+        
+        // Render orders table
+        function renderOrdersTable() {
+            const tbody = document.getElementById('ordersTableBody');
+            const emptyDiv = document.getElementById('emptyOrders');
+            const table = document.getElementById('ordersTable');
+            
+            // Filter out cancelled orders - they should only appear in logs
+            const activeOrders = orders.filter(order => order.status !== 'Cancelled');
+            
+            if (activeOrders.length === 0) {
+                tbody.innerHTML = '';
+                table.classList.add('hidden');
+                emptyDiv.classList.remove('hidden');
+                return;
+            }
+            
+            table.classList.remove('hidden');
+            emptyDiv.classList.add('hidden');
+            
+            const rowsHTML = activeOrders
+                .slice()
+                .reverse() // Show newest first
+                .map(order => {
+                    const statusColor = getStatusColor(order.status);
+                    return `
+                        <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
+                            <td class="py-4 px-4 text-gray-700 text-sm font-mono">${escapeHtml(order.orderGroupId || '-')}</td>
+                            <td class="py-4 px-4 text-gray-600 text-sm">${escapeHtml(order.date || new Date().toLocaleDateString())}</td>
+                            <td class="py-4 px-4">
+                                <button onclick="viewOrderDetails(${order.id})" class="text-left">
+                                    <div class="font-semibold text-gray-800 hover:text-[#D4AF37] transition cursor-pointer">${escapeHtml(order.name || order.cake || 'Custom Order')}</div>
+                                    <div class="text-xs text-gray-500 mt-1">Click to view details</div>
+                                </button>
+                            </td>
+                            <td class="py-4 px-4 text-gray-700">
+                                ${escapeHtml(order.deliveryType || 'Pick up')}
+                            </td>
+                            <td class="py-4 px-4 text-gray-700">
+                                ${order.paymentMethod === 'Online Payment' && order.receipt ? 
+                                    `<button onclick="viewReceipt(${order.id})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">
+                                        ${escapeHtml(order.paymentMethod || 'Online Payment')}
+                                    </button>` :
+                                    `${escapeHtml(order.paymentMethod || 'Online Payment')}`
+                                }
+                            </td>
+                            <td class="py-4 px-4 text-gray-700">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : '—'}</td>
+                            <td class="py-4 px-4 font-bold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</td>
+                            <td class="py-4 px-4">
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusColor}">
+                                    ${escapeHtml(order.status || 'Pending')}
+                                </span>
+                            </td>
+                            <td class="py-4 px-4 text-gray-700">
+                                ${
+                                    order.status === 'Pending' && order.paymentMethod === 'Cash on Delivery'
+                                        ? `<button onclick="openCancelOrderModal(${order.id})" class="px-3 py-1 rounded-lg text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all font-medium text-sm">Cancel</button>`
+                                        : `<span class="text-gray-400">—</span>`
+                                }
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            
+            tbody.innerHTML = rowsHTML;
+        }
+        
+        // Get status badge color
+        function getStatusColor(status) {
+            const statusColors = {
+                'Pending': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
+                'Acknowledge': 'bg-blue-100 text-blue-700 border border-blue-300',
+                'Baking': 'bg-purple-100 text-purple-700 border border-purple-300',
+                'Ready': 'bg-green-100 text-green-700 border border-green-300',
+                'Completed': 'bg-gray-100 text-gray-700 border border-gray-300',
+                'Cancelled': 'bg-red-100 text-red-700 border border-red-300'
+            };
+            return statusColors[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
+        }
+
+        // Calculate price
+        function calculatePrice() {
+            const sizeRadio = document.querySelector('input[name="size"]:checked');
+            const sizePrice = parseFloat(sizeRadio?.dataset.price) || 450;
+            
+            const quantity = parseInt(document.getElementById('quantity').value) || 1;
+            
+            const frosting = document.getElementById('frosting').value;
+            let frostingExtra = 0;
+            if (frosting.includes('Fondant')) frostingExtra = 15;
+            if (frosting.includes('Ganache')) frostingExtra = 10;
+            
+            const total = (sizePrice + frostingExtra) * quantity;
+            
+            document.getElementById('totalPrice').textContent = '₱' + total.toFixed(0);
+            
+            // Update summary
+            const productSelect = document.getElementById('cakeProduct');
+            const selectedOption = productSelect.options[productSelect.selectedIndex];
+            document.getElementById('summaryProduct').textContent = selectedOption.value ? selectedOption.text.split('(₱')[0].trim() : '-';
+            document.getElementById('summarySize').textContent = sizeRadio ? sizeRadio.value : 'Small';
+            document.getElementById('summaryQty').textContent = quantity;
+            document.getElementById('summaryFlavor').textContent = document.getElementById('flavor').value;
+            document.getElementById('summaryFrosting').textContent = frosting;
+            
+            // Update delivery type and payment method
+            const deliveryRadio = document.querySelector('input[name="deliveryType"]:checked');
+            const paymentRadio = document.querySelector('input[name="paymentMethod"]:checked');
+            document.getElementById('summaryDelivery').textContent = deliveryRadio ? deliveryRadio.value : 'Pick up';
+            document.getElementById('summaryPayment').textContent = paymentRadio ? paymentRadio.value : 'Online Payment';
+            
+            // Update cake design in summary
+            const cakeDesign = document.getElementById('cakeDesign').value.trim();
+            const designContainer = document.getElementById('summaryDesignContainer');
+            if (cakeDesign) {
+                document.getElementById('summaryDesign').textContent = cakeDesign;
+                designContainer.classList.remove('hidden');
+            } else {
+                designContainer.classList.add('hidden');
+            }
+            
+            return total;
+        }
+
+        // Event listeners for price calculation
+        document.getElementById('cakeProduct').addEventListener('change', calculatePrice);
+        document.getElementById('quantity').addEventListener('input', calculatePrice);
+        document.querySelectorAll('input[name="size"]').forEach(radio => {
+            radio.addEventListener('change', calculatePrice);
+        });
+        document.getElementById('flavor').addEventListener('change', calculatePrice);
+        document.getElementById('frosting').addEventListener('change', calculatePrice);
+        document.querySelectorAll('input[name="deliveryType"]').forEach(radio => {
+            radio.addEventListener('change', calculatePrice);
+        });
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+            radio.addEventListener('change', calculatePrice);
+        });
+        document.getElementById('cakeDesign').addEventListener('input', calculatePrice);
+        
+        // Design image handling
+        let designImageData = null;
+        let designImageFileName = null;
+        
+        document.getElementById('designImage').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            
+            if (file) {
+                // Validate file size (5MB max)
+                if (file.size > 5 * 1024 * 1024) {
+                    showAlertModal('File size must be less than 5MB', 'error');
+                    e.target.value = '';
+                    document.getElementById('designImageFileName').classList.add('hidden');
+                    designImageData = null;
+                    designImageFileName = null;
+                    return;
+                }
+                
+                // Convert to base64
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    designImageData = e.target.result;
+                    designImageFileName = file.name;
+                };
+                reader.readAsDataURL(file);
+                
+                document.getElementById('designImageName').textContent = file.name;
+                document.getElementById('designImageFileName').classList.remove('hidden');
+            } else {
+                document.getElementById('designImageFileName').classList.add('hidden');
+                designImageData = null;
+                designImageFileName = null;
+            }
+        });
+        
+        // Remove design image
+        function removeDesignImage() {
+            document.getElementById('designImage').value = '';
+            document.getElementById('designImageFileName').classList.add('hidden');
+            designImageData = null;
+            designImageFileName = null;
+        }
+        
+        // Receipt upload modal handling
+        let pendingOrderData = null; // Store order data when showing receipt modal
+        
+        // Receipt upload file handling
+        document.getElementById('receiptUploadFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const confirmBtn = document.getElementById('confirmReceiptBtn');
+            
+            if (file) {
+                // Validate file size (5MB max)
+                if (file.size > 5 * 1024 * 1024) {
+                    showAlertModal('File size must be less than 5MB', 'error');
+                    e.target.value = '';
+                    confirmBtn.disabled = true;
+                    return;
+                }
+                document.getElementById('receiptUploadName').textContent = file.name;
+                document.getElementById('receiptUploadFileName').classList.remove('hidden');
+                confirmBtn.disabled = false;
+            } else {
+                document.getElementById('receiptUploadFileName').classList.add('hidden');
+                confirmBtn.disabled = true;
+            }
+        });
+        
+        // Remove receipt upload
+        function removeReceiptUpload() {
+            document.getElementById('receiptUploadFile').value = '';
+            document.getElementById('receiptUploadFileName').classList.add('hidden');
+            document.getElementById('confirmReceiptBtn').disabled = true;
+        }
+        
+        // Open receipt upload modal
+        function openReceiptUploadModal() {
+            document.getElementById('receiptUploadModal').classList.remove('hidden');
+            document.getElementById('receiptUploadModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            removeReceiptUpload(); // Reset upload
+            pendingOrderData = 'single'; // Mark that we're processing single order
+        }
+        
+        // Close receipt upload modal
+        function closeReceiptUploadModal() {
+            document.getElementById('receiptUploadModal').classList.add('hidden');
+            document.getElementById('receiptUploadModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            removeReceiptUpload(); // Clear upload
+            pendingOrderData = null;
+        }
+        
+        // Confirm place order with receipt
+        function confirmPlaceOrderWithReceipt() {
+            const receiptFile = document.getElementById('receiptUploadFile').files[0];
+            if (!receiptFile) {
+                showAlertModal('Please upload payment receipt', 'warning');
+                return;
+            }
+            
+            // Convert receipt to base64
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const receiptData = e.target.result;
+                
+                // Check if we're processing cart orders or single order
+                if (pendingOrderData === 'cart') {
+                    const selectedItems = cart.filter((_, i) => selectedCartIndexes.has(i));
+                    processCartOrders(receiptData, receiptFile.name, selectedItems);
+                } else if (pendingOrderData === 'single') {
+                    // Process single order with receipt
+                    createOrderDirectly(receiptData, receiptFile.name);
+                }
+            };
+            reader.readAsDataURL(receiptFile);
+        }
+
+        // Add to cart
+        document.getElementById('orderForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const cake = document.getElementById('cakeProduct').value;
+            if (!cake) {
+                showAlertModal('Please select a cake', 'warning');
+                return;
+            }
+            
+            const dateNeeded = document.getElementById('dateNeeded').value;
+            if (!dateNeeded) {
+                showAlertModal('Please select when you need the cake', 'warning');
+                document.getElementById('dateNeeded').focus();
+                return;
+            }
+            
+            const frosting = document.getElementById('frosting').value;
+            const cakeDesign = document.getElementById('cakeDesign').value.trim();
+            
+            // Validate: Cake design (description or image) is required if Fondant is selected
+            if (frosting.includes('Fondant') && !cakeDesign && !designImageData) {
+                showAlertModal('Please provide a cake design description and/or upload a reference image for Fondant cakes. This helps us create your custom design!', 'warning');
+                document.getElementById('cakeDesign').focus();
+                return;
+            }
+            
+            const cartItem = {
+                id: Date.now(),
+                name: cake,
+                cake: cake,
+                size: document.querySelector('input[name="size"]:checked').value,
+                quantity: parseInt(document.getElementById('quantity').value),
+                dateNeeded: dateNeeded,
+                flavor: document.getElementById('flavor').value,
+                frosting: frosting,
+                cakeDesign: cakeDesign,
+                designImage: designImageData,
+                designImageName: designImageFileName,
+                dedication: document.getElementById('dedication').value,
+                deliveryType: document.querySelector('input[name="deliveryType"]:checked')?.value || 'Pick up',
+                paymentMethod: document.querySelector('input[name="paymentMethod"]:checked')?.value || 'Online Payment',
+                price: calculatePrice()
+            };
+            
+            cart.push(cartItem);
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartBadge();
+            
+            // Reset form
+            document.getElementById('orderForm').reset();
+            removeDesignImage();
+            calculatePrice();
+            setMinDate(); // Reset date to minimum
+            
+            // Show success feedback
+            showToast('Item added to cart!');
+            
+            // Close order modal after adding to cart
+            setTimeout(() => {
+                closeOrderModal();
+            }, 500);
+        });
+
+        // Place order directly (without adding to cart)
+        function placeOrderDirectly() {
+            const cake = document.getElementById('cakeProduct').value;
+            if (!cake) {
+                showAlertModal('Please select a cake', 'warning');
+                return;
+            }
+            
+            const dateNeeded = document.getElementById('dateNeeded').value;
+            if (!dateNeeded) {
+                showAlertModal('Please select when you need the cake', 'warning');
+                document.getElementById('dateNeeded').focus();
+                return;
+            }
+            
+            const frosting = document.getElementById('frosting').value;
+            const cakeDesign = document.getElementById('cakeDesign').value.trim();
+            
+            // Validate: Cake design (description or image) is required if Fondant is selected
+            if (frosting.includes('Fondant') && !cakeDesign && !designImageData) {
+                showAlertModal('Please provide a cake design description and/or upload a reference image for Fondant cakes. This helps us create your custom design!', 'warning');
+                document.getElementById('cakeDesign').focus();
+                return;
+            }
+            
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || 'Online Payment';
+            
+            // If Online Payment, show receipt upload modal
+            if (paymentMethod === 'Online Payment') {
+                openReceiptUploadModal();
+            } else {
+                // Cash on Delivery - place order directly without receipt
+                createOrderDirectly(null, null);
+            }
+        }
+        
+        // Create order directly with receipt
+        function createOrderDirectly(receiptData, receiptFileName) {
+            const cake = document.getElementById('cakeProduct').value;
+            const frosting = document.getElementById('frosting').value;
+            const cakeDesign = document.getElementById('cakeDesign').value.trim();
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || 'Online Payment';
+            
+            const order = {
+                id: Date.now(),
+                orderGroupId: generateOrderGroupId(),
+                name: cake,
+                cake: cake,
+                size: document.querySelector('input[name="size"]:checked').value,
+                quantity: parseInt(document.getElementById('quantity').value),
+                dateNeeded: document.getElementById('dateNeeded').value,
+                flavor: document.getElementById('flavor').value,
+                frosting: frosting,
+                cakeDesign: cakeDesign,
+                designImage: designImageData,
+                designImageName: designImageFileName,
+                dedication: document.getElementById('dedication').value,
+                deliveryType: document.querySelector('input[name="deliveryType"]:checked')?.value || 'Pick up',
+                paymentMethod: paymentMethod,
+                receipt: receiptData,
+                receiptFileName: receiptFileName || null,
+                price: calculatePrice(),
+                status: 'Pending',
+                date: new Date().toLocaleDateString()
+            };
+            
+            // Get existing orders
+            orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
+            
+            // Add order
+            orders.push(order);
+            
+            // Save orders
+            localStorage.setItem('customerOrders', JSON.stringify(orders));
+            
+            // Refresh orders table
+            renderOrdersTable();
+            
+            // Reset form
+            document.getElementById('orderForm').reset();
+            removeDesignImage();
+            calculatePrice();
+            setMinDate(); // Reset date to minimum
+            
+            // Close modals
+            closeOrderModal();
+            closeReceiptUploadModal();
+            
+            // Show success modal
+            document.getElementById('successModal').classList.remove('hidden');
+            document.getElementById('successModal').classList.add('flex');
+        }
+
+        // Update cart badge
+        function updateCartBadge() {
+            const badge = document.getElementById('cartBadge');
+            const count = cart.length;
+            
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // Open cart modal
+        function openCartModal() {
+            // Reload cart from localStorage to ensure it's synchronized
+            cart = JSON.parse(localStorage.getItem('cart')) || [];
+            // Reconcile previous selections
+            const keptSelections = new Set();
+            cart.forEach((_, idx) => { if (selectedCartIndexes.has(idx)) keptSelections.add(idx); });
+            selectedCartIndexes = keptSelections;
+            updateCartBadge();
+            document.getElementById('cartModal').classList.remove('hidden');
+            document.getElementById('cartModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            renderCart();
+        }
+
+        // Close cart modal
+        function closeCartModal() {
+            document.getElementById('cartModal').classList.add('hidden');
+            document.getElementById('cartModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Render cart items
+        function renderCart() {
+            const cartItemsContainer = document.getElementById('cartItems');
+            const placeOrderBtn = document.getElementById('placeOrderBtn');
+            
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = `
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-shopping-cart text-6xl mb-4 opacity-30"></i>
+                        <p class="text-lg">Your cart is empty</p>
+                        <button onclick="closeCartModal(); openOrderModal();" class="inline-block mt-4 btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg">
+                            Start Shopping
+                        </button>
+                    </div>
+                `;
+                placeOrderBtn.disabled = true;
+                document.getElementById('cartTotal').textContent = '₱0';
+                return;
+            }
+            
+            // Header with Select All
+            const allSelected = cart.length > 0 && cart.every((_, i) => selectedCartIndexes.has(i));
+            const selectAllBar = `
+                <label class="flex items-center mb-3 cursor-pointer select-none">
+                    <input type="checkbox" ${allSelected ? 'checked' : ''} onchange="toggleSelectAllCart(this.checked)" class="mr-2">
+                    <span class="text-sm text-gray-700">Select All</span>
+                </label>
+            `;
+            
+            const cartHTML = selectAllBar + cart.map((item, index) => `
+                <div class="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4 hover:border-[#D4AF37] transition">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <label class="flex items-start cursor-pointer">
+                                <input type="checkbox" ${selectedCartIndexes.has(index) ? 'checked' : ''} onchange="toggleSelectCart(${index}, this.checked)" class="mt-1 mr-3">
+                                <span class="font-bold text-lg text-gray-800 mb-2">${escapeHtml(item.name)}</span>
+                            </label>
+                            <div class="text-sm text-gray-600 space-y-1">
+                                <p><i class="fas fa-ruler-combined w-4"></i> Size: ${escapeHtml(item.size)}</p>
+                                <p><i class="fas fa-shopping-cart w-4"></i> Quantity: ${item.quantity}</p>
+                                <p><i class="fas fa-calendar-alt w-4"></i> Date Needed: ${item.dateNeeded ? new Date(item.dateNeeded).toLocaleDateString() : 'N/A'}</p>
+                                <p><i class="fas fa-cookie-bite w-4"></i> Flavor: ${escapeHtml(item.flavor)}</p>
+                                <p><i class="fas fa-ice-cream w-4"></i> Frosting: ${escapeHtml(item.frosting)}</p>
+                                ${item.cakeDesign ? `<p class="mt-2 pt-2 border-t border-gray-200"><i class="fas fa-palette w-4"></i> <strong>Design:</strong> ${escapeHtml(item.cakeDesign)}</p>` : ''}
+                                ${item.designImage ? `<p class="text-xs text-gray-500 mt-1"><i class="fas fa-image mr-1"></i>Has design image</p>` : ''}
+                                <p>Delivery: ${escapeHtml(item.deliveryType || 'Pick up')}</p>
+                                <p>Payment: ${escapeHtml(item.paymentMethod || 'Online Payment')}</p>
+                                ${item.dedication ? `<p><i class="fas fa-pen-fancy w-4"></i> "${escapeHtml(item.dedication)}"</p>` : ''}
+                            </div>
+                        </div>
+                        <div class="text-right ml-4">
+                            <p class="font-bold text-xl text-[#D4AF37] mb-2">₱${item.price.toFixed(0)}</p>
+                            <button onclick="removeFromCart(${index})" class="text-red-500 hover:text-red-700 transition">
+                                <i class="fas fa-trash-alt"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            cartItemsContainer.innerHTML = cartHTML;
+            
+            // Update total based on selected items
+            const selectedItems = cart.filter((_, i) => selectedCartIndexes.has(i));
+            const total = selectedItems.reduce((sum, item) => sum + item.price, 0);
+            document.getElementById('cartTotal').textContent = '₱' + total.toFixed(0);
+            placeOrderBtn.disabled = selectedItems.length === 0;
+        }
+        
+        // Selection helpers
+        window.toggleSelectCart = function(index, checked) {
+            if (checked) selectedCartIndexes.add(index); else selectedCartIndexes.delete(index);
+            renderCart();
+        };
+        window.toggleSelectAllCart = function(checked) {
+            if (checked) cart.forEach((_, i) => selectedCartIndexes.add(i));
+            else selectedCartIndexes.clear();
+            renderCart();
+        };
+
+        // Remove item from cart
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartBadge();
+            renderCart();
+            showToast('Item removed from cart', 'info');
+        }
+
+        // Place order
+        function placeOrder() {
+            if (cart.length === 0) {
+                showAlertModal('Your cart is empty', 'warning');
+                return;
+            }
+            
+            // Work with selected items only
+            const selectedItems = cart.filter((_, i) => selectedCartIndexes.has(i));
+            // Check if any selected items have Online Payment as payment method
+            const hasOnlinePayment = selectedItems.some(item => item.paymentMethod === 'Online Payment');
+            
+            if (hasOnlinePayment) {
+                // Show receipt upload modal for Online Payment items
+                openReceiptUploadModalForCart();
+            } else {
+                // All selected items are Cash on Delivery, place order directly
+                processCartOrders(null, null, selectedItems);
+            }
+        }
+        
+        // Open receipt upload modal for cart orders
+        function openReceiptUploadModalForCart() {
+            document.getElementById('receiptUploadModal').classList.remove('hidden');
+            document.getElementById('receiptUploadModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            removeReceiptUpload(); // Reset upload
+            pendingOrderData = 'cart'; // Mark that we're processing cart
+        }
+        
+        // Process cart orders (with or without receipt)
+        function processCartOrders(receiptData, receiptFileName, items = null) {
+            // Get existing orders
+            orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
+            
+            const orderGroupId = generateOrderGroupId();
+            const itemsToProcess = items || cart;
+            // Add selected cart items to orders
+            itemsToProcess.forEach(item => {
+                const orderData = {
+                    id: Date.now() + Math.floor(Math.random()*10000),
+                    orderGroupId,
+                    ...item,
+                    status: 'Pending',
+                    date: new Date().toLocaleDateString()
+                };
+                
+                // If item has Online Payment, attach receipt
+                if (item.paymentMethod === 'Online Payment') {
+                    orderData.receipt = receiptData;
+                    orderData.receiptFileName = receiptFileName;
+                }
+                
+                orders.push(orderData);
+            });
+            
+            // Save orders
+            localStorage.setItem('customerOrders', JSON.stringify(orders));
+            
+            // Remove processed items from cart (keep unselected if items provided)
+            if (items) {
+                cart = cart.filter((_, i) => !selectedCartIndexes.has(i));
+            } else {
+                cart = [];
+            }
+            selectedCartIndexes.clear();
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartBadge();
+            
+            // Close modals
+            closeCartModal();
+            closeReceiptUploadModal();
+            
+            // Refresh orders table
+            renderOrdersTable();
+            
+            // Show success modal
+            document.getElementById('successModal').classList.remove('hidden');
+            document.getElementById('successModal').classList.add('flex');
+        }
+
+        // Close success modal
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.add('hidden');
+            document.getElementById('successModal').classList.remove('flex');
+        }
+
+        // ===== ALERT MODAL FUNCTIONS =====
+        
+        // Show alert modal
+        function showAlertModal(message, type = 'warning') {
+            const alertModal = document.getElementById('alertModal');
+            const alertIcon = document.getElementById('alertIcon');
+            const alertIconClass = document.getElementById('alertIconClass');
+            const alertTitle = document.getElementById('alertTitle');
+            const alertMessage = document.getElementById('alertMessage');
+            
+            // Set message
+            alertMessage.textContent = message;
+            
+            // Set icon and colors based on type
+            if (type === 'error' || type === 'danger') {
+                alertIcon.style.background = 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)';
+                alertIconClass.className = 'fas fa-exclamation-circle text-white text-3xl';
+                alertTitle.textContent = 'Error';
+                alertTitle.style.color = '#EF4444';
+            } else if (type === 'info') {
+                alertIcon.style.background = 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)';
+                alertIconClass.className = 'fas fa-info-circle text-white text-3xl';
+                alertTitle.textContent = 'Information';
+                alertTitle.style.color = '#3B82F6';
+            } else {
+                // Default warning
+                alertIcon.style.background = 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)';
+                alertIconClass.className = 'fas fa-exclamation-triangle text-white text-3xl';
+                alertTitle.textContent = 'Warning';
+                alertTitle.style.color = '#F59E0B';
+            }
+            
+            // Show modal
+            alertModal.classList.remove('hidden');
+            alertModal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Close alert modal
+        function closeAlertModal() {
+            const alertModal = document.getElementById('alertModal');
+            alertModal.classList.add('hidden');
+            alertModal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        // ===== ORDER DETAILS MODAL FUNCTIONS =====
+        
+        // View order details
+        function viewOrderDetails(orderId) {
+            // Find the order by ID
+            const order = orders.find(o => o.id === orderId);
+            
+            if (!order) {
+                showAlertModal('Order not found', 'error');
+                return;
+            }
+            
+            // Display order details in modal
+            const detailsContent = document.getElementById('orderDetailsContent');
+            detailsContent.innerHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Cake</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.name || order.cake || 'Custom Order')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Size</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.size || 'N/A')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Quantity</p>
+                            <p class="font-semibold text-gray-800">${order.quantity || 1}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Date Needed</p>
+                            <p class="font-semibold text-gray-800">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : 'N/A'}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Flavor</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.flavor || 'N/A')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Frosting</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.frosting || 'N/A')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Price</p>
+                            <p class="font-semibold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</p>
+                        </div>
+                    </div>
+                    
+                    ${order.cakeDesign || order.designImage ? `
+                    <div class="bg-[#FFF8F0] rounded-lg p-4">
+                        <p class="text-xs text-gray-500 mb-2"><i class="fas fa-palette mr-1 text-[#D4AF37]"></i>Cake Design</p>
+                        ${order.cakeDesign ? `<p class="text-gray-800 mb-2">${escapeHtml(order.cakeDesign)}</p>` : ''}
+                        ${order.designImage ? `
+                            <div class="mt-2">
+                                <p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference Image: ${escapeHtml(order.designImageName || 'design.jpg')}</p>
+                                <img src="${order.designImage}" alt="Design Reference" class="max-w-full h-auto rounded-lg shadow-md border-2 border-gray-200">
+                            </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+                    
+                    ${order.dedication ? `
+                    <div class="bg-[#FFF8F0] rounded-lg p-4">
+                        <p class="text-xs text-gray-500 mb-1"><i class="fas fa-pen-fancy mr-1 text-[#D4AF37]"></i>Dedication Message</p>
+                        <p class="text-gray-800 italic">"${escapeHtml(order.dedication)}"</p>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Delivery Type</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.deliveryType || 'Pick up')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Payment Method</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.paymentMethod || 'Online Payment')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Status</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.status || 'Pending')}</p>
+                        </div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1">Order Date</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.date || new Date().toLocaleDateString())}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Show modal
+            document.getElementById('orderDetailsModal').classList.remove('hidden');
+            document.getElementById('orderDetailsModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Close order details modal
+        function closeOrderDetailsModal() {
+            document.getElementById('orderDetailsModal').classList.add('hidden');
+            document.getElementById('orderDetailsModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            // Clear content
+            document.getElementById('orderDetailsContent').innerHTML = '';
+        }
+
+        // ===== RECEIPT VIEW MODAL FUNCTIONS =====
+        
+        // View receipt
+        function viewReceipt(orderId) {
+            // Find the order by ID
+            const order = orders.find(o => o.id === orderId);
+            
+            if (!order || !order.receipt) {
+                showAlertModal('Receipt not found for this order', 'error');
+                return;
+            }
+            
+            // Display receipt in modal
+            const receiptContent = document.getElementById('receiptViewContent');
+            const receiptFileName = order.receiptFileName || 'receipt';
+            
+            // Check if receipt is base64 image or PDF
+            if (order.receipt.startsWith('data:image/')) {
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-file-image mr-1"></i> ${escapeHtml(receiptFileName)}
+                        </p>
+                        <img src="${order.receipt}" alt="Payment Receipt" class="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-gray-200">
+                    </div>
+                `;
+            } else if (order.receipt.startsWith('data:application/pdf')) {
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-file-pdf mr-1"></i> ${escapeHtml(receiptFileName)}
+                        </p>
+                        <iframe src="${order.receipt}" class="w-full h-[600px] rounded-lg shadow-lg border-2 border-gray-200" frameborder="0"></iframe>
+                    </div>
+                `;
+            } else {
+                // Assume it's an image if it starts with data:
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-file-image mr-1"></i> ${escapeHtml(receiptFileName)}
+                        </p>
+                        <img src="${order.receipt}" alt="Payment Receipt" class="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-gray-200">
+                    </div>
+                `;
+            }
+            
+            // Show modal
+            document.getElementById('receiptViewModal').classList.remove('hidden');
+            document.getElementById('receiptViewModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Close receipt view modal
+        function closeReceiptViewModal() {
+            document.getElementById('receiptViewModal').classList.add('hidden');
+            document.getElementById('receiptViewModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            // Clear content
+            document.getElementById('receiptViewContent').innerHTML = '';
+        }
+
+        // ===== CANCEL ORDER FUNCTIONS =====
+        let pendingCancelOrderId = null;
+
+        function openCancelOrderModal(orderId) {
+            pendingCancelOrderId = orderId;
+            document.getElementById('cancelOrderModal').classList.remove('hidden');
+            document.getElementById('cancelOrderModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCancelOrderModal() {
+            document.getElementById('cancelOrderModal').classList.add('hidden');
+            document.getElementById('cancelOrderModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            pendingCancelOrderId = null;
+        }
+
+        function confirmCancelOrder() {
+            if (!pendingCancelOrderId) return;
+
+            // Load latest orders
+            const storedOrders = localStorage.getItem('customerOrders');
+            orders = storedOrders ? JSON.parse(storedOrders) : [];
+
+            const idx = orders.findIndex(o => o.id === pendingCancelOrderId);
+            if (idx !== -1 && (orders[idx].status === 'Pending' || !orders[idx].status)) {
+                orders[idx].status = 'Cancelled';
+                localStorage.setItem('customerOrders', JSON.stringify(orders));
+                renderOrdersTable();
+                showToast('Order cancelled', 'info');
+            } else {
+                showAlertModal('Only pending orders can be cancelled.', 'warning');
+            }
+
+            closeCancelOrderModal();
+        }
+
+        // ===== LOGOUT FUNCTIONS =====
+        
+        // Open logout confirmation modal
+        function openLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('hidden');
+            document.getElementById('logoutModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close logout confirmation modal
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.getElementById('logoutModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Confirm logout
+        function confirmLogout() {
+            // Clear user session data if needed
+            // localStorage.removeItem('userName'); // Optional: keep for next login
+            
+            // Redirect to home page
+            window.location.href = 'index.html';
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-xl shadow-2xl text-white transform transition-all duration-300 ${
+                type === 'success' ? 'bg-gradient-to-r from-green-500 to-green-600' : 'bg-gradient-to-r from-blue-500 to-blue-600'
+            }`;
+            toast.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'} text-2xl"></i>
+                    <p class="font-semibold">${message}</p>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Close modals when clicking outside
+        document.getElementById('cartModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCartModal();
+            }
+        });
+        
+        document.getElementById('successModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSuccessModal();
+            }
+        });
+        
+        document.getElementById('logoutModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeLogoutModal();
+            }
+        });
+        
+        document.getElementById('orderModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeOrderModal();
+            }
+        });
+        
+        document.getElementById('receiptUploadModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReceiptUploadModal();
+            }
+        });
+        
+        document.getElementById('alertModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAlertModal();
+            }
+        });
+        
+        document.getElementById('orderDetailsModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeOrderDetailsModal();
+            }
+        });
+        
+        document.getElementById('receiptViewModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReceiptViewModal();
+            }
+        });
+        
+        // Close modals on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                // Close sidebar on mobile
+                const sidebar = document.getElementById('clientSidebar');
+                const sidebarOverlay = document.getElementById('sidebarOverlay');
+                if (window.innerWidth < 768 && sidebar && !sidebar.classList.contains('-translate-x-full')) {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarOverlay?.classList.add('hidden');
+                    return;
+                }
+                const orderDetailsModal = document.getElementById('orderDetailsModal');
+                if (orderDetailsModal && !orderDetailsModal.classList.contains('hidden')) {
+                    closeOrderDetailsModal();
+                    return;
+                }
+                const receiptViewModal = document.getElementById('receiptViewModal');
+                if (receiptViewModal && !receiptViewModal.classList.contains('hidden')) {
+                    closeReceiptViewModal();
+                    return;
+                }
+                const cancelOrderModal = document.getElementById('cancelOrderModal');
+                if (cancelOrderModal && !cancelOrderModal.classList.contains('hidden')) {
+                    closeCancelOrderModal();
+                    return;
+                }
+                const receiptModal = document.getElementById('receiptUploadModal');
+                if (receiptModal && !receiptModal.classList.contains('hidden')) {
+                    closeReceiptUploadModal();
+                    return;
+                }
+                const alertModal = document.getElementById('alertModal');
+                if (alertModal && !alertModal.classList.contains('hidden')) {
+                    closeAlertModal();
+                    return;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+

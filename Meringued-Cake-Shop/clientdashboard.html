@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard - Meringued</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        
+        :root {
+            --gold: #D4AF37;
+            --gold-dark: #B8941E;
+            --cream: #FFF8F0;
+            --light-pink: #FFF0F5;
+            --soft-peach: #FFE5E0;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #FFF8F0 0%, #FFE5E0 50%, #FFF0F5 100%);
+            min-height: 100vh;
+        }
+        
+        .font-display { 
+            font-family: 'Playfair Display', serif; 
+        }
+        
+        .gold-gradient { 
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); 
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            border: 2px solid rgba(212, 175, 55, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+        
+        .stat-icon {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        }
+        
+        .empty-state {
+            padding: 4rem 2rem;
+            text-align: center;
+            color: #9CA3AF;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+        
+        .star {
+            color: #D1D5DB;
+            transition: all 0.2s ease;
+        }
+        
+        .star:hover {
+            transform: scale(1.15);
+        }
+        
+        .star.active {
+            color: var(--gold);
+        }
+        
+        .toast {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            transform: translateX(500px);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.4);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 9999px;
+            min-width: 20px;
+            text-align: center;
+        }
+        
+        /* Modal Animations */
+        #feedbackModal {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        #feedbackModal > div {
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .toast {
+                right: 1rem;
+                left: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside id="clientSidebar" class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-300">
+        <!-- Logo -->
+        <div class="p-6 border-b-2 border-[#D4AF37]/20">
+            <a href="clientdashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">
+                Meringued
+            </a>
+        </div>
+        
+        <!-- User Profile -->
+        <div class="p-6 border-b-2 border-[#D4AF37]/20">
+            <div class="flex items-center space-x-3 px-4 py-3 rounded-lg bg-[#FFF8F0]">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white" style="background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Welcome</p>
+                    <p id="sidebarCustomerName" class="font-semibold text-gray-800">Guest</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Menu Items -->
+        <nav class="flex-1 p-6">
+            <ul class="space-y-2">
+                <li>
+                    <a href="clientordering.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-shopping-bag w-5"></i>
+                        <span>Order</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="clienthistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-history w-5"></i>
+                        <span>Logs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-cog w-5"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+    </nav>
+        
+        <!-- Logout -->
+        <div class="p-6 border-t-2 border-[#D4AF37]/20">
+            <button onclick="openLogoutModal()" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium w-full">
+                <i class="fas fa-sign-out-alt w-5"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Overlay for mobile -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden md:hidden"></div>
+
+    <!-- Main Content Area -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Bar with Cart -->
+        <div class="bg-white/80 backdrop-blur-sm shadow-sm border-b border-[#D4AF37]/10 sticky top-0 z-40 pl-0 pr-72 py-10">
+            <div class="flex justify-between items-center">
+                <button id="openSidebarBtn" class="md:hidden text-gray-700 hover:text-[#D4AF37] transition px-3 py-2">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+                <button onclick="openCartModal()" class="fixed top-6 right-6 z-50 text-gray-700 hover:text-[#D4AF37] transition">
+                    <i class="fas fa-shopping-cart text-2xl"></i>
+                    <span id="cartBadge" class="cart-badge hidden">0</span>
+                </button>
+            </div>
+        </div>
+
+    <!-- Main Content -->
+        <div class="px-6 py-8 md:py-12">
+        <!-- Welcome Section -->
+        <div class="mb-8 md:mb-12 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div>
+                <h1 class="font-display text-3xl md:text-5xl font-bold mb-2 text-[#D4AF37]">
+                    Welcome Back, <span id="customerName">Guest</span>! 
+            </h1>
+                <p class="text-gray-600 text-sm md:text-base">Manage your orders and share your experience with us</p>
+            </div>
+            <button onclick="openFeedbackModal()" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg whitespace-nowrap">
+                <i class="fas fa-comment-alt mr-2"></i> Share Feedback
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
+            <!-- Total Orders -->
+            <div class="card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium mb-2">Total Orders</p>
+                        <p class="font-display text-4xl font-bold text-[#D4AF37]" id="totalOrders">0</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-shopping-bag text-white text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pending Orders -->
+            <div class="card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium mb-2">Pending</p>
+                        <p class="font-display text-4xl font-bold text-[#D4AF37]" id="pendingOrders">0</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-clock text-white text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Completed Orders -->
+            <div class="card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium mb-2">Completed</p>
+                        <p class="font-display text-4xl font-bold text-[#D4AF37]" id="completedOrders">0</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle text-white text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <!-- Recent Orders -->
+        <div class="card p-6 md:p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
+                    Recent Orders
+                </h2>
+                <a href="clientordering.html#new" class="text-[#D4AF37] hover:text-[#B8941E] font-medium text-sm transition">
+                    <i class="fas fa-plus-circle mr-1"></i> New Order
+                </a>
+            </div>
+            
+            <div id="ordersList">
+                        <!-- Orders will be populated here -->
+                <div class="empty-state">
+                    <i class="fas fa-shopping-bag"></i>
+                    <h3 class="text-xl font-semibold mb-2">No Orders Yet</h3>
+                    <p class="mb-6">Start by placing your first order!</p>
+                    <a href="clientordering.html#new" class="inline-block btn-primary text-white font-semibold px-8 py-3 rounded-xl shadow-lg">
+                        Place Your First Order
+                    </a>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto transform transition-all">
+            <!-- Modal Header -->
+            <div class="sticky top-0 bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center rounded-t-2xl">
+                <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
+                    Share Your Feedback
+                </h2>
+                <button onclick="closeFeedbackModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 md:p-8">
+                <form id="feedbackForm" class="space-y-6">
+                    <!-- Rating -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-4 text-center">How was your experience?</label>
+                        <div class="flex space-x-2 justify-center" id="starRating">
+                            <i class="fas fa-star star text-4xl cursor-pointer" data-rating="1"></i>
+                            <i class="fas fa-star star text-4xl cursor-pointer" data-rating="2"></i>
+                            <i class="fas fa-star star text-4xl cursor-pointer" data-rating="3"></i>
+                            <i class="fas fa-star star text-4xl cursor-pointer" data-rating="4"></i>
+                            <i class="fas fa-star star text-4xl cursor-pointer" data-rating="5"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Feedback Text -->
+                    <div>
+                        <label for="feedbackText" class="block text-gray-700 font-semibold mb-3">Your Feedback</label>
+                        <textarea 
+                            id="feedbackText" 
+                            rows="6" 
+                            class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition resize-none" 
+                            placeholder="Tell us about your experience..."
+                            required
+                        ></textarea>
+                    </div>
+                    
+                    <!-- Submit Button -->
+                    <button type="submit" class="w-full btn-primary text-white font-semibold py-4 rounded-xl shadow-lg">
+                        <i class="fas fa-paper-plane mr-2"></i> Submit Feedback
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cartModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-shopping-cart mr-2"></i> Your Cart
+                </h2>
+                <button onclick="closeCartModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto max-h-[60vh]">
+                <div id="cartItems">
+                    <!-- Cart items will be populated here -->
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-shopping-cart text-6xl mb-4 opacity-30"></i>
+                        <p class="text-lg">Your cart is empty</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xl font-bold text-gray-700">Total:</span>
+                    <span id="cartTotal" class="font-display text-3xl font-bold text-[#D4AF37]">₱0</span>
+                </div>
+                <button onclick="placeOrderFromCart()" id="placeOrderBtn" class="w-full btn-primary text-white font-bold py-4 rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-check-circle mr-2"></i> Place Order
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Upload Modal -->
+    <div id="receiptUploadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center rounded-t-2xl">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-file-upload mr-2"></i> Upload Payment Receipt
+                </h2>
+                <button onclick="closeReceiptUploadModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6">
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700 font-medium">
+                                You chose <strong>Online Payment</strong> as your payment method. Please upload a screenshot of your payment receipt.
+                            </p>
+                            <p class="text-xs text-yellow-600 mt-2">
+                                <strong>Note:</strong> Incorrect payment receipts or unrelated images will cause your order to be automatically dismissed.
+                            </p>
+                        </div>
+                            </div>
+                        </div>
+                        
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-semibold mb-3">
+                        Payment Receipt <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="file" id="receiptUploadFile" accept="image/*,.pdf" class="hidden">
+                        <label for="receiptUploadFile" class="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#D4AF37] transition">
+                            <div class="text-center">
+                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                <p class="text-sm text-gray-600">
+                                    <span class="text-[#D4AF37] font-semibold">Click to upload</span> or drag and drop
+                                </p>
+                                <p class="text-xs text-gray-500 mt-2">PNG, JPG, PDF (Max 5MB)</p>
+                            </div>
+                        </label>
+                    </div>
+                    <div id="receiptUploadFileName" class="mt-3 text-sm text-gray-600 hidden">
+                        <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                <span id="receiptUploadName" class="font-medium"></span>
+                            </div>
+                            <button onclick="removeReceiptUpload()" class="text-red-500 hover:text-red-700 transition">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                        </div>
+                        
+            <!-- Modal Footer -->
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50 rounded-b-2xl">
+                <div class="flex space-x-4">
+                    <button onclick="closeReceiptUploadModal()" class="flex-1 px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                        Cancel
+                    </button>
+                    <button onclick="confirmPlaceOrderWithReceipt()" id="confirmReceiptBtn" class="flex-1 btn-primary text-white font-semibold py-3 rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fas fa-check-circle mr-2"></i> Confirm Order
+                        </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt View Modal -->
+    <div id="receiptViewModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-file-image mr-2"></i> Payment Receipt
+                </h2>
+                <button onclick="closeReceiptViewModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div id="receiptViewContent" class="text-center">
+                    <!-- Receipt image will be displayed here -->
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <button onclick="closeReceiptViewModal()" class="w-full px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 btn-primary">
+                <i class="fas fa-check text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2 text-[#D4AF37]">Order Placed!</h3>
+            <p class="text-gray-600 mb-6">Your order has been successfully placed. Check your dashboard for updates!</p>
+            <button onclick="closeSuccessModal()" class="px-8 py-3 rounded-xl text-white font-semibold btn-primary">
+                Continue
+            </button>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">
+                <i class="fas fa-sign-out-alt text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2 text-[#D4AF37]">Logout?</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to logout? You'll need to login again to access your account.</p>
+            <div class="flex space-x-4 justify-center">
+                <button onclick="closeLogoutModal()" class="px-6 py-3 rounded-xl text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+                <button onclick="confirmLogout()" class="px-6 py-3 rounded-xl text-white font-semibold btn-primary">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-4 rounded-xl shadow-2xl">
+        <div class="flex items-center space-x-3">
+                <i class="fas fa-check-circle text-3xl"></i>
+            <div>
+                    <p class="font-bold text-lg">Success!</p>
+                    <p class="text-sm opacity-90">Thank you for your feedback!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white/50 backdrop-blur-sm border-t-2 border-[#D4AF37]/20 mt-12 md:mt-16 py-8">
+        <div class="container mx-auto px-6 text-center">
+            <p class="font-display text-xl md:text-2xl font-bold text-[#D4AF37] mb-3">Meringued</p>
+            <p class="text-gray-600 text-sm md:text-base mb-2">
+                <i class="fas fa-envelope mr-2"></i>info@meringued.com
+                <span class="mx-3">|</span>
+                <i class="fas fa-phone mr-2"></i>(555) 123-4567
+            </p>
+            <p class="text-gray-500 text-xs md:text-sm mt-3">© 2024 Meringued. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Application State
+        let orders = [];
+        let cart = [];
+        let selectedRating = 0;
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePage();
+        });
+        
+        // Sidebar responsive toggle
+        const sidebar = document.getElementById('clientSidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const openSidebarBtn = document.getElementById('openSidebarBtn');
+        if (openSidebarBtn) {
+            openSidebarBtn.addEventListener('click', () => {
+                sidebar.classList.remove('-translate-x-full');
+                sidebarOverlay.classList.remove('hidden');
+            });
+        }
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            });
+        }
+        
+        // Update cart when page becomes visible (when switching tabs)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                loadCart();
+                updateCartBadge();
+            }
+        });
+        
+        // Update cart when window regains focus
+        window.addEventListener('focus', function() {
+            loadCart();
+            updateCartBadge();
+        });
+        
+        // Initialize the page
+        function initializePage() {
+            loadCustomerName();
+            loadOrders();
+            loadCart();
+            updateStatistics();
+            renderOrders();
+            setupStarRating();
+            setupFeedbackForm();
+            setupModalHandlers();
+            updateCartBadge();
+            initializeReceiptUpload();
+        }
+        
+        // Load cart from localStorage
+        function loadCart() {
+            const storedCart = localStorage.getItem('cart');
+            if (storedCart) {
+                cart = JSON.parse(storedCart);
+            }
+        }
+        
+        // Update cart badge
+        function updateCartBadge() {
+            const badge = document.getElementById('cartBadge');
+            const count = cart.length;
+            
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+        
+        // Open feedback modal
+        function openFeedbackModal() {
+            document.getElementById('feedbackModal').classList.remove('hidden');
+            document.getElementById('feedbackModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Close feedback modal
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').classList.add('hidden');
+            document.getElementById('feedbackModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Setup modal handlers
+        function setupModalHandlers() {
+            // Close modal when clicking outside
+            document.getElementById('feedbackModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeFeedbackModal();
+                }
+            });
+            
+            // Close modal on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeFeedbackModal();
+                }
+            });
+        }
+        
+        // Load customer name from localStorage
+        function loadCustomerName() {
+            const customerName = localStorage.getItem('userName') || 'Guest';
+            document.getElementById('customerName').textContent = customerName;
+            document.getElementById('sidebarCustomerName').textContent = customerName;
+        }
+        
+        // Load orders from localStorage
+        function loadOrders() {
+            const storedOrders = localStorage.getItem('customerOrders');
+            if (storedOrders) {
+                orders = JSON.parse(storedOrders);
+            }
+        }
+        
+        // Update dashboard statistics
+        function updateStatistics() {
+            const total = orders.length;
+            const pending = orders.filter(order => 
+                order.status === 'Pending' || order.status === 'Acknowledge' || order.status === 'Baking'
+            ).length;
+            const completed = orders.filter(order => 
+                order.status === 'Completed'
+            ).length;
+            
+            document.getElementById('totalOrders').textContent = total;
+            document.getElementById('pendingOrders').textContent = pending;
+            document.getElementById('completedOrders').textContent = completed;
+        }
+        
+        // Render orders list
+        function renderOrders() {
+            const container = document.getElementById('ordersList');
+            
+            if (orders.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-shopping-bag"></i>
+                        <h3 class="text-xl font-semibold mb-2">No Orders Yet</h3>
+                        <p class="mb-6">Start by placing your first order!</p>
+                        <a href="clientordering.html" class="inline-block btn-primary text-white font-semibold px-8 py-3 rounded-xl shadow-lg">
+                            Place Your First Order
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+            
+            const ordersHTML = orders
+                .slice()
+                .reverse()
+                .slice(0, 5)
+                .map(order => `
+                    <div class="border-2 border-gray-100 rounded-xl p-5 hover:border-[#D4AF37] hover:shadow-md transition-all duration-300">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-800 text-lg mb-1">${escapeHtml(order.name || order.cake || 'Custom Order')}</h3>
+                                <p class="text-sm text-gray-500">
+                                    <i class="fas fa-tag mr-1"></i> ${escapeHtml(order.size || 'N/A')}
+                                </p>
+                            </div>
+                            <span class="px-4 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}">
+                                ${escapeHtml(order.status || 'Pending')}
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm pt-3 border-t border-gray-100">
+                            <span class="text-gray-500">
+                                <i class="far fa-calendar mr-1"></i> ${escapeHtml(order.date || new Date().toLocaleDateString())}
+                            </span>
+                            <span class="font-bold text-[#D4AF37] text-lg">
+                                ₱${escapeHtml(order.price ? order.price.toFixed(2) : '0.00')}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = `<div class="space-y-4">${ordersHTML}</div>`;
+        }
+        
+        // Get status badge color
+        function getStatusColor(status) {
+            const statusColors = {
+                'Pending': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
+                'Acknowledge': 'bg-blue-100 text-blue-700 border border-blue-300',
+                'Baking': 'bg-purple-100 text-purple-700 border border-purple-300',
+                'Ready': 'bg-green-100 text-green-700 border border-green-300',
+                'Completed': 'bg-gray-100 text-gray-700 border border-gray-300',
+                'Cancelled': 'bg-red-100 text-red-700 border border-red-300'
+            };
+            return statusColors[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
+        }
+        
+        // Setup star rating system
+        function setupStarRating() {
+            const stars = document.querySelectorAll('#starRating .star');
+            
+            stars.forEach(star => {
+                // Click event
+                star.addEventListener('click', function() {
+                    selectedRating = parseInt(this.dataset.rating);
+                    updateStarDisplay();
+                });
+                
+                // Hover effect
+                star.addEventListener('mouseenter', function() {
+                    const rating = parseInt(this.dataset.rating);
+                    highlightStars(rating);
+                });
+            });
+            
+            // Reset to selected rating on mouse leave
+            document.getElementById('starRating').addEventListener('mouseleave', function() {
+                updateStarDisplay();
+            });
+        }
+        
+        // Highlight stars up to rating
+        function highlightStars(rating) {
+            const stars = document.querySelectorAll('#starRating .star');
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+        
+        // Update star display based on selected rating
+        function updateStarDisplay() {
+            highlightStars(selectedRating);
+        }
+        
+        // Setup feedback form
+        function setupFeedbackForm() {
+        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+                submitFeedback();
+            });
+        }
+            
+        // Submit feedback
+        function submitFeedback() {
+            const feedbackText = document.getElementById('feedbackText').value.trim();
+            
+            // Validation
+            if (selectedRating === 0) {
+                showToast('Please select a rating', 'error');
+                return;
+            }
+            
+            if (!feedbackText) {
+                showToast('Please enter your feedback', 'error');
+                return;
+            }
+            
+            // Create feedback object
+            const feedback = {
+                id: Date.now(),
+                rating: selectedRating,
+                text: feedbackText,
+                customer: localStorage.getItem('userName') || 'Guest',
+                date: new Date().toISOString()
+            };
+            
+            // Save to localStorage
+            saveFeedback(feedback);
+            
+            // Show success message
+            showToast('Thank you for your feedback!', 'success');
+            
+            // Reset form
+            resetFeedbackForm();
+        }
+        
+        // Save feedback to localStorage
+        function saveFeedback(feedback) {
+            let feedbacks = [];
+            const storedFeedbacks = localStorage.getItem('customerFeedbacks');
+            if (storedFeedbacks) {
+                feedbacks = JSON.parse(storedFeedbacks);
+            }
+            feedbacks.push(feedback);
+            localStorage.setItem('customerFeedbacks', JSON.stringify(feedbacks));
+        }
+        
+        // Reset feedback form
+        function resetFeedbackForm() {
+            document.getElementById('feedbackText').value = '';
+            selectedRating = 0;
+            updateStarDisplay();
+            closeFeedbackModal();
+        }
+        
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastContent = toast.querySelector('div');
+            
+            // Update toast appearance based on type
+            if (type === 'error') {
+                toastContent.className = 'bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-4 rounded-xl shadow-2xl';
+                toastContent.querySelector('i').className = 'fas fa-exclamation-circle text-3xl';
+                toastContent.querySelector('p.font-bold').textContent = 'Oops!';
+                toastContent.querySelector('p.text-sm').textContent = message;
+            } else if (type === 'info') {
+                toastContent.className = 'bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 rounded-xl shadow-2xl';
+                toastContent.querySelector('i').className = 'fas fa-info-circle text-3xl';
+                toastContent.querySelector('p.font-bold').textContent = 'Info';
+                toastContent.querySelector('p.text-sm').textContent = message;
+            } else {
+                toastContent.className = 'bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-4 rounded-xl shadow-2xl';
+                toastContent.querySelector('i').className = 'fas fa-check-circle text-3xl';
+                toastContent.querySelector('p.font-bold').textContent = 'Success!';
+                toastContent.querySelector('p.text-sm').textContent = message;
+            }
+            
+            // Show toast
+            toast.classList.add('show');
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // ===== CART FUNCTIONS =====
+        
+        // Open cart modal
+        function openCartModal() {
+            // Reload cart from localStorage to ensure it's synchronized
+            loadCart();
+            updateCartBadge();
+            document.getElementById('cartModal').classList.remove('hidden');
+            document.getElementById('cartModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            renderCart();
+        }
+
+        // Close cart modal
+        function closeCartModal() {
+            document.getElementById('cartModal').classList.add('hidden');
+            document.getElementById('cartModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Render cart items
+        function renderCart() {
+            const cartItemsContainer = document.getElementById('cartItems');
+            const placeOrderBtn = document.getElementById('placeOrderBtn');
+            
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = `
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-shopping-cart text-6xl mb-4 opacity-30"></i>
+                        <p class="text-lg">Your cart is empty</p>
+                        <button onclick="closeCartModal(); window.location.href='clientordering.html#new';" class="inline-block mt-4 btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg">
+                            Start Shopping
+                        </button>
+                    </div>
+                `;
+                placeOrderBtn.disabled = true;
+                document.getElementById('cartTotal').textContent = '₱0';
+                return;
+            }
+            
+            placeOrderBtn.disabled = false;
+            
+            const cartHTML = cart.map((item, index) => `
+                <div class="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4 hover:border-[#D4AF37] transition">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h3 class="font-bold text-lg text-gray-800 mb-2">${escapeHtml(item.name)}</h3>
+                            <div class="text-sm text-gray-600 space-y-1">
+                                <p><i class="fas fa-ruler-combined w-4"></i> Size: ${escapeHtml(item.size)}</p>
+                                <p><i class="fas fa-shopping-cart w-4"></i> Quantity: ${item.quantity}</p>
+                                <p><i class="fas fa-cookie-bite w-4"></i> Flavor: ${escapeHtml(item.flavor)}</p>
+                                <p><i class="fas fa-ice-cream w-4"></i> Frosting: ${escapeHtml(item.frosting)}</p>
+                                ${item.dedication ? `<p><i class="fas fa-pen-fancy w-4"></i> "${escapeHtml(item.dedication)}"</p>` : ''}
+                            </div>
+                        </div>
+                        <div class="text-right ml-4">
+                            <p class="font-bold text-xl text-[#D4AF37] mb-2">₱${item.price.toFixed(0)}</p>
+                            <button onclick="removeFromCart(${index})" class="text-red-500 hover:text-red-700 transition">
+                                <i class="fas fa-trash-alt"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            cartItemsContainer.innerHTML = cartHTML;
+            
+            // Update total
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            document.getElementById('cartTotal').textContent = '₱' + total.toFixed(0);
+        }
+
+        // Remove item from cart
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartBadge();
+            renderCart();
+            showToast('Item removed from cart', 'info');
+        }
+
+        // Place order from cart
+        function placeOrderFromCart() {
+            if (cart.length === 0) {
+                showToast('Your cart is empty', 'error');
+                return;
+            }
+            
+            // Check if any cart items have Online Payment as payment method
+            const hasOnlinePayment = cart.some(item => item.paymentMethod === 'Online Payment');
+            
+            if (hasOnlinePayment) {
+                // Show receipt upload modal for Online Payment items
+                openReceiptUploadModalForCart();
+            } else {
+                // All items are Cash on Delivery, place order directly
+                processCartOrders(null, null);
+            }
+        }
+        
+        // Receipt upload modal handling
+        let pendingOrderData = null;
+        
+        // Receipt upload file handling - initialize after DOM is ready
+        function initializeReceiptUpload() {
+            const receiptFileInput = document.getElementById('receiptUploadFile');
+            if (receiptFileInput) {
+                receiptFileInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    const confirmBtn = document.getElementById('confirmReceiptBtn');
+                    
+                    if (file) {
+                        // Validate file size (5MB max)
+                        if (file.size > 5 * 1024 * 1024) {
+                            showToast('File size must be less than 5MB', 'error');
+                            e.target.value = '';
+                            if (confirmBtn) confirmBtn.disabled = true;
+                            return;
+                        }
+                        const receiptName = document.getElementById('receiptUploadName');
+                        const fileNameDiv = document.getElementById('receiptUploadFileName');
+                        if (receiptName) receiptName.textContent = file.name;
+                        if (fileNameDiv) fileNameDiv.classList.remove('hidden');
+                        if (confirmBtn) confirmBtn.disabled = false;
+                    } else {
+                        const fileNameDiv = document.getElementById('receiptUploadFileName');
+                        if (fileNameDiv) fileNameDiv.classList.add('hidden');
+                        if (confirmBtn) confirmBtn.disabled = true;
+                    }
+                });
+            }
+        }
+        
+        // Remove receipt upload
+        function removeReceiptUpload() {
+            const receiptFileInput = document.getElementById('receiptUploadFile');
+            if (receiptFileInput) {
+                receiptFileInput.value = '';
+            }
+            const fileNameDiv = document.getElementById('receiptUploadFileName');
+            if (fileNameDiv) {
+                fileNameDiv.classList.add('hidden');
+            }
+            const confirmBtn = document.getElementById('confirmReceiptBtn');
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+            }
+        }
+        
+        // Open receipt upload modal for cart orders
+        function openReceiptUploadModalForCart() {
+            const modal = document.getElementById('receiptUploadModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                removeReceiptUpload(); // Reset upload
+                pendingOrderData = 'cart'; // Mark that we're processing cart
+            }
+        }
+        
+        // Close receipt upload modal
+        function closeReceiptUploadModal() {
+            const modal = document.getElementById('receiptUploadModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = 'auto';
+                removeReceiptUpload(); // Clear upload
+                pendingOrderData = null;
+            }
+        }
+        
+        // Confirm place order with receipt
+        function confirmPlaceOrderWithReceipt() {
+            const receiptFileInput = document.getElementById('receiptUploadFile');
+            if (!receiptFileInput || !receiptFileInput.files[0]) {
+                showToast('Please upload payment receipt', 'error');
+                return;
+            }
+            
+            const receiptFile = receiptFileInput.files[0];
+            
+            // Convert receipt to base64
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const receiptData = e.target.result;
+                
+                // Check if we're processing cart orders
+                if (pendingOrderData === 'cart') {
+                    // Process cart orders with receipt
+                    processCartOrders(receiptData, receiptFile.name);
+                }
+            };
+            reader.readAsDataURL(receiptFile);
+        }
+        
+        // Process cart orders (with or without receipt)
+        function processCartOrders(receiptData, receiptFileName) {
+            // Get existing orders
+            orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
+            
+            const orderGroupId = `ORD-${Date.now()}`;
+            // Add all cart items to orders
+            cart.forEach(item => {
+                const orderData = {
+                    id: Date.now() + Math.floor(Math.random()*10000),
+                    orderGroupId,
+                    ...item,
+                    status: 'Pending',
+                    date: new Date().toLocaleDateString()
+                };
+                
+                // If item has Online Payment, attach receipt
+                if (item.paymentMethod === 'Online Payment') {
+                    orderData.receipt = receiptData;
+                    orderData.receiptFileName = receiptFileName;
+                }
+                
+                orders.push(orderData);
+            });
+            
+            // Save orders
+            localStorage.setItem('customerOrders', JSON.stringify(orders));
+            
+            // Clear cart
+            cart = [];
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartBadge();
+            
+            // Close modals
+            closeCartModal();
+            closeReceiptUploadModal();
+            
+            // Refresh orders display
+            loadOrders();
+            updateStatistics();
+            renderOrders();
+            
+            // Show success modal
+            document.getElementById('successModal').classList.remove('hidden');
+            document.getElementById('successModal').classList.add('flex');
+        }
+
+        // Close success modal
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.add('hidden');
+            document.getElementById('successModal').classList.remove('flex');
+        }
+
+        // ===== RECEIPT VIEW MODAL FUNCTIONS =====
+        
+        // View receipt
+        function viewReceipt(orderId) {
+            // Find the order by ID
+            const order = orders.find(o => o.id === orderId);
+            
+            if (!order || !order.receipt) {
+                showToast('Receipt not found for this order', 'error');
+                return;
+            }
+            
+            // Display receipt in modal
+            const receiptContent = document.getElementById('receiptViewContent');
+            const receiptFileName = order.receiptFileName || 'receipt';
+            
+            // Check if receipt is base64 image or PDF
+            if (order.receipt.startsWith('data:image/')) {
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-file-image mr-1"></i> ${escapeHtml(receiptFileName)}
+                        </p>
+                        <img src="${order.receipt}" alt="Payment Receipt" class="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-gray-200">
+                    </div>
+                `;
+            } else if (order.receipt.startsWith('data:application/pdf')) {
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-file-pdf mr-1"></i> ${escapeHtml(receiptFileName)}
+                        </p>
+                        <iframe src="${order.receipt}" class="w-full h-[600px] rounded-lg shadow-lg border-2 border-gray-200" frameborder="0"></iframe>
+                    </div>
+                `;
+            } else {
+                // Assume it's an image if it starts with data:
+                receiptContent.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-file-image mr-1"></i> ${escapeHtml(receiptFileName)}
+                        </p>
+                        <img src="${order.receipt}" alt="Payment Receipt" class="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-gray-200">
+                    </div>
+                `;
+            }
+            
+            // Show modal
+            document.getElementById('receiptViewModal').classList.remove('hidden');
+            document.getElementById('receiptViewModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Close receipt view modal
+        function closeReceiptViewModal() {
+            document.getElementById('receiptViewModal').classList.add('hidden');
+            document.getElementById('receiptViewModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            // Clear content
+            const receiptContent = document.getElementById('receiptViewContent');
+            if (receiptContent) {
+                receiptContent.innerHTML = '';
+            }
+        }
+
+        // ===== LOGOUT FUNCTIONS =====
+        
+        // Open logout confirmation modal
+        function openLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('hidden');
+            document.getElementById('logoutModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close logout confirmation modal
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.getElementById('logoutModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Confirm logout
+        function confirmLogout() {
+            // Clear user session data if needed
+            // localStorage.removeItem('userName'); // Optional: keep for next login
+            
+            // Redirect to home page
+            window.location.href = 'index.html';
+        }
+
+        // Close modals on click outside
+        document.getElementById('cartModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCartModal();
+            }
+        });
+        
+        document.getElementById('successModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSuccessModal();
+            }
+        });
+        
+        document.getElementById('logoutModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeLogoutModal();
+            }
+        });
+        
+        document.getElementById('receiptUploadModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReceiptUploadModal();
+            }
+        });
+        
+        // Close receipt upload modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                // Close sidebar on mobile
+                if (window.innerWidth < 768 && sidebar && !sidebar.classList.contains('-translate-x-full')) {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarOverlay?.classList.add('hidden');
+                    return;
+                }
+                const receiptViewModal = document.getElementById('receiptViewModal');
+                if (receiptViewModal && !receiptViewModal.classList.contains('hidden')) {
+                    closeReceiptViewModal();
+                    return;
+                }
+                const receiptModal = document.getElementById('receiptUploadModal');
+                if (receiptModal && !receiptModal.classList.contains('hidden')) {
+                    closeReceiptUploadModal();
+                }
+            }
+        });
+        
+        // Close receipt view modal when clicking outside
+        document.getElementById('receiptViewModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReceiptViewModal();
+            }
+        });
+    </script>
+</body>
+</html>
