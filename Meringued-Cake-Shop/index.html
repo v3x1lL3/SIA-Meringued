@@ -884,7 +884,7 @@
     <div id="scrollToTop" class="scroll-to-top" onclick="scrollToTop()">
         <i class="fas fa-arrow-up text-xl"></i>
     </div>
-
+    
     <!-- Login/Signup Modal -->
     <div id="authModal" class="modal">
         <div class="modal-content">
@@ -942,7 +942,7 @@
             </div>
         </div>
     </div>
-
+    
     <script>
         // Mobile Menu Toggle
         document.getElementById('menuBtn').addEventListener('click', function() {
@@ -1028,65 +1028,6 @@
                 closeModal();
             }
         });
-
-        // Login Handler
-        function handleLogin() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-
-            if (!email || !password) {
-                alert('Please fill in all fields');
-                return;
-            }
-
-            // Store email in localStorage
-            localStorage.setItem('userEmail', email);
-            
-            // Try to get name from localStorage (if user signed up before)
-            const storedName = localStorage.getItem('userName');
-            const userName = storedName || email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
-            
-            if (!storedName) {
-                localStorage.setItem('userName', userName);
-            }
-            
-            // Simulate login - in a real app, this would make an API call
-            closeModal();
-            // Redirect to client dashboard
-            window.location.href = 'clientdashboard.html';
-        }
-
-        // Signup Handler
-        function handleSignup() {
-            const name = document.getElementById('signupName').value;
-            const email = document.getElementById('signupEmail').value;
-            const password = document.getElementById('signupPassword').value;
-            const confirmPassword = document.getElementById('signupConfirmPassword').value;
-
-            if (!name || !email || !password || !confirmPassword) {
-                alert('Please fill in all fields');
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                alert('Passwords do not match');
-                return;
-            }
-
-            if (password.length < 6) {
-                alert('Password must be at least 6 characters long');
-                return;
-            }
-
-            // Store user info in localStorage
-            localStorage.setItem('userName', name);
-            localStorage.setItem('userEmail', email);
-
-            // Simulate signup - in a real app, this would make an API call
-            closeModal();
-            // Redirect to client dashboard
-            window.location.href = 'clientdashboard.html';
-        }
 
         // Navbar scroll effect and active link highlighting
         window.addEventListener('scroll', function() {
@@ -1199,6 +1140,9 @@
             statsObserver.observe(stat);
         });
     </script>
+
+    <!-- Auth controller (Supabase-based login & signup) -->
+    <script type="module" src="js/controllers/authController.js"></script>
 </body>
 </html>
 

@@ -240,7 +240,7 @@
             </div>
         </div>
     </div>
-
+    
     <script>
         let orders = [];
 
@@ -404,12 +404,16 @@
                 renderRecentOrders();
             }
         });
-
+        
         window.addEventListener('focus', function() {
             loadOrders();
             updateStatistics();
             renderRecentOrders();
         });
     </script>
+
+    <!-- Ensure only authenticated admin users can see this page and load Supabase-based stats -->
+    <script type="module" src="js/controllers/adminBootstrap.js"></script>
+    <script type="module" src="js/controllers/dashboardController.js"></script>
 </body>
 </html>
