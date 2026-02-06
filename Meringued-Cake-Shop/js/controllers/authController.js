@@ -3,6 +3,7 @@
 // simple guards for admin/client dashboards.
 
 import { showToast, showLoadingOverlay, hideLoadingOverlay } from '../core/utils.js';
+import { isSupabaseConfigured } from '../core/supabaseClient.js';
 import {
   signUpWithEmail,
   signInWithEmail,
@@ -30,6 +31,21 @@ async function handleLoginClick() {
 
   if (!email || !password) {
     showToast('Please fill in email and password.', 'error');
+    return;
+  }
+
+  // Local fallback when Supabase is not configured
+  if (!isSupabaseConfigured) {
+    const storedName = localStorage.getItem('userName');
+    const storedEmail = localStorage.getItem('userEmail');
+    if (storedEmail && storedEmail.toLowerCase() === email.toLowerCase()) {
+      const modal = document.getElementById('authModal');
+      if (modal) modal.classList.remove('active');
+      showToast('Welcome back! (Local mode)', 'success');
+      redirectByRole({ role: 'customer', name: storedName || email });
+    } else {
+      showToast('No local account found. Sign up first, or configure Supabase for real auth.', 'error');
+    }
     return;
   }
 
@@ -81,6 +97,25 @@ async function handleSignupClick() {
     return;
   }
 
+  // Local fallback when Supabase is not configured (avoids "failed to fetch")
+  if (!isSupabaseConfigured) {
+    try {
+      showLoadingOverlay('Creating your account...');
+      localStorage.setItem('userName', fullName);
+      localStorage.setItem('userEmail', email);
+      localStorage.setItem('userRole', 'customer');
+      hideLoadingOverlay();
+      const modal = document.getElementById('authModal');
+      if (modal) modal.classList.remove('active');
+      showToast('Account created! (Local mode — no server)', 'success');
+      redirectByRole({ role: 'customer', name: fullName });
+    } catch (e) {
+      hideLoadingOverlay();
+      showToast('Sign up failed. Please try again.', 'error');
+    }
+    return;
+  }
+
   try {
     showLoadingOverlay('Creating your account...');
     const { user, profile } = await signUpWithEmail({ email, password, fullName });
@@ -109,6 +144,21 @@ async function handleSignupClick() {
 }
 
 export async function ensureAuthenticated(requiredRole) {
+  // Local/dev fallback: If Supabase is not configured yet, don't block page access.
+  // This prevents admin/client pages from redirecting to index.html while you are still wiring Supabase.
+  if (!isSupabaseConfigured) {
+    console.warn('[AuthController] Supabase not configured; skipping auth guard.');
+    const fallbackRole = requiredRole || localStorage.getItem('userRole') || 'customer';
+    return {
+      user: { id: 'local-dev' },
+      profile: {
+        id: 'local-dev',
+        role: fallbackRole,
+        name: localStorage.getItem('userName') || (fallbackRole === 'admin' ? 'Admin' : 'Guest'),
+      },
+    };
+  }
+
   try {
     const { user, profile } = await getSessionWithProfile();
     if (!user) {
@@ -137,6 +187,10 @@ export async function ensureAuthenticated(requiredRole) {
 // Optional: used if you want to add a top-level logout button somewhere.
 export async function handleLogoutRedirectToHome() {
   try {
+    if (!isSupabaseConfigured) {
+      window.location.href = 'index.html';
+      return;
+    }
     await signOut();
   } catch (err) {
     console.error('[AuthController] logout error:', err);

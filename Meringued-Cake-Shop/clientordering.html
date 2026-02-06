@@ -18,8 +18,23 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #FFF8F0 0%, #FFE5E0 50%, #FFF0F5 100%);
         }
+        
+        .meringued-bg { position: relative; min-height: 100vh; overflow-x: hidden; background: transparent !important; }
+        .meringued-bg::before {
+            content: ''; position: fixed; inset: 0; z-index: -2;
+            background: linear-gradient(120deg, #FFF8F0 0%, #FFEDE6 20%, #FFE5E0 40%, #FFF0F5 60%, #FFE8E8 80%, #FFF8F0 100%);
+            background-size: 300% 300%;
+            animation: meringuedGradient 14s ease-in-out infinite;
+        }
+        .meringued-bg::after {
+            content: ''; position: fixed; width: 80vmax; height: 80vmax; border-radius: 50%;
+            top: -20vmax; right: -20vmax; z-index: -1; pointer-events: none;
+            background: radial-gradient(circle at 40% 40%, rgba(212,175,55,0.12) 0%, rgba(255,229,224,0.06) 45%, transparent 70%);
+            animation: meringuedOrb 18s ease-in-out infinite;
+        }
+        @keyframes meringuedGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        @keyframes meringuedOrb { 0%, 100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-6%,-3%) scale(1.05); } 66% { transform: translate(3%,-6%) scale(0.97); } }
         
         .font-display { font-family: 'Playfair Display', serif; }
         
@@ -82,7 +97,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="meringued-bg min-h-screen">
     <!-- Sidebar -->
     <aside id="clientSidebar" class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-300">
         <!-- Logo -->
@@ -121,7 +136,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                    <a href="clientsettings.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
                         <i class="fas fa-cog w-5"></i>
                         <span>Settings</span>
                     </a>
@@ -229,7 +244,43 @@
                 <!-- Order Form -->
                 <div class="lg:col-span-2">
                         <form id="orderForm" class="space-y-4">
-                            <!-- Product Selection -->
+                            <!-- Pickup or Delivery (top) -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-truck mr-2" style="color: #D4AF37;"></i>
+                                    Pick up or Deliver
+                                </label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="relative cursor-pointer">
+                                        <input type="radio" name="deliveryType" value="Pick up" class="peer sr-only" checked>
+                                        <div class="border-2 border-gray-200 rounded-lg p-3 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
+                                            <i class="fas fa-store text-xl mb-1 text-gray-600 peer-checked:text-[#D4AF37] transition"></i>
+                                            <p class="font-semibold text-sm">Pick up</p>
+                                            <p class="text-xs text-gray-500 mt-0.5">Collect from store</p>
+                                        </div>
+                                    </label>
+                                    <label class="relative cursor-pointer">
+                                        <input type="radio" name="deliveryType" value="Deliver" class="peer sr-only">
+                                        <div class="border-2 border-gray-200 rounded-lg p-3 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
+                                            <i class="fas fa-truck text-xl mb-1 text-gray-600 peer-checked:text-[#D4AF37] transition"></i>
+                                            <p class="font-semibold text-sm">Deliver</p>
+                                            <p class="text-xs text-gray-500 mt-0.5">We'll deliver to you</p>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div id="deliveryAddressSection" class="mt-3 hidden">
+                                    <label class="block text-gray-700 font-semibold mb-1"><i class="fas fa-map-marker-alt mr-2" style="color: #D4AF37;"></i>Delivery address</label>
+                                    <p class="text-xs text-gray-500 mb-1">From your <a href="clientsettings.html" class="text-[#D4AF37] hover:underline">Settings</a>. You can edit below.</p>
+                                    <textarea id="deliveryAddress" rows="2" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition text-sm" placeholder="Street, Barangay, City, Province"></textarea>
+                                </div>
+                                <div class="mt-3">
+                                    <label class="block text-gray-700 font-semibold mb-1"><i class="fas fa-phone mr-2" style="color: #D4AF37;"></i>Contact number</label>
+                                    <p class="text-xs text-gray-500 mb-1">For delivery updates and logistics. From your <a href="clientsettings.html" class="text-[#D4AF37] hover:underline">Settings</a>.</p>
+                                    <input type="tel" id="customerPhone" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g. 09XX XXX XXXX" />
+                                </div>
+                            </div>
+
+                            <!-- Select Cake -->
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
                                     <i class="fas fa-birthday-cake mr-2" style="color: #D4AF37;"></i>
@@ -237,11 +288,9 @@
                                 </label>
                                 <select id="cakeProduct" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
                                     <option value="">Choose a cake...</option>
-                                    <option value="Chocolate Delight" data-base="400">Chocolate Delight (₱400)</option>
-                                    <option value="Vanilla Dream" data-base="400">Vanilla Dream (₱400)</option>
-                                    <option value="Red Velvet Special" data-base="450">Red Velvet Special (₱450)</option>
-                                    <option value="Lemon Zest" data-base="420">Lemon Zest (₱420)</option>
-                                    <option value="Strawberry Bliss" data-base="430">Strawberry Bliss (₱430)</option>
+                                    <option value="Chocolate Moist">Chocolate Moist</option>
+                                    <option value="Mocha">Mocha</option>
+                                    <option value="Vanilla">Vanilla</option>
                                 </select>
                             </div>
 
@@ -301,22 +350,6 @@
                                 </div>
                             </div>
 
-                            <!-- Flavor -->
-                            <div>
-                                <label class="block text-gray-700 font-semibold mb-2">
-                                    <i class="fas fa-cookie-bite mr-2" style="color: #D4AF37;"></i>
-                                    Flavor
-                                </label>
-                                <select id="flavor" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
-                                    <option>Chocolate</option>
-                                    <option>Vanilla</option>
-                                    <option>Strawberry</option>
-                                    <option>Red Velvet</option>
-                                    <option>Lemon</option>
-                                    <option>Carrot</option>
-                                </select>
-                            </div>
-
                             <!-- Frosting -->
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
@@ -325,10 +358,10 @@
                                 </label>
                                 <select id="frosting" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
                                     <option>Buttercream</option>
-                                    <option>Fondant (+₱15)</option>
+                                    <option>Fondant</option>
                                     <option>Cream Cheese</option>
                                     <option>Whipped Cream</option>
-                                    <option>Ganache (+₱10)</option>
+                                    <option>Ganache</option>
                                 </select>
                             </div>
 
@@ -390,32 +423,6 @@
                                 <input type="text" id="dedication" placeholder="e.g., Happy Birthday John!" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
                             </div>
 
-                            <!-- Pickup or Delivery -->
-                            <div>
-                                <label class="block text-gray-700 font-semibold mb-2">
-                                    <i class="fas fa-truck mr-2" style="color: #D4AF37;"></i>
-                                    Pick up or Deliver
-                                </label>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <label class="relative cursor-pointer">
-                                        <input type="radio" name="deliveryType" value="Pick up" class="peer sr-only" checked>
-                                        <div class="border-2 border-gray-200 rounded-lg p-3 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
-                                            <i class="fas fa-store text-xl mb-1 text-gray-600 peer-checked:text-[#D4AF37] transition"></i>
-                                            <p class="font-semibold text-sm">Pick up</p>
-                                            <p class="text-xs text-gray-500 mt-0.5">Collect from store</p>
-                    </div>
-                                    </label>
-                                    <label class="relative cursor-pointer">
-                                        <input type="radio" name="deliveryType" value="Deliver" class="peer sr-only">
-                                        <div class="border-2 border-gray-200 rounded-lg p-3 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
-                                            <i class="fas fa-truck text-xl mb-1 text-gray-600 peer-checked:text-[#D4AF37] transition"></i>
-                                            <p class="font-semibold text-sm">Deliver</p>
-                                            <p class="text-xs text-gray-500 mt-0.5">We'll deliver to you</p>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-
                             <!-- Payment Method -->
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
@@ -464,10 +471,6 @@
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Quantity:</span>
                                 <span id="summaryQty" class="font-semibold">1</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-600">Flavor:</span>
-                                <span id="summaryFlavor" class="font-semibold">Chocolate</span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Frosting:</span>
@@ -754,8 +757,10 @@
     <footer class="bg-white/50 border-t-2 border-[#D4AF37]/20 mt-12 py-8">
         <div class="container mx-auto px-6 text-center">
             <p class="text-gray-600 font-display text-lg font-semibold mb-2" style="color: #D4AF37;">Meringued</p>
-            <p class="text-gray-600 text-sm">📧 info@meringued.com | 📞 (555) 123-4567</p>
-            <p class="text-gray-500 text-xs mt-2">© 2024 Meringued. All rights reserved.</p>
+            <p class="text-gray-600 text-sm mb-1"><i class="fas fa-envelope mr-1"></i><a href="mailto:avadueyg@gmail.com" class="hover:text-[#D4AF37] transition">avadueyg@gmail.com</a> <span class="mx-2">|</span> <i class="fas fa-phone mr-1"></i>0945 812 5225 <span class="mx-2">|</span> <i class="fas fa-phone mr-1"></i>0938 597 0991</p>
+            <p class="text-gray-600 text-sm mb-2"><i class="fas fa-clock mr-1"></i>Mon-Sun: 8AM - 6PM</p>
+            <p class="mb-2"><a href="https://www.facebook.com/profile.php?id=100066926310810" target="_blank" rel="noopener noreferrer" class="inline-flex w-9 h-9 rounded-full items-center justify-center text-white hover:opacity-90 transition text-sm" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);" aria-label="Meringued on Facebook"><i class="fab fa-facebook-f"></i></a></p>
+            <p class="text-gray-500 text-xs mt-2">© 2026 Meringued. All rights reserved.</p>
         </div>
     </footer>
 
@@ -960,30 +965,22 @@
             return statusColors[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
         }
 
-        // Calculate price
+        // Calculate price (based on size only; frosting has no price add-on)
         function calculatePrice() {
             const sizeRadio = document.querySelector('input[name="size"]:checked');
             const sizePrice = parseFloat(sizeRadio?.dataset.price) || 450;
-            
             const quantity = parseInt(document.getElementById('quantity').value) || 1;
-            
-            const frosting = document.getElementById('frosting').value;
-            let frostingExtra = 0;
-            if (frosting.includes('Fondant')) frostingExtra = 15;
-            if (frosting.includes('Ganache')) frostingExtra = 10;
-            
-            const total = (sizePrice + frostingExtra) * quantity;
-            
+            const total = sizePrice * quantity;
+
             document.getElementById('totalPrice').textContent = '₱' + total.toFixed(0);
-            
+
             // Update summary
             const productSelect = document.getElementById('cakeProduct');
             const selectedOption = productSelect.options[productSelect.selectedIndex];
-            document.getElementById('summaryProduct').textContent = selectedOption.value ? selectedOption.text.split('(₱')[0].trim() : '-';
+            document.getElementById('summaryProduct').textContent = selectedOption ? selectedOption.value || '-' : '-';
             document.getElementById('summarySize').textContent = sizeRadio ? sizeRadio.value : 'Small';
             document.getElementById('summaryQty').textContent = quantity;
-            document.getElementById('summaryFlavor').textContent = document.getElementById('flavor').value;
-            document.getElementById('summaryFrosting').textContent = frosting;
+            document.getElementById('summaryFrosting').textContent = document.getElementById('frosting').value;
             
             // Update delivery type and payment method
             const deliveryRadio = document.querySelector('input[name="deliveryType"]:checked');
@@ -1010,11 +1007,40 @@
         document.querySelectorAll('input[name="size"]').forEach(radio => {
             radio.addEventListener('change', calculatePrice);
         });
-        document.getElementById('flavor').addEventListener('change', calculatePrice);
         document.getElementById('frosting').addEventListener('change', calculatePrice);
+        function getDefaultDeliveryAddress() {
+            try {
+                var raw = localStorage.getItem('clientSettings');
+                var s = raw ? JSON.parse(raw) : {};
+                return (s.clientAddress || '').trim();
+            } catch (e) { return ''; }
+        }
+        function getDefaultContactPhone() {
+            try {
+                var raw = localStorage.getItem('clientSettings');
+                var s = raw ? JSON.parse(raw) : {};
+                return (s.clientPhone || '').trim();
+            } catch (e) { return ''; }
+        }
+        function toggleDeliveryAddressSection() {
+            var isDeliver = document.querySelector('input[name="deliveryType"]:checked')?.value === 'Deliver';
+            var section = document.getElementById('deliveryAddressSection');
+            var field = document.getElementById('deliveryAddress');
+            var phoneField = document.getElementById('customerPhone');
+            if (section && field) {
+                if (isDeliver) {
+                    section.classList.remove('hidden');
+                    if (!field.value.trim()) field.value = getDefaultDeliveryAddress();
+                } else {
+                    section.classList.add('hidden');
+                }
+            }
+            if (phoneField && !phoneField.value.trim()) phoneField.value = getDefaultContactPhone();
+        }
         document.querySelectorAll('input[name="deliveryType"]').forEach(radio => {
-            radio.addEventListener('change', calculatePrice);
+            radio.addEventListener('change', function() { calculatePrice(); toggleDeliveryAddressSection(); });
         });
+        toggleDeliveryAddressSection();
         document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
             radio.addEventListener('change', calculatePrice);
         });
@@ -1164,6 +1190,21 @@
                 document.getElementById('cakeDesign').focus();
                 return;
             }
+            if (document.querySelector('input[name="deliveryType"]:checked')?.value === 'Deliver') {
+                var addr = document.getElementById('deliveryAddress').value.trim() || getDefaultDeliveryAddress();
+                if (!addr) {
+                    showAlertModal('Please enter your delivery address above, or set a default in Settings.', 'warning');
+                    document.getElementById('deliveryAddressSection').classList.remove('hidden');
+                    document.getElementById('deliveryAddress').focus();
+                    return;
+                }
+                var phone = document.getElementById('customerPhone').value.trim() || getDefaultContactPhone();
+                if (!phone) {
+                    showAlertModal('Please enter your contact number for delivery updates and logistics, or set a default in Settings.', 'warning');
+                    document.getElementById('customerPhone').focus();
+                    return;
+                }
+            }
             
             const cartItem = {
                 id: Date.now(),
@@ -1172,7 +1213,7 @@
                 size: document.querySelector('input[name="size"]:checked').value,
                 quantity: parseInt(document.getElementById('quantity').value),
                 dateNeeded: dateNeeded,
-                flavor: document.getElementById('flavor').value,
+                flavor: cake,
                 frosting: frosting,
                 cakeDesign: cakeDesign,
                 designImage: designImageData,
@@ -1182,6 +1223,13 @@
                 paymentMethod: document.querySelector('input[name="paymentMethod"]:checked')?.value || 'Online Payment',
                 price: calculatePrice()
             };
+            var dt = document.querySelector('input[name="deliveryType"]:checked')?.value;
+            if (dt === 'Deliver') {
+                cartItem.deliveryAddress = document.getElementById('deliveryAddress').value.trim() || getDefaultDeliveryAddress();
+                cartItem.customerPhone = document.getElementById('customerPhone').value.trim() || getDefaultContactPhone();
+            }
+            var phoneEl = document.getElementById('customerPhone');
+            if (phoneEl && (phoneEl.value.trim() || getDefaultContactPhone())) cartItem.customerPhone = phoneEl.value.trim() || getDefaultContactPhone();
             
             cart.push(cartItem);
             localStorage.setItem('cart', JSON.stringify(cart));
@@ -1226,6 +1274,21 @@
                 document.getElementById('cakeDesign').focus();
                 return;
             }
+            if (document.querySelector('input[name="deliveryType"]:checked')?.value === 'Deliver') {
+                var addr = document.getElementById('deliveryAddress').value.trim() || getDefaultDeliveryAddress();
+                if (!addr) {
+                    showAlertModal('Please enter your delivery address above, or set a default in Settings.', 'warning');
+                    document.getElementById('deliveryAddressSection').classList.remove('hidden');
+                    document.getElementById('deliveryAddress').focus();
+                    return;
+                }
+                var phone = document.getElementById('customerPhone').value.trim() || getDefaultContactPhone();
+                if (!phone) {
+                    showAlertModal('Please enter your contact number for delivery updates and logistics, or set a default in Settings.', 'warning');
+                    document.getElementById('customerPhone').focus();
+                    return;
+                }
+            }
             
             const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || 'Online Payment';
             
@@ -1248,12 +1311,13 @@
             const order = {
                 id: Date.now(),
                 orderGroupId: generateOrderGroupId(),
+                customer: localStorage.getItem('userName') || 'Guest',
                 name: cake,
                 cake: cake,
                 size: document.querySelector('input[name="size"]:checked').value,
                 quantity: parseInt(document.getElementById('quantity').value),
                 dateNeeded: document.getElementById('dateNeeded').value,
-                flavor: document.getElementById('flavor').value,
+                flavor: cake,
                 frosting: frosting,
                 cakeDesign: cakeDesign,
                 designImage: designImageData,
@@ -1267,6 +1331,13 @@
                 status: 'Pending',
                 date: new Date().toLocaleDateString()
             };
+            var dt = document.querySelector('input[name="deliveryType"]:checked')?.value;
+            if (dt === 'Deliver') {
+                order.deliveryAddress = document.getElementById('deliveryAddress').value.trim() || getDefaultDeliveryAddress();
+                order.customerPhone = document.getElementById('customerPhone').value.trim() || getDefaultContactPhone();
+            }
+            var ph = document.getElementById('customerPhone');
+            if (ph && (ph.value.trim() || getDefaultContactPhone())) order.customerPhone = ph.value.trim() || getDefaultContactPhone();
             
             // Get existing orders
             orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
@@ -1371,7 +1442,7 @@
                                 <p><i class="fas fa-ruler-combined w-4"></i> Size: ${escapeHtml(item.size)}</p>
                                 <p><i class="fas fa-shopping-cart w-4"></i> Quantity: ${item.quantity}</p>
                                 <p><i class="fas fa-calendar-alt w-4"></i> Date Needed: ${item.dateNeeded ? new Date(item.dateNeeded).toLocaleDateString() : 'N/A'}</p>
-                                <p><i class="fas fa-cookie-bite w-4"></i> Flavor: ${escapeHtml(item.flavor)}</p>
+                                <p><i class="fas fa-cookie-bite w-4"></i> Cake: ${escapeHtml(item.flavor)}</p>
                                 <p><i class="fas fa-ice-cream w-4"></i> Frosting: ${escapeHtml(item.frosting)}</p>
                                 ${item.cakeDesign ? `<p class="mt-2 pt-2 border-t border-gray-200"><i class="fas fa-palette w-4"></i> <strong>Design:</strong> ${escapeHtml(item.cakeDesign)}</p>` : ''}
                                 ${item.designImage ? `<p class="text-xs text-gray-500 mt-1"><i class="fas fa-image mr-1"></i>Has design image</p>` : ''}
@@ -1455,6 +1526,8 @@
             orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
             
             const orderGroupId = generateOrderGroupId();
+            const defaultPhone = (function(){ try { var s = JSON.parse(localStorage.getItem('clientSettings') || '{}'); return (s.clientPhone || '').trim(); } catch(e){ return ''; } })();
+            const currentPhone = document.getElementById('customerPhone')?.value?.trim() || defaultPhone;
             const itemsToProcess = items || cart;
             // Add selected cart items to orders
             itemsToProcess.forEach(item => {
@@ -1462,6 +1535,8 @@
                     id: Date.now() + Math.floor(Math.random()*10000),
                     orderGroupId,
                     ...item,
+                    customer: localStorage.getItem('userName') || 'Guest',
+                    customerPhone: item.customerPhone || currentPhone,
                     status: 'Pending',
                     date: new Date().toLocaleDateString()
                 };
@@ -1586,7 +1661,7 @@
                             <p class="font-semibold text-gray-800">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : 'N/A'}</p>
                         </div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4">
-                            <p class="text-xs text-gray-500 mb-1">Flavor</p>
+                            <p class="text-xs text-gray-500 mb-1">Cake</p>
                             <p class="font-semibold text-gray-800">${escapeHtml(order.flavor || 'N/A')}</p>
                         </div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4">

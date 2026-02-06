@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory - Admin - Meringued</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        :root {
+            --gold: #D4AF37;
+            --gold-dark: #B8941E;
+            --cream: #FFF8F0;
+        }
+        body { font-family: 'Inter', sans-serif; min-height: 100vh; }
+        .font-display { font-family: 'Playfair Display', serif; }
+        .sidebar-active { background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); color: white !important; }
+        .sidebar-active:hover { background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%); color: white !important; }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
+        <div class="p-6 border-b-2 border-[#D4AF37]/20">
+            <a href="admindashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">Meringued</a>
+            <p class="text-xs text-gray-500 mt-1">Admin Panel</p>
+        </div>
+        <nav class="flex-1 p-6">
+            <ul class="space-y-2">
+                <li>
+                    <a href="adminordering.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-shopping-bag w-5"></i><span>Orders</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="admininventory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium sidebar-active">
+                        <i class="fas fa-boxes-stacked w-5"></i><span>Inventory</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminhistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-history w-5"></i><span>Logs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="admincustomers.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-users w-5"></i><span>Customers</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminfeedback.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-comment-alt w-5"></i><span>Feedback</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminsettings.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-cog w-5"></i><span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="p-6 border-t-2 border-[#D4AF37]/20">
+            <button onclick="openLogoutModal()" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium w-full">
+                <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="ml-64 min-h-screen">
+        <div class="px-6 py-8 md:py-12">
+            <div class="mb-8">
+                <h1 class="font-display text-4xl md:text-5xl font-bold mb-2 text-[#D4AF37]">
+                    <i class="fas fa-boxes-stacked mr-3"></i>Inventory
+                </h1>
+                <p class="text-gray-600">Add ingredients, set units, and track stock in/out. Same data as on the Dashboard.</p>
+            </div>
+
+            <!-- Inventory (same block as Dashboard) -->
+            <div id="inventory" class="bg-white rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-6 md:p-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
+                            <i class="fas fa-boxes-stacked mr-2"></i>Ingredients
+                        </h2>
+                        <p class="text-gray-600">Add ingredients, upload images, and track stock in/out.</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="resetInventoryBtn" class="px-4 py-3 rounded-xl font-semibold bg-gray-100 hover:bg-gray-200 transition text-gray-700">
+                            <i class="fas fa-rotate-left mr-2"></i>Reset template
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add Ingredient Template -->
+                <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-5 md:p-6 mb-6">
+                    <h3 class="font-display text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-plus-circle mr-2 text-[#D4AF37]"></i>Add Ingredient
+                    </h3>
+                    <form id="inventoryAddForm" class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Ingredient name</label>
+                            <input id="invName" type="text" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g., Fondant" required />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
+                            <input id="invQty" type="number" min="0" step="0.01" value="0" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Unit</label>
+                            <select id="invUnit" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
+                                <option value="units" selected>units</option>
+                                <option value="kg">kg</option>
+                                <option value="g">g</option>
+                                <option value="L">L</option>
+                                <option value="ml">ml</option>
+                                <option value="pcs">pcs</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Reorder level</label>
+                            <input id="invReorder" type="number" min="0" step="0.01" value="0" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" />
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Image (paste path or upload)</label>
+                            <div class="flex flex-col md:flex-row gap-3">
+                                <input id="invImageUrl" type="text" class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g., images/ingredients/fondant.png" />
+                                <input id="invImageFile" type="file" accept="image/*" class="flex-1 text-sm" />
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">
+                                Tip: If you want a local image, put it in the project and use a relative path (example above), or upload it here (saved as base64 in your browser).
+                            </p>
+                        </div>
+                        <div class="md:col-span-6 flex justify-end gap-3 pt-2">
+                            <button type="submit" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg">
+                                <i class="fas fa-plus mr-2"></i>Add
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Inventory List -->
+                <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-5 md:p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-display text-xl font-bold text-gray-800">
+                            <i class="fas fa-clipboard-list mr-2 text-[#D4AF37]"></i>Ingredients list
+                        </h3>
+                        <p class="text-xs text-gray-500">Stored locally in this browser (localStorage). Use &quot;Reset template&quot; to restore default list (Fondant, Flour, etc.) if needed.</p>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[900px]">
+                            <thead>
+                                <tr class="border-b-2 border-[#D4AF37]/20 text-left">
+                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Image</th>
+                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Ingredient</th>
+                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Qty</th>
+                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Unit</th>
+                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Reorder</th>
+                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Stock In/Out</th>
+                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryTableBody"></tbody>
+                        </table>
+
+                        <div id="inventoryEmpty" class="text-center py-10 text-gray-400 hidden">
+                            <i class="fas fa-box-open text-6xl mb-4 opacity-30"></i>
+                            <h3 class="text-xl font-semibold mb-2">No ingredients yet</h3>
+                            <p>Add your first ingredient above, or click &quot;Reset template&quot; to load the default list (Fondant, Flour, Sugar, etc.).</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/admin-order-ingredients.js"></script>
+    <script src="js/admin-inventory.js"></script>
+
+    <!-- Logout Modal -->
+    <div id="logoutModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">
+                <i class="fas fa-sign-out-alt text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2" style="color: #D4AF37;">Logout?</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to logout?</p>
+            <div class="flex space-x-4 justify-center">
+                <button onclick="closeLogoutModal()" class="px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">Cancel</button>
+                <button onclick="confirmLogout()" class="px-6 py-3 rounded-lg text-white font-semibold btn-primary">Logout</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

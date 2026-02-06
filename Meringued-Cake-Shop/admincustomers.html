@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customers - Admin - Meringued</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        :root {
+            --gold: #D4AF37;
+            --gold-dark: #B8941E;
+            --cream: #FFF8F0;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .font-display { font-family: 'Playfair Display', serif; }
+        .sidebar-active { background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); color: white !important; }
+        .sidebar-active:hover { background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%); color: white !important; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
+        <div class="p-6 border-b-2 border-[#D4AF37]/20">
+            <a href="admindashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">Meringued</a>
+            <p class="text-xs text-gray-500 mt-1">Admin Panel</p>
+        </div>
+        <nav class="flex-1 p-6">
+            <ul class="space-y-2">
+                <li>
+                    <a href="adminordering.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-shopping-bag w-5"></i><span>Orders</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="admininventory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-boxes-stacked w-5"></i><span>Inventory</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminhistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-history w-5"></i><span>Logs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="admincustomers.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium sidebar-active">
+                        <i class="fas fa-users w-5"></i><span>Customers</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminfeedback.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-comment-alt w-5"></i><span>Feedback</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminsettings.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-cog w-5"></i><span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="p-6 border-t-2 border-[#D4AF37]/20">
+            <button onclick="openLogoutModal()" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium w-full">
+                <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="ml-64 min-h-screen">
+        <div class="px-6 py-8 md:py-12">
+            <div class="mb-8">
+                <h1 class="font-display text-4xl md:text-5xl font-bold mb-2 text-[#D4AF37]">
+                    <i class="fas fa-users mr-3"></i>Customers
+                </h1>
+                <p class="text-gray-600">View who signed up or placed orders. Click &quot;View orders&quot; to see exactly what each customer ordered, quantities, reference images, and payment receipts.</p>
+            </div>
+
+            <div class="bg-white/90 rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-5 md:p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-display text-xl font-bold text-gray-800">
+                        <i class="fas fa-user-check mr-2 text-[#D4AF37]"></i>Customer list
+                    </h2>
+                    <p id="customersSource" class="text-xs text-gray-500"></p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[700px]">
+                        <thead>
+                            <tr class="border-b-2 border-[#D4AF37]/20 text-left">
+                                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Name</th>
+                                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Email</th>
+                                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Role</th>
+                                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Orders</th>
+                                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Last activity</th>
+                                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersTableBody"></tbody>
+                    </table>
+
+                    <div id="customersEmpty" class="text-center py-12 text-gray-400 hidden">
+                        <i class="fas fa-users text-6xl mb-4 opacity-30"></i>
+                        <h3 class="text-xl font-semibold mb-2">No customers yet</h3>
+                        <p>Customers will appear here once users sign up or place orders (depending on your setup).</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer orders modal: what they ordered, reference image, all details -->
+    <div id="customerOrdersModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b-2 border-[#D4AF37]/20 bg-[#FFF8F0]/50">
+                <h2 id="customerOrdersTitle" class="font-display text-xl font-bold text-[#D4AF37]"><i class="fas fa-shopping-bag mr-2"></i>Orders</h2>
+                <button type="button" onclick="window.closeCustomerOrdersModal()" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="customerOrdersContent" class="p-4 overflow-y-auto flex-1"></div>
+            <div class="p-4 border-t-2 border-[#D4AF37]/20 bg-gray-50">
+                <button type="button" onclick="window.closeCustomerOrdersModal()" class="w-full py-3 rounded-xl font-semibold text-white transition" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt view modal (from Customer orders) -->
+    <div id="receiptViewModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b-2 border-[#D4AF37]/20">
+                <h2 class="font-display text-xl font-bold text-[#D4AF37]"><i class="fas fa-file-image mr-2"></i>Payment receipt</h2>
+                <button type="button" onclick="window.closeReceiptViewModal()" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="receiptViewContent" class="p-4 overflow-y-auto text-center"></div>
+            <div class="p-4 border-t border-gray-200">
+                <button type="button" onclick="window.closeReceiptViewModal()" class="w-full py-2 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div id="logoutModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">
+                <i class="fas fa-sign-out-alt text-white text-3xl"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold mb-2" style="color: #D4AF37;">Logout?</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to logout?</p>
+            <div class="flex space-x-4 justify-center">
+                <button onclick="closeLogoutModal()" class="px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">Cancel</button>
+                <button onclick="confirmLogout()" class="px-6 py-3 rounded-lg text-white font-semibold" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('hidden');
+            document.getElementById('logoutModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.getElementById('logoutModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+        function confirmLogout() {
+            window.location.href = 'index.html';
+        }
+        document.getElementById('logoutModal').addEventListener('click', function(e) {
+            if (e.target === e.currentTarget) closeLogoutModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
+            if (!document.getElementById('logoutModal').classList.contains('hidden')) closeLogoutModal();
+            else if (window.closeReceiptViewModal && !document.getElementById('receiptViewModal').classList.contains('hidden')) window.closeReceiptViewModal();
+            else if (window.closeCustomerOrdersModal && !document.getElementById('customerOrdersModal').classList.contains('hidden')) window.closeCustomerOrdersModal();
+        });
+        document.getElementById('customerOrdersModal') && document.getElementById('customerOrdersModal').addEventListener('click', function(e) {
+            if (e.target === this && window.closeCustomerOrdersModal) window.closeCustomerOrdersModal();
+        });
+        document.getElementById('receiptViewModal') && document.getElementById('receiptViewModal').addEventListener('click', function(e) {
+            if (e.target === this && window.closeReceiptViewModal) window.closeReceiptViewModal();
+        });
+    </script>
+    <script type="module">
+        import { loadCustomers } from './js/controllers/customersController.js';
+        document.addEventListener('DOMContentLoaded', loadCustomers);
+    </script>
+</body>
+</html>

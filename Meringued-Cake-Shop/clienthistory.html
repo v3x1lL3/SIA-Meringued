@@ -18,8 +18,23 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #FFF8F0 0%, #FFE5E0 50%, #FFF0F5 100%);
         }
+        
+        .meringued-bg { position: relative; min-height: 100vh; overflow-x: hidden; background: transparent !important; }
+        .meringued-bg::before {
+            content: ''; position: fixed; inset: 0; z-index: -2;
+            background: linear-gradient(120deg, #FFF8F0 0%, #FFEDE6 20%, #FFE5E0 40%, #FFF0F5 60%, #FFE8E8 80%, #FFF8F0 100%);
+            background-size: 300% 300%;
+            animation: meringuedGradient 14s ease-in-out infinite;
+        }
+        .meringued-bg::after {
+            content: ''; position: fixed; width: 80vmax; height: 80vmax; border-radius: 50%;
+            top: -20vmax; right: -20vmax; z-index: -1; pointer-events: none;
+            background: radial-gradient(circle at 40% 40%, rgba(212,175,55,0.12) 0%, rgba(255,229,224,0.06) 45%, transparent 70%);
+            animation: meringuedOrb 18s ease-in-out infinite;
+        }
+        @keyframes meringuedGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        @keyframes meringuedOrb { 0%, 100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-6%,-3%) scale(1.05); } 66% { transform: translate(3%,-6%) scale(0.97); } }
         
         .font-display { font-family: 'Playfair Display', serif; }
         
@@ -70,7 +85,7 @@
         }
     </style>
 </head>
-<body>
+<body class="meringued-bg">
     <!-- Sidebar -->
     <aside id="clientSidebar" class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-300">
         <!-- Logo -->
@@ -109,7 +124,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                    <a href="clientsettings.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
                         <i class="fas fa-cog w-5"></i>
                         <span>Settings</span>
                     </a>
@@ -227,11 +242,17 @@
         <div class="container mx-auto px-6 text-center">
             <p class="font-display text-xl md:text-2xl font-bold text-[#D4AF37] mb-3">Meringued</p>
             <p class="text-gray-600 text-sm md:text-base mb-2">
-                <i class="fas fa-envelope mr-2"></i>info@meringued.com
-                <span class="mx-3">|</span>
-                <i class="fas fa-phone mr-2"></i>(555) 123-4567
+                <i class="fas fa-envelope mr-2"></i><a href="mailto:avadueyg@gmail.com" class="hover:text-[#D4AF37] transition">avadueyg@gmail.com</a>
+                <span class="mx-2 md:mx-3">|</span>
+                <i class="fas fa-phone mr-2"></i>0945 812 5225
+                <span class="mx-2 md:mx-3">|</span>
+                <i class="fas fa-phone mr-2"></i>0938 597 0991
             </p>
-            <p class="text-gray-500 text-xs md:text-sm mt-3">© 2024 Meringued. All rights reserved.</p>
+            <p class="text-gray-600 text-sm md:text-base mb-2"><i class="fas fa-clock mr-2"></i>Mon-Sun: 8AM - 6PM</p>
+            <p class="mb-2">
+                <a href="https://www.facebook.com/profile.php?id=100066926310810" target="_blank" rel="noopener noreferrer" class="inline-flex w-10 h-10 rounded-full items-center justify-center text-white hover:opacity-90 transition" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);" aria-label="Meringued on Facebook"><i class="fab fa-facebook-f"></i></a>
+            </p>
+            <p class="text-gray-500 text-xs md:text-sm mt-3">© 2026 Meringued. All rights reserved.</p>
         </div>
     </footer>
 

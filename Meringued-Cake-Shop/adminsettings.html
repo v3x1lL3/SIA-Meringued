@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Admin - Meringued</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        :root { --gold: #D4AF37; --gold-dark: #B8941E; --cream: #FFF8F0; }
+        body { font-family: 'Inter', sans-serif; }
+        .font-display { font-family: 'Playfair Display', serif; }
+        .sidebar-active { background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); color: white !important; }
+        .sidebar-active:hover { background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%); color: white !important; }
+        .btn-gold { background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); }
+    </style>
+</head>
+<body>
+    <aside class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
+        <div class="p-6 border-b-2 border-[#D4AF37]/20">
+            <a href="admindashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">Meringued</a>
+            <p class="text-xs text-gray-500 mt-1">Admin Panel</p>
+        </div>
+        <nav class="flex-1 p-6">
+            <ul class="space-y-2">
+                <li><a href="adminordering.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-shopping-bag w-5"></i><span>Orders</span></a></li>
+                <li><a href="admininventory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-boxes-stacked w-5"></i><span>Inventory</span></a></li>
+                <li><a href="adminhistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-history w-5"></i><span>Logs</span></a></li>
+                <li><a href="admincustomers.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-users w-5"></i><span>Customers</span></a></li>
+                <li><a href="adminfeedback.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-comment-alt w-5"></i><span>Feedback</span></a></li>
+                <li><a href="adminsettings.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium sidebar-active"><i class="fas fa-cog w-5"></i><span>Settings</span></a></li>
+            </ul>
+        </nav>
+        <div class="p-6 border-t-2 border-[#D4AF37]/20">
+            <button onclick="openLogoutModal()" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium w-full"><i class="fas fa-sign-out-alt w-5"></i><span>Logout</span></button>
+        </div>
+    </aside>
+
+    <div class="ml-64 min-h-screen">
+        <div class="px-6 py-8 md:py-12">
+            <h1 class="font-display text-4xl md:text-5xl font-bold mb-2 text-[#D4AF37]"><i class="fas fa-cog mr-3"></i>Settings</h1>
+            <p class="text-gray-600 mb-8">Configure your cake business: contact info, hours, delivery, payment, and order rules. Stored in this browser.</p>
+
+            <form id="adminSettingsForm" class="space-y-6">
+                <!-- Business information -->
+                <div class="bg-white rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-6">
+                    <h2 class="font-display text-xl font-bold text-[#D4AF37] mb-4"><i class="fas fa-store mr-2"></i>Business information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Shop name</label><input type="text" id="shopName" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="e.g. Meringued" /></div>
+                        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Tagline</label><input type="text" id="shopTagline" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="e.g. Artisanal custom cakes" /></div>
+                        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Phone</label><input type="tel" id="shopPhone" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="+63 9XX XXX XXXX" /></div>
+                        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Email</label><input type="email" id="shopEmail" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="hello@meringued.com" /></div>
+                        <div class="md:col-span-2"><label class="block text-sm font-semibold text-gray-700 mb-1">Address</label><input type="text" id="shopAddress" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="Full address for pickup/delivery" /></div>
+                        <div class="md:col-span-2"><label class="block text-sm font-semibold text-gray-700 mb-1">Facebook URL</label><input type="url" id="shopFacebook" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="https://facebook.com/..." /></div>
+                    </div>
+                </div>
+
+                <!-- Operating hours -->
+                <div class="bg-white rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-6">
+                    <h2 class="font-display text-xl font-bold text-[#D4AF37] mb-4"><i class="fas fa-clock mr-2"></i>Operating hours</h2>
+                    <div class="space-y-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Hours (e.g. Tue–Sat 9am–6pm, Sun by order)</label>
+                        <input type="text" id="operatingHours" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="Describe your opening hours" />
+                    </div>
+                </div>
+
+                <!-- Delivery & pickup -->
+                <div class="bg-white rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-6">
+                    <h2 class="font-display text-xl font-bold text-[#D4AF37] mb-4"><i class="fas fa-truck mr-2"></i>Delivery & pickup</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex items-center gap-2"><input type="checkbox" id="deliveryEnabled" class="rounded border-gray-300 text-[#D4AF37] focus:ring-[#D4AF37]" checked /><label for="deliveryEnabled" class="text-sm font-medium text-gray-700">Offer delivery</label></div>
+                        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Delivery fee (₱)</label><input type="number" id="deliveryFee" min="0" step="1" value="0" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" /></div>
+                        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Free delivery above (₱)</label><input type="number" id="freeDeliveryAbove" min="0" step="1" value="0" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="0 = no free delivery" /></div>
+                        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Max delivery radius (km)</label><input type="number" id="deliveryRadiusKm" min="0" step="0.5" value="10" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" /></div>
+                    </div>
+                </div>
+
+                <!-- Payment -->
+                <div class="bg-white rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-6">
+                    <h2 class="font-display text-xl font-bold text-[#D4AF37] mb-4"><i class="fas fa-credit-card mr-2"></i>Payment</h2>
+                    <div class="space-y-3">
+                        <p class="text-sm text-gray-600">Accepted methods (shown to customers)</p>
+                        <div class="flex flex-wrap gap-4">
+                            <label class="flex items-center gap-2"><input type="checkbox" name="paymentMethod" value="Cash on Delivery" class="rounded border-gray-300 text-[#D4AF37] focus:ring-[#D4AF37]" checked /><span class="text-sm">Cash on Delivery</span></label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="paymentMethod" value="Online Payment" class="rounded border-gray-300 text-[#D4AF37] focus:ring-[#D4AF37]" checked /><span class="text-sm">Online / Bank transfer</span></label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="paymentMethod" value="GCash" class="rounded border-gray-300 text-[#D4AF37] focus:ring-[#D4AF37]" /><span class="text-sm">GCash</span></label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="paymentMethod" value="Pick up - Pay on pickup" class="rounded border-gray-300 text-[#D4AF37] focus:ring-[#D4AF37]" checked /><span class="text-sm">Pay on pickup</span></label>
+                        </div>
+                        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Payment / bank transfer instructions (optional)</label><textarea id="paymentInstructions" rows="3" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="e.g. BPI 1234-5678-90, Account name: ..."></textarea></div>
+                    </div>
+                </div>
+
+                <!-- Order rules -->
+                <div class="bg-white rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-6">
+                    <h2 class="font-display text-xl font-bold text-[#D4AF37] mb-4"><i class="fas fa-calendar-check mr-2"></i>Order rules</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Minimum advance order (days)</label><input type="number" id="minAdvanceDays" min="0" value="2" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="e.g. 2" /></div>
+                        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Minimum order amount (₱)</label><input type="number" id="minOrderAmount" min="0" step="1" value="0" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" /></div>
+                        <div class="md:col-span-2"><label class="block text-sm font-semibold text-gray-700 mb-1">Cancellation policy (short text)</label><input type="text" id="cancellationPolicy" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" placeholder="e.g. Cancel at least 24 hours before for full refund" /></div>
+                    </div>
+                </div>
+
+                <!-- Notifications -->
+                <div class="bg-white rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-6">
+                    <h2 class="font-display text-xl font-bold text-[#D4AF37] mb-4"><i class="fas fa-bell mr-2"></i>Notifications</h2>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2"><input type="checkbox" id="notifyNewOrder" class="rounded border-gray-300 text-[#D4AF37] focus:ring-[#D4AF37]" checked /><span class="text-sm font-medium text-gray-700">Notify on new order (in-app; email requires backend)</span></label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="notifyLowStock" class="rounded border-gray-300 text-[#D4AF37] focus:ring-[#D4AF37]" checked /><span class="text-sm font-medium text-gray-700">Alert when ingredient stock is low</span></label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" class="px-6 py-3 rounded-xl font-semibold text-white btn-gold hover:opacity-90 transition shadow-lg"><i class="fas fa-save mr-2"></i>Save all settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="logoutModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 btn-gold"><i class="fas fa-sign-out-alt text-white text-3xl"></i></div>
+            <h3 class="font-display text-2xl font-bold mb-2 text-[#D4AF37]">Logout?</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to logout?</p>
+            <div class="flex space-x-4 justify-center">
+                <button onclick="closeLogoutModal()" class="px-6 py-3 rounded-lg font-semibold bg-gray-200 hover:bg-gray-300 transition">Cancel</button>
+                <button onclick="confirmLogout()" class="px-6 py-3 rounded-lg font-semibold text-white btn-gold">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'adminSettings';
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                const s = raw ? JSON.parse(raw) : {};
+                document.getElementById('shopName').value = s.shopName || 'Meringued';
+                document.getElementById('shopTagline').value = s.shopTagline || '';
+                document.getElementById('shopPhone').value = s.shopPhone || '';
+                document.getElementById('shopEmail').value = s.shopEmail || '';
+                document.getElementById('shopAddress').value = s.shopAddress || '';
+                document.getElementById('shopFacebook').value = s.shopFacebook || 'https://www.facebook.com/profile.php?id=100066926310810';
+                document.getElementById('operatingHours').value = s.operatingHours || '';
+                document.getElementById('deliveryEnabled').checked = s.deliveryEnabled !== false;
+                document.getElementById('deliveryFee').value = s.deliveryFee != null ? s.deliveryFee : 0;
+                document.getElementById('freeDeliveryAbove').value = s.freeDeliveryAbove != null ? s.freeDeliveryAbove : 0;
+                document.getElementById('deliveryRadiusKm').value = s.deliveryRadiusKm != null ? s.deliveryRadiusKm : 10;
+                document.querySelectorAll('input[name="paymentMethod"]').forEach(function(cb) {
+                    const list = s.paymentMethods || ['Cash on Delivery', 'Online Payment', 'Pick up - Pay on pickup'];
+                    cb.checked = list.indexOf(cb.value) !== -1;
+                });
+                document.getElementById('paymentInstructions').value = s.paymentInstructions || '';
+                document.getElementById('minAdvanceDays').value = s.minAdvanceDays != null ? s.minAdvanceDays : 2;
+                document.getElementById('minOrderAmount').value = s.minOrderAmount != null ? s.minOrderAmount : 0;
+                document.getElementById('cancellationPolicy').value = s.cancellationPolicy || '';
+                document.getElementById('notifyNewOrder').checked = s.notifyNewOrder !== false;
+                document.getElementById('notifyLowStock').checked = s.notifyLowStock !== false;
+            } catch (e) { console.warn('Load settings error', e); }
+        }
+        function saveSettings(e) {
+            e.preventDefault();
+            const paymentMethods = [];
+            document.querySelectorAll('input[name="paymentMethod"]:checked').forEach(function(cb) { paymentMethods.push(cb.value); });
+            const s = {
+                shopName: document.getElementById('shopName').value.trim(),
+                shopTagline: document.getElementById('shopTagline').value.trim(),
+                shopPhone: document.getElementById('shopPhone').value.trim(),
+                shopEmail: document.getElementById('shopEmail').value.trim(),
+                shopAddress: document.getElementById('shopAddress').value.trim(),
+                shopFacebook: document.getElementById('shopFacebook').value.trim(),
+                operatingHours: document.getElementById('operatingHours').value.trim(),
+                deliveryEnabled: document.getElementById('deliveryEnabled').checked,
+                deliveryFee: Number(document.getElementById('deliveryFee').value) || 0,
+                freeDeliveryAbove: Number(document.getElementById('freeDeliveryAbove').value) || 0,
+                deliveryRadiusKm: Number(document.getElementById('deliveryRadiusKm').value) || 10,
+                paymentMethods: paymentMethods,
+                paymentInstructions: document.getElementById('paymentInstructions').value.trim(),
+                minAdvanceDays: Number(document.getElementById('minAdvanceDays').value) || 0,
+                minOrderAmount: Number(document.getElementById('minOrderAmount').value) || 0,
+                cancellationPolicy: document.getElementById('cancellationPolicy').value.trim(),
+                notifyNewOrder: document.getElementById('notifyNewOrder').checked,
+                notifyLowStock: document.getElementById('notifyLowStock').checked
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+            alert('Settings saved. They are stored in this browser.');
+        }
+        function openLogoutModal() { document.getElementById('logoutModal').classList.remove('hidden'); document.getElementById('logoutModal').classList.add('flex'); document.body.style.overflow = 'hidden'; }
+        function closeLogoutModal() { document.getElementById('logoutModal').classList.add('hidden'); document.getElementById('logoutModal').classList.remove('flex'); document.body.style.overflow = 'auto'; }
+        function confirmLogout() { window.location.href = 'index.html'; }
+        document.getElementById('adminSettingsForm').addEventListener('submit', saveSettings);
+        document.addEventListener('DOMContentLoaded', loadSettings);
+    </script>
+</body>
+</html>

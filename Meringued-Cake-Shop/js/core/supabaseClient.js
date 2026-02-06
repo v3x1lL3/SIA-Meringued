@@ -1,11 +1,16 @@
 // Core Supabase client setup for the whole app (models import this).
-// TODO: Replace these placeholders with your actual Supabase project values.
-// You can find them in Supabase under: Project Settings → API.
+// Signup/Login use Supabase Auth. If URL/key are placeholders, you get "failed to fetch".
+// - To use the app without Supabase: leave placeholders; signup/login use localStorage (local mode).
+// - To use real auth: replace below with your project values from Supabase → Project Settings → API.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = 'https://YOUR-PROJECT-REF.supabase.co';
 const SUPABASE_ANON_KEY = 'YOUR_ANON_PUBLIC_KEY';
+
+export const isSupabaseConfigured =
+  !SUPABASE_URL.startsWith('https://YOUR-PROJECT-REF') &&
+  SUPABASE_ANON_KEY !== 'YOUR_ANON_PUBLIC_KEY';
 
 if (SUPABASE_URL.startsWith('https://YOUR-PROJECT-REF')) {
   console.warn(

@@ -88,3 +88,13 @@ export async function getProfileByUserId(userId) {
   return data;
 }
 
+/** List all profiles (e.g. for admin Customers page – users who have signed up). */
+export async function listProfiles() {
+  const { data, error } = await supabase
+    .from(PROFILES_TABLE)
+    .select('*')
+    .order('id', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+

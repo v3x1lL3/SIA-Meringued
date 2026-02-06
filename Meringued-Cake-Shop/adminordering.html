@@ -19,8 +19,23 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #FFF8F0 0%, #FFE5E0 50%, #FFF0F5 100%);
         }
+        
+        .meringued-bg { position: relative; min-height: 100vh; overflow-x: hidden; background: transparent !important; }
+        .meringued-bg::before {
+            content: ''; position: fixed; inset: 0; z-index: -2;
+            background: linear-gradient(120deg, #FFF8F0 0%, #FFEDE6 20%, #FFE5E0 40%, #FFF0F5 60%, #FFE8E8 80%, #FFF8F0 100%);
+            background-size: 300% 300%;
+            animation: meringuedGradient 14s ease-in-out infinite;
+        }
+        .meringued-bg::after {
+            content: ''; position: fixed; width: 80vmax; height: 80vmax; border-radius: 50%;
+            top: -20vmax; right: -20vmax; z-index: -1; pointer-events: none;
+            background: radial-gradient(circle at 40% 40%, rgba(212,175,55,0.12) 0%, rgba(255,229,224,0.06) 45%, transparent 70%);
+            animation: meringuedOrb 18s ease-in-out infinite;
+        }
+        @keyframes meringuedGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        @keyframes meringuedOrb { 0%, 100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-6%,-3%) scale(1.05); } 66% { transform: translate(3%,-6%) scale(0.97); } }
         
         .font-display { font-family: 'Playfair Display', serif; }
         
@@ -57,7 +72,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="meringued-bg min-h-screen">
     <!-- Sidebar -->
     <aside class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
         <!-- Logo -->
@@ -78,19 +93,31 @@
                     </a>
                 </li>
                 <li>
+                    <a href="admininventory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-boxes-stacked w-5"></i>
+                        <span>Inventory</span>
+                    </a>
+                </li>
+                <li>
                     <a href="adminhistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium w-full cursor-pointer">
                         <i class="fas fa-history w-5"></i>
                         <span>Logs</span>
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                    <a href="admincustomers.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
                         <i class="fas fa-users w-5"></i>
                         <span>Customers</span>
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                    <a href="adminfeedback.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-comment-alt w-5"></i>
+                        <span>Feedback</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminsettings.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
                         <i class="fas fa-cog w-5"></i>
                         <span>Settings</span>
                     </a>
@@ -133,6 +160,7 @@
                                     <th class="text-left py-4 px-4 font-semibold text-gray-700">Date Ordered</th>
                                     <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
                                     <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery</th>
+                                    <th class="text-left py-4 px-4 font-semibold text-gray-700">Contact</th>
                                     <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
                                     <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
                                     <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
@@ -278,6 +306,7 @@
         </div>
     </div>
 
+    <script src="js/admin-order-ingredients.js"></script>
     <script>
         let orders = [];
         let currentOrderId = null; // For status change
@@ -285,6 +314,11 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadOrders();
+            // Restore ingredients for any orders that were cancelled (e.g. by client) so stock is correct
+            if (window.OrderIngredients && window.OrderIngredients.restoreCancelledOrdersIngredientStock) {
+                window.OrderIngredients.restoreCancelledOrdersIngredientStock();
+                loadOrders();
+            }
             renderOrdersTable();
         });
 
@@ -339,8 +373,10 @@
                                 </button>
                             </td>
                             <td class="py-4 px-4 text-gray-700">
-                                ${escapeHtml(order.deliveryType || 'Pick up')}
+                                <div class="font-medium">${escapeHtml(order.deliveryType || 'Pick up')}</div>
+                                ${(order.deliveryType === 'Deliver' && order.deliveryAddress) ? `<div class="text-xs text-gray-600 mt-1 max-w-[200px]" title="${escapeHtml(order.deliveryAddress).replace(/"/g, '&quot;')}"><i class="fas fa-map-marker-alt mr-1 text-[#D4AF37]"></i>${escapeHtml(order.deliveryAddress)}</div>` : ''}
                             </td>
+                            <td class="py-4 px-4 text-gray-700 text-sm">${order.customerPhone ? `<a href="tel:${escapeHtml(order.customerPhone).replace(/\s/g, '')}" class="text-[#D4AF37] hover:underline" title="Call">${escapeHtml(order.customerPhone)}</a>` : '—'}</td>
                             <td class="py-4 px-4 text-gray-700">
                                 ${order.paymentMethod === 'Online Payment' && order.receipt ? 
                                     `<button onclick="viewReceipt(${order.id})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">
@@ -415,8 +451,8 @@
                             <p class="font-semibold text-gray-800">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : 'N/A'}</p>
                         </div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4">
-                            <p class="text-xs text-gray-500 mb-1">Flavor</p>
-                            <p class="font-semibold text-gray-800">${escapeHtml(order.flavor || 'N/A')}</p>
+                            <p class="text-xs text-gray-500 mb-1">Cake</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.flavor || order.cake || 'N/A')}</p>
                         </div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4">
                             <p class="text-xs text-gray-500 mb-1">Frosting</p>
@@ -453,6 +489,18 @@
                             <p class="text-xs text-gray-500 mb-1">Delivery Type</p>
                             <p class="font-semibold text-gray-800">${escapeHtml(order.deliveryType || 'Pick up')}</p>
                         </div>
+                        ${(order.deliveryType === 'Deliver' && order.deliveryAddress) ? `
+                        <div class="bg-[#FFF8F0] rounded-lg p-4 col-span-2">
+                            <p class="text-xs text-gray-500 mb-1"><i class="fas fa-map-marker-alt mr-1 text-[#D4AF37]"></i>Delivery address</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(order.deliveryAddress)}</p>
+                        </div>
+                        ` : ''}
+                        ${order.customerPhone ? `
+                        <div class="bg-[#FFF8F0] rounded-lg p-4">
+                            <p class="text-xs text-gray-500 mb-1"><i class="fas fa-phone mr-1 text-[#D4AF37]"></i>Contact number</p>
+                            <p class="font-semibold text-gray-800"><a href="tel:${escapeHtml(order.customerPhone).replace(/\s/g, '')}" class="text-[#D4AF37] hover:underline">${escapeHtml(order.customerPhone)}</a></p>
+                        </div>
+                        ` : ''}
                         <div class="bg-[#FFF8F0] rounded-lg p-4">
                             <p class="text-xs text-gray-500 mb-1">Payment Method</p>
                             <p class="font-semibold text-gray-800">${escapeHtml(order.paymentMethod || 'Online Payment')}</p>
@@ -642,12 +690,27 @@
                 return;
             }
             
-            // Update order status
-            orders[orderIndex].status = newStatus;
+// Update order status
+            const order = orders[orderIndex];
+            order.status = newStatus;
+
+            // Ingredients: deduct when confirming (Pending -> Acknowledge/Baking/Ready/Completed), restore when cancelling
+            if (window.OrderIngredients) {
+                if (newStatus === 'Cancelled') {
+                    if (order.ingredientsDeducted) {
+                        window.OrderIngredients.restoreIngredientsForOrder(order);
+                        order.ingredientsDeducted = false;
+                    }
+                } else if (currentStatus === 'Pending' && !order.ingredientsDeducted) {
+                    window.OrderIngredients.deductIngredientsForOrder(order);
+                    order.ingredientsDeducted = true;
+                }
+            }
+
             localStorage.setItem('customerOrders', JSON.stringify(orders));
             renderOrdersTable();
             closeStatusModal();
-            
+
             // Show success message
             showToast('Order status updated successfully!');
         }

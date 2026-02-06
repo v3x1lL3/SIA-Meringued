@@ -43,8 +43,24 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #FFF8F0 0%, #FFE5E0 50%, #FFF0F5 100%);
         }
+        
+        /* Animated theme background (inline so it always loads) */
+        .meringued-bg { position: relative; min-height: 100vh; overflow-x: hidden; background: transparent !important; }
+        .meringued-bg::before {
+            content: ''; position: fixed; inset: 0; z-index: -2;
+            background: linear-gradient(120deg, #FFF8F0 0%, #FFEDE6 20%, #FFE5E0 40%, #FFF0F5 60%, #FFE8E8 80%, #FFF8F0 100%);
+            background-size: 300% 300%;
+            animation: meringuedGradient 14s ease-in-out infinite;
+        }
+        .meringued-bg::after {
+            content: ''; position: fixed; width: 80vmax; height: 80vmax; border-radius: 50%;
+            top: -20vmax; right: -20vmax; z-index: -1; pointer-events: none;
+            background: radial-gradient(circle at 40% 40%, rgba(212,175,55,0.12) 0%, rgba(255,229,224,0.06) 45%, transparent 70%);
+            animation: meringuedOrb 18s ease-in-out infinite;
+        }
+        @keyframes meringuedGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        @keyframes meringuedOrb { 0%, 100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-6%,-3%) scale(1.05); } 66% { transform: translate(3%,-6%) scale(0.97); } }
         
         .font-display {
             font-family: 'Playfair Display', serif;
@@ -436,18 +452,21 @@
         }
     </style>
 </head>
-<body class="text-main scroll-smooth">
+<body class="meringued-bg text-main scroll-smooth">
     <!-- Navigation -->
     <nav class="navbar fixed w-full z-50 py-4 px-6 border-b border-gold/20">
         <div class="container mx-auto flex justify-between items-center">
             <a href="#home" class="navbar-brand font-display text-2xl gold-text font-bold cursor-pointer">
-                <span class="text-main">M</span>eringued
+                Meringued
             </a>
-            <div class="hidden md:flex space-x-8 text-main">
+            <div class="hidden md:flex items-center space-x-8 text-main">
                 <a href="#home" class="nav-link">Home</a>
                 <a href="#about" class="nav-link">About</a>
                 <a href="#gallery" class="nav-link">Gallery</a>
                 <a href="#order" class="nav-link">Order</a>
+                <button onclick="openAuthModal()" class="btn-gold text-white font-semibold px-5 py-2.5 rounded-full text-sm hover:shadow-lg transition">
+                    Login / Sign Up
+                </button>
             </div>
             <button id="menuBtn" class="md:hidden text-gold hover:scale-110 transition-transform">
                 <i class="fas fa-bars text-2xl"></i>
@@ -458,6 +477,9 @@
             <a href="#about" class="mobile-nav-link">About</a>
             <a href="#gallery" class="mobile-nav-link">Gallery</a>
             <a href="#order" class="mobile-nav-link">Order</a>
+            <button onclick="openAuthModal(); document.getElementById('mobileMenu').classList.add('hidden');" class="btn-gold text-white font-semibold w-full py-3 rounded-lg mt-2">
+                Login / Sign Up
+            </button>
         </div>
     </nav>
 
@@ -471,10 +493,14 @@
                 <p class="text-2xl md:text-3xl mb-2 text-main">Artisanal Visual Artistry</p>
                 <p class="text-xl md:text-2xl gold-text font-semibold">CUSTOM CAKES</p>
             </div>
-            <p class="text-lg md:text-xl text-gray-700 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Instagramable and quirky. Welcome to my world of fondant! I'm a self-taught cake artist. 
-                Every pro was once an amateur.
-            </p>
+            <blockquote class="max-w-2xl mx-auto mb-8">
+                <p class="text-lg md:text-xl text-gray-700 leading-relaxed italic">
+                    "Instagramable and quirky. Welcome to my world of fondant! I'm a self-taught cake artist. Every pro was once an amateur."
+                </p>
+                <footer class="mt-4 text-gray-600 text-base md:text-lg font-medium not-italic">
+                    — Ava Shella Guevarra <span class="gold-text">(Founder)</span>
+                </footer>
+            </blockquote>
             <button onclick="openOrderModal()" class="btn-gold text-white font-semibold px-8 py-4 rounded-full text-lg hover:shadow-xl transition">
                 Order Yours Now <i class="fas fa-arrow-right ml-2"></i>
             </button>
@@ -828,14 +854,8 @@
                         Every cake tells a story, let us help you tell yours!
                     </p>
                     <div class="flex space-x-4">
-                        <a href="https://facebook.com" target="_blank" class="w-10 h-10 rounded-full gold-bg flex items-center justify-center text-white hover:shadow-lg transition">
+                        <a href="https://www.facebook.com/profile.php?id=100066926310810" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full gold-bg flex items-center justify-center text-white hover:shadow-lg transition" aria-label="Meringued on Facebook">
                             <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a href="https://instagram.com" target="_blank" class="w-10 h-10 rounded-full gold-bg flex items-center justify-center text-white hover:shadow-lg transition">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                        <a href="https://twitter.com" target="_blank" class="w-10 h-10 rounded-full gold-bg flex items-center justify-center text-white hover:shadow-lg transition">
-                            <i class="fab fa-twitter"></i>
                         </a>
                     </div>
                 </div>
@@ -855,22 +875,26 @@
                     <ul class="space-y-3 text-gray-600 text-sm">
                         <li class="flex items-start">
                             <i class="fas fa-envelope gold-text mr-2 mt-1"></i>
-                            <span>info@meringued.com</span>
+                            <a href="mailto:avadueyg@gmail.com" class="hover:gold-text transition">avadueyg@gmail.com</a>
                         </li>
                         <li class="flex items-start">
                             <i class="fas fa-phone gold-text mr-2 mt-1"></i>
-                            <span>+1 (555) 123-4567</span>
+                            <span>0945 812 5225</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-phone gold-text mr-2 mt-1"></i>
+                            <span>0938 597 0991</span>
                         </li>
                         <li class="flex items-start">
                             <i class="fas fa-clock gold-text mr-2 mt-1"></i>
-                            <span>Mon-Sat: 9AM - 6PM</span>
+                            <span>Mon-Sun: 8AM - 6PM</span>
                         </li>
                     </ul>
                 </div>
             </div>
             
             <div class="border-t border-gold/20 pt-8 text-center">
-                <p class="text-gray-500 text-sm">© 2024 Meringued. All rights reserved. | Made with <i class="fas fa-heart gold-text"></i> and lots of sugar!</p>
+                <p class="text-gray-500 text-sm">© 2026 Meringued. All rights reserved. | Made with <i class="fas fa-heart gold-text"></i> and lots of sugar!</p>
             </div>
         </div>
     </footer>
@@ -1001,6 +1025,11 @@
         });
 
         // Modal Functions
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+            showLogin();
+        }
+
         function openOrderModal() {
             document.getElementById('authModal').classList.add('active');
             showLogin();
