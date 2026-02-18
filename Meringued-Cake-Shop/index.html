@@ -24,7 +24,6 @@
     
     <!-- Favicon (add your own favicon.ico file) -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -889,6 +888,11 @@
                             <i class="fas fa-clock gold-text mr-2 mt-1"></i>
                             <span>Mon-Sun: 8AM - 6PM</span>
                         </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-map-marker-alt gold-text mr-2 mt-1"></i>
+                            <span id="footerAddressText" class="mr-2">Davao City</span>
+                            <a id="footerMapLink" href="https://www.google.com/maps?q=7.079683,125.539021" target="_blank" rel="noopener noreferrer" class="gold-text hover:underline">Get directions</a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -1006,20 +1010,17 @@
         // Smooth Scrolling
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+        
+                if (href === "#") return; 
+
                 e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
+                const target = document.querySelector(href);
                 if (target) {
                     target.scrollIntoView({
                         behavior: 'smooth',
                         block: 'start'
                     });
-                    // Close mobile menu if open
-                    document.getElementById('mobileMenu').classList.add('hidden');
-                    
-                    // Update active link after scroll
-                    setTimeout(() => {
-                        setActiveNavLink();
-                    }, 500);
                 }
             });
         });
@@ -1170,8 +1171,24 @@
         });
     </script>
 
-    <!-- Auth controller (Supabase-based login & signup) -->
-    <script type="module" src="js/controllers/authController.js"></script>
+    <!-- Footer location from admin settings (same as Contact Us / pickup location) -->
+    <script>
+        (function() {
+            try {
+                var raw = localStorage.getItem('adminSettings');
+                var s = raw ? JSON.parse(raw) : {};
+                var lat = s.shopLat != null ? Number(s.shopLat) : 7.079683;
+                var lng = s.shopLng != null ? Number(s.shopLng) : 125.539021;
+                var mapLink = document.getElementById('footerMapLink');
+                var addressText = document.getElementById('footerAddressText');
+                if (mapLink) mapLink.href = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+                if (addressText && s.shopAddress) addressText.textContent = s.shopAddress;
+            } catch (e) {}
+        })();
+    </script>
+
+    <!-- Auth controller (local login & signup) -->
+<script type="module" src="js/controllers/authController.js"></script>
 </body>
 </html>
 

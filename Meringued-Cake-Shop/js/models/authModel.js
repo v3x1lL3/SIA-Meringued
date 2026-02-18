@@ -1,100 +1,58 @@
-// Auth model: wraps Supabase auth and profile access.
+// Auth model: login/signup via Supabase Auth.
 
 import { supabase } from '../core/supabaseClient.js';
 
-const PROFILES_TABLE = 'profiles';
+function profileFromUser(user) {
+  if (!user) return null;
+  const meta = user.user_metadata || {};
+  return {
+    id: user.id,
+    name: meta.full_name || user.email?.split('@')[0] || '',
+    email: user.email,
+    role: meta.role || 'customer',
+  };
+}
 
 export async function signUpWithEmail({ email, password, fullName }) {
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: email.trim(),
     password,
-    options: {
-      data: {
-        full_name: fullName,
-      },
-    },
+    options: { data: { full_name: fullName.trim(), role: 'customer' } },
   });
-
-  if (error) throw error;
-
-  const user = data.user;
-  if (!user) return { user: null, profile: null };
-
-  // Create a default profile row for this user (role = customer by default).
-  const { data: profile, error: profileError } = await supabase
-    .from(PROFILES_TABLE)
-    .insert({
-      id: user.id,
-      role: 'customer',
-      name: fullName,
-      email,
-    })
-    .select()
-    .single();
-
-  if (profileError) {
-    // Do not block signup on profile insert, but log it.
-    console.warn('[AuthModel] Failed to insert profile row:', profileError);
+  if (error) {
+    const err = new Error(error.message);
+    err.name = 'AuthError';
+    throw err;
   }
-
-  return { user, profile: profile ?? null };
+  const profile = profileFromUser(data.user);
+  return { user: { id: data.user.id, email: data.user.email }, session: data.session, profile };
 }
 
 export async function signInWithEmail({ email, password }) {
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: email.trim(),
     password,
   });
-
-  if (error) throw error;
-
-  const user = data.user ?? null;
-  const profile = user ? await getProfileByUserId(user.id) : null;
-
-  return { user, profile };
-}
-
-export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  if (error) {
+    const err = new Error(error.message);
+    err.name = 'AuthError';
+    throw err;
+  }
+  const profile = profileFromUser(data.user);
+  return { user: { id: data.user.id, email: data.user.email }, profile };
 }
 
 export async function getSessionWithProfile() {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error) throw error;
-  if (!session?.user) return { user: null, profile: null };
-
-  const user = session.user;
-  const profile = await getProfileByUserId(user.id);
-  return { user, profile };
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session?.user) return { user: null, profile: null };
+  const profile = profileFromUser(session.user);
+  return { user: { id: session.user.id, email: session.user.email }, profile };
 }
 
-export async function getProfileByUserId(userId) {
-  const { data, error } = await supabase
-    .from(PROFILES_TABLE)
-    .select('*')
-    .eq('id', userId)
-    .single();
-
-  if (error) {
-    console.warn('[AuthModel] getProfileByUserId error:', error.message);
-    return null;
-  }
-
-  return data;
-}
-
-/** List all profiles (e.g. for admin Customers page – users who have signed up). */
 export async function listProfiles() {
-  const { data, error } = await supabase
-    .from(PROFILES_TABLE)
-    .select('*')
-    .order('id', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  return [];
 }
 
+export function signOut() {
+  return supabase.auth.signOut();
+}
