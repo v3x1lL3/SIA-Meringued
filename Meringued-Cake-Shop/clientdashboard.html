@@ -569,6 +569,8 @@
         </div>
     </footer>
     
+    <script src="js/core/clientStorageKeys.js"></script>
+    <script type="module" src="js/supabaseOrdersBridge.js"></script>
     <script>
         // Application State
         let orders = [];
@@ -625,9 +627,10 @@
             initializeReceiptUpload();
         }
         
-        // Load cart from localStorage
+        // Load cart from localStorage (per-user key)
         function loadCart() {
-            const storedCart = localStorage.getItem('cart');
+            const key = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+            const storedCart = localStorage.getItem(key);
             if (storedCart) {
                 cart = JSON.parse(storedCart);
             }
@@ -684,9 +687,10 @@
             document.getElementById('sidebarCustomerName').textContent = customerName;
         }
         
-        // Load orders from localStorage
+        // Load orders from localStorage (per-user key)
         function loadOrders() {
-            const storedOrders = localStorage.getItem('customerOrders');
+            const key = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
+            const storedOrders = localStorage.getItem(key);
             if (storedOrders) {
                 orders = JSON.parse(storedOrders);
             }
@@ -985,7 +989,7 @@
         // Remove item from cart
         function removeFromCart(index) {
             cart.splice(index, 1);
-            localStorage.setItem('cart', JSON.stringify(cart));
+            localStorage.setItem(typeof getCartKey === 'function' ? getCartKey() : 'cart', JSON.stringify(cart));
             updateCartBadge();
             renderCart();
             showToast('Item removed from cart', 'info');
@@ -1109,46 +1113,51 @@
         
         // Process cart orders (with or without receipt)
         function processCartOrders(receiptData, receiptFileName) {
-            // Get existing orders
-            orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
-            
+            const ordersKey = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
+            const cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+            orders = JSON.parse(localStorage.getItem(ordersKey)) || [];
             const orderGroupId = `ORD-${Date.now()}`;
-            // Add all cart items to orders
+            const uid = localStorage.getItem('userId') || null;
             cart.forEach(item => {
                 const orderData = {
                     id: Date.now() + Math.floor(Math.random()*10000),
                     orderGroupId,
                     ...item,
                     status: 'Pending',
-                    date: new Date().toLocaleDateString()
+                    date: new Date().toLocaleDateString(),
+                    userId: uid
                 };
-                
-                // If item has Online Payment, attach receipt
                 if (item.paymentMethod === 'Online Payment') {
                     orderData.receipt = receiptData;
                     orderData.receiptFileName = receiptFileName;
                 }
-                
                 orders.push(orderData);
             });
-            
-            // Save orders
-            localStorage.setItem('customerOrders', JSON.stringify(orders));
-            
-            // Clear cart
+            localStorage.setItem(ordersKey, JSON.stringify(orders));
+            var newCount = cart.length;
+            if (typeof window.syncOrderToSupabase === 'function') {
+                for (var i = orders.length - newCount; i < orders.length; i++) {
+                    (function (o) {
+                        window.syncOrderToSupabase(o).then(function (row) {
+                            if (row && row.id) {
+                                var list = JSON.parse(localStorage.getItem(ordersKey) || '[]');
+                                var idx = list.findIndex(function (x) { return x.id === o.id; });
+                                if (idx !== -1) { list[idx].supabase_id = row.id; localStorage.setItem(ordersKey, JSON.stringify(list)); }
+                            }
+                        }).catch(function () {});
+                    })(orders[i]);
+                }
+            }
             cart = [];
-            localStorage.setItem('cart', JSON.stringify(cart));
+            localStorage.setItem(cartKey, JSON.stringify(cart));
             updateCartBadge();
-            
             // Close modals
             closeCartModal();
             closeReceiptUploadModal();
-            
             // Refresh orders display
             loadOrders();
             updateStatistics();
             renderOrders();
-            
             // Show success modal
             document.getElementById('successModal').classList.remove('hidden');
             document.getElementById('successModal').classList.add('flex');

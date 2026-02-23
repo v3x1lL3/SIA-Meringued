@@ -1,0 +1,100 @@
+# Revert Login/Sign Up to previous GUI
+
+To restore the previous single "Login" / "Sign Up" form (no "Continue as" step):
+
+1. In index.html, replace the current auth modal (the block that starts with "<!-- Login/Signup Modal: \"Continue as\" ...") with the PREVIOUS MODAL HTML below.
+
+2. Replace the "Modal Functions" script block (openAuthModal, openOrderModal, closeModal, authBackToContinueAs, authShowLogin, authShowSignup) with the PREVIOUS SCRIPT below.
+
+--- PREVIOUS MODAL HTML ---
+
+    <!-- Login/Signup Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="modalTitle" class="font-display text-3xl gold-text font-bold">Login</h2>
+                <button onclick="closeModal()" class="text-gray-600 hover:text-gray-900 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Login Form -->
+            <div id="loginForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2 font-medium">Email</label>
+                    <input type="email" id="loginEmail" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your email">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2 font-medium">Password</label>
+                    <input type="password" id="loginPassword" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your password">
+                </div>
+                <button onclick="handleLogin()" class="btn-gold w-full py-3 rounded-lg font-semibold text-white mb-4">
+                    Login
+                </button>
+                <p class="text-center text-gray-600">
+                    Don't have an account? 
+                    <a href="#" onclick="showSignup()" class="gold-text hover:underline font-medium">Sign up</a>
+                </p>
+            </div>
+
+            <!-- Signup Form -->
+            <div id="signupForm" style="display: none;">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2 font-medium">Full Name</label>
+                    <input type="text" id="signupName" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your full name">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2 font-medium">Email</label>
+                    <input type="email" id="signupEmail" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your email">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2 font-medium">Password</label>
+                    <input type="password" id="signupPassword" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Create a password">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2 font-medium">Confirm Password</label>
+                    <input type="password" id="signupConfirmPassword" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Confirm your password">
+                </div>
+                <button onclick="handleSignup()" class="btn-gold w-full py-3 rounded-lg font-semibold text-white mb-4">
+                    Sign Up
+                </button>
+                <p class="text-center text-gray-600">
+                    Already have an account? 
+                    <a href="#" onclick="showLogin()" class="gold-text hover:underline font-medium">Login</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+--- PREVIOUS SCRIPT ---
+
+        // Modal Functions
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+            showLogin();
+        }
+
+        function openOrderModal() {
+            document.getElementById('authModal').classList.add('active');
+            showLogin();
+        }
+
+        function closeModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+
+        function showLogin() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('signupForm').style.display = 'none';
+            document.getElementById('modalTitle').textContent = 'Login';
+        }
+
+        function showSignup() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('signupForm').style.display = 'block';
+            document.getElementById('modalTitle').textContent = 'Sign Up';
+        }
+
+--- END ---
+
+Note: authController.js and authModel.js still support role on signup; after revert you can leave them as-is (new signups will be customer by default) or remove the role parameter from signUpWithEmail if you prefer.

@@ -405,8 +405,10 @@
         </div>
     </div>
 
+    <script src="js/core/clientStorageKeys.js"></script>
+    <script type="module" src="js/supabaseOrdersBridge.js"></script>
     <script>
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        let cart = JSON.parse(localStorage.getItem(typeof getCartKey === 'function' ? getCartKey() : 'cart')) || [];
         let orders = [];
         let currentTab = 'completed';
 
@@ -485,9 +487,10 @@
             }
         }
 
-        // Load orders from localStorage
+        // Load orders from localStorage (per-user key)
         function loadOrders() {
-            const storedOrders = localStorage.getItem('customerOrders');
+            const key = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
+            const storedOrders = localStorage.getItem(key);
             if (storedOrders) {
                 orders = JSON.parse(storedOrders);
             }
@@ -719,7 +722,8 @@
 
         // Cart Modal Functions
         function openCartModal() {
-            cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+            cart = JSON.parse(localStorage.getItem(cartKey)) || [];
             updateCartBadge();
             document.getElementById('cartModal').classList.remove('hidden');
             document.getElementById('cartModal').classList.add('flex');
@@ -788,7 +792,7 @@
 
         function removeFromCart(index) {
             cart.splice(index, 1);
-            localStorage.setItem('cart', JSON.stringify(cart));
+            localStorage.setItem(typeof getCartKey === 'function' ? getCartKey() : 'cart', JSON.stringify(cart));
             updateCartBadge();
             renderCart();
         }
@@ -863,41 +867,49 @@
         
         // Process cart orders (with or without receipt)
         function processCartOrders(receiptData, receiptFileName) {
-            // Get existing orders
-            orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
-            
-            // Add all cart items to orders
+            const ordersKey = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
+            const cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+            orders = JSON.parse(localStorage.getItem(ordersKey)) || [];
+            const orderGroupId = 'ORD-' + Date.now();
+            const uid = localStorage.getItem('userId') || null;
             cart.forEach(item => {
                 const orderData = {
+                    id: Date.now() + Math.floor(Math.random() * 10000),
+                    orderGroupId,
                     ...item,
                     status: 'Pending',
-                    date: new Date().toLocaleDateString()
+                    date: new Date().toLocaleDateString(),
+                    userId: uid
                 };
-                
-                // If item has Online Payment, attach receipt
                 if (item.paymentMethod === 'Online Payment') {
                     orderData.receipt = receiptData;
                     orderData.receiptFileName = receiptFileName;
                 }
-                
                 orders.push(orderData);
             });
-            
-            // Save orders
-            localStorage.setItem('customerOrders', JSON.stringify(orders));
-            
-            // Clear cart
+            localStorage.setItem(ordersKey, JSON.stringify(orders));
+            var newCount = cart.length;
+            if (typeof window.syncOrderToSupabase === 'function') {
+                for (var i = orders.length - newCount; i < orders.length; i++) {
+                    (function (o) {
+                        window.syncOrderToSupabase(o).then(function (row) {
+                            if (row && row.id) {
+                                var list = JSON.parse(localStorage.getItem(ordersKey) || '[]');
+                                var idx = list.findIndex(function (x) { return x.id === o.id; });
+                                if (idx !== -1) { list[idx].supabase_id = row.id; localStorage.setItem(ordersKey, JSON.stringify(list)); }
+                            }
+                        }).catch(function () {});
+                    })(orders[i]);
+                }
+            }
             cart = [];
-            localStorage.setItem('cart', JSON.stringify(cart));
+            localStorage.setItem(cartKey, JSON.stringify(cart));
             updateCartBadge();
-            
             // Close modals
             closeCartModal();
             closeReceiptUploadModal();
-            
             // Refresh orders display
             renderOrders();
-            
             // Redirect to ordering page or show success message
             alert('Order placed successfully!');
         }
@@ -922,13 +934,15 @@
         // Update cart when page becomes visible
         document.addEventListener('visibilitychange', function() {
             if (!document.hidden) {
-                cart = JSON.parse(localStorage.getItem('cart')) || [];
+                const cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+                cart = JSON.parse(localStorage.getItem(cartKey)) || [];
                 updateCartBadge();
             }
         });
 
         window.addEventListener('focus', function() {
-            cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+            cart = JSON.parse(localStorage.getItem(cartKey)) || [];
             updateCartBadge();
         });
         

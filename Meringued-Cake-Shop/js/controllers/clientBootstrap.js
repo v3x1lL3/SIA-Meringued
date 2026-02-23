@@ -8,6 +8,11 @@ async function init() {
 
   const { profile } = session;
 
+  // Keep displayed identity and user id in sync (so Order/Logs/Settings are unique per user).
+  if (profile?.name) localStorage.setItem('userName', profile.name);
+  if (profile?.email) localStorage.setItem('userEmail', profile.email);
+  if (session?.user?.id) localStorage.setItem('userId', session.user.id);
+
   const nameSpan = document.getElementById('customerName');
   const sidebarName = document.getElementById('sidebarCustomerName');
   if (nameSpan && profile?.name) nameSpan.textContent = profile.name;

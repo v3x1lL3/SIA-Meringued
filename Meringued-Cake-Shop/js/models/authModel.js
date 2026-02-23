@@ -13,11 +13,11 @@ function profileFromUser(user) {
   };
 }
 
-export async function signUpWithEmail({ email, password, fullName }) {
+export async function signUpWithEmail({ email, password, fullName, role = 'customer' }) {
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
-    options: { data: { full_name: fullName.trim(), role: 'customer' } },
+    options: { data: { full_name: fullName.trim(), role: role === 'admin' ? 'admin' : 'customer' } },
   });
   if (error) {
     const err = new Error(error.message);
@@ -43,6 +43,7 @@ export async function signInWithEmail({ email, password }) {
 }
 
 export async function getSessionWithProfile() {
+  if (SUPABASE_AUTH_DISABLED) return getDevBypassSession();
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error || !session?.user) return { user: null, profile: null };
   const profile = profileFromUser(session.user);
@@ -54,5 +55,9 @@ export async function listProfiles() {
 }
 
 export function signOut() {
+  if (SUPABASE_AUTH_DISABLED) {
+    localStorage.removeItem(DEV_BYPASS_KEY);
+    return Promise.resolve();
+  }
   return supabase.auth.signOut();
 }

@@ -118,6 +118,9 @@
         item.quantity = Math.max(0, current + delta);
         saveInventory();
         renderInventory();
+        if (isSupabaseId(item.id) && window.InventorySupabase && window.InventorySupabase.update) {
+            window.InventorySupabase.update(item.id, { quantity: item.quantity });
+        }
     }
 
     function readFileAsDataUrl(file) {
@@ -154,14 +157,15 @@
         } else { finishAdd(); }
 
         function finishAdd() {
-            inventoryItems.unshift({
+            var newItem = {
                 id: 'inv_' + Date.now() + '_' + Math.floor(Math.random() * 100000),
                 name: name,
                 quantity: Math.max(0, qty),
                 unit: unit,
                 reorderLevel: Math.max(0, reorderLevel),
                 imageSrc: imageSrc || ''
-            });
+            };
+            inventoryItems.unshift(newItem);
             saveInventory();
             renderInventory();
             var form = document.getElementById('inventoryAddForm');
@@ -172,6 +176,11 @@
             if (qtyEl) qtyEl.value = 0;
             if (reorderEl) reorderEl.value = 0;
             if (unitEl) unitEl.value = 'units';
+            if (window.InventorySupabase && window.InventorySupabase.create) {
+                window.InventorySupabase.create(newItem).then(function (created) {
+                    if (created && created.id) { newItem.id = created.id; saveInventory(); }
+                });
+            }
         }
     }
 
@@ -190,11 +199,17 @@
                 item.imageSrc = dataUrl || '';
                 saveInventory();
                 renderInventory();
+                if (isSupabaseId(item.id) && window.InventorySupabase && window.InventorySupabase.update) {
+                    window.InventorySupabase.update(item.id, { imageSrc: item.imageSrc });
+                }
             });
         } else {
             item.imageSrc = imageSrc || '';
             saveInventory();
             renderInventory();
+            if (isSupabaseId(item.id) && window.InventorySupabase && window.InventorySupabase.update) {
+                window.InventorySupabase.update(item.id, { imageSrc: item.imageSrc });
+            }
         }
     }
 
@@ -229,6 +244,9 @@
             if (action === 'delete') {
                 var item = inventoryItems.find(function (x) { return x.id === id; });
                 if (!confirm('Delete "' + (item && item.name ? item.name : 'this ingredient') + '"?')) return;
+                if (item && isSupabaseId(item.id) && window.InventorySupabase && window.InventorySupabase.delete) {
+                    window.InventorySupabase.delete(item.id);
+                }
                 inventoryItems = inventoryItems.filter(function (x) { return x.id !== id; });
                 saveInventory();
                 renderInventory();
@@ -256,7 +274,14 @@
             if (!action || !id) return;
             if (action === 'unit') {
                 var u = inventoryItems.find(function (x) { return x.id === id; });
-                if (u) { u.unit = el.value || 'units'; saveInventory(); renderInventory(); }
+                if (u) {
+                    u.unit = el.value || 'units';
+                    saveInventory();
+                    renderInventory();
+                    if (isSupabaseId(u.id) && window.InventorySupabase && window.InventorySupabase.update) {
+                        window.InventorySupabase.update(u.id, { unit: u.unit });
+                    }
+                }
                 return;
             }
             if (action === 'reorder') {
@@ -266,6 +291,9 @@
                     r.reorderLevel = (Number.isFinite(v) && v >= 0) ? v : 0;
                     saveInventory();
                     renderInventory();
+                    if (isSupabaseId(r.id) && window.InventorySupabase && window.InventorySupabase.update) {
+                        window.InventorySupabase.update(r.id, { reorderLevel: r.reorderLevel });
+                    }
                 }
             }
         });
@@ -283,15 +311,41 @@
         window.location.href = 'index.html';
     }
 
-    function init() {
-        if (!document.getElementById('inventoryTableBody')) return;
+    function isSupabaseId(id) {
+        return typeof id === 'string' && id.length > 0 && id.indexOf('inv_') !== 0;
+    }
+
+    /**
+     * Push items that exist only in localStorage (id starts with 'inv_') to Supabase,
+     * then update their local id so future edits sync. Call after seeding when Supabase was empty.
+     */
+    function pushLocalInventoryToSupabase() {
+        if (!window.InventorySupabase || !window.InventorySupabase.create) return Promise.resolve();
+        loadInventory();
+        var localOnly = inventoryItems.filter(function (x) { return x.id && String(x.id).indexOf('inv_') === 0; });
+        if (localOnly.length === 0) return Promise.resolve();
+        var done = 0;
+        function next() {
+            if (done >= localOnly.length) return Promise.resolve();
+            var item = localOnly[done];
+            return window.InventorySupabase.create(item).then(function (created) {
+                if (created && created.id) {
+                    item.id = created.id;
+                    saveInventory();
+                }
+                done += 1;
+                return next();
+            }).catch(function () { done += 1; return next(); });
+        }
+        return next();
+    }
+
+    function runAfterLoad() {
         if (window.OrderIngredients && window.OrderIngredients.restoreCancelledOrdersIngredientStock) {
             window.OrderIngredients.restoreCancelledOrdersIngredientStock();
         }
-        seedInventoryTemplateIfEmpty();
         renderInventory();
         setupInventoryHandlers();
-
         var logoutModal = document.getElementById('logoutModal');
         if (logoutModal) {
             logoutModal.addEventListener('click', function (e) {
@@ -304,6 +358,29 @@
                 if (m && !m.classList.contains('hidden')) closeLogoutModal();
             }
         });
+    }
+
+    function init() {
+        if (!document.getElementById('inventoryTableBody')) return;
+        if (window.InventorySupabase && typeof window.InventorySupabase.load === 'function') {
+            window.InventorySupabase.load().then(function (items) {
+                if (items && items.length > 0) {
+                    inventoryItems = items;
+                    saveInventory();
+                } else {
+                    seedInventoryTemplateIfEmpty();
+                    pushLocalInventoryToSupabase();
+                }
+                runAfterLoad();
+            }).catch(function () {
+                seedInventoryTemplateIfEmpty();
+                pushLocalInventoryToSupabase();
+                runAfterLoad();
+            });
+        } else {
+            seedInventoryTemplateIfEmpty();
+            runAfterLoad();
+        }
     }
 
     document.addEventListener('DOMContentLoaded', init);

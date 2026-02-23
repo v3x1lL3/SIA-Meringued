@@ -274,6 +274,7 @@
         </div>
     </div>
 
+    <script src="js/core/adminOrderStorage.js"></script>
     <script>
         let orders = [];
 
@@ -285,9 +286,9 @@
         });
 
         function loadOrders() {
-            // Admin reads the same storage used by client
-            const stored = localStorage.getItem('customerOrders');
-            orders = stored ? JSON.parse(stored) : [];
+            orders = typeof getAllOrdersForAdmin === 'function' ? getAllOrdersForAdmin() : (function() {
+                try { return JSON.parse(localStorage.getItem('customerOrders') || '[]'); } catch(e) { return []; }
+            })();
         }
 
         function renderCompletedOrders() {
@@ -511,10 +512,11 @@
             document.body.style.overflow = 'auto';
         }
         function confirmResetOrders() {
-            // Clear orders and cart from localStorage
-            localStorage.removeItem('customerOrders');
-            localStorage.removeItem('cart');
-            // Refresh local data and UI
+            if (typeof clearAllOrdersForAdmin === 'function') {
+                clearAllOrdersForAdmin();
+            } else {
+                localStorage.removeItem('customerOrders');
+            }
             orders = [];
             renderCompletedOrders();
             renderCancelledOrders();

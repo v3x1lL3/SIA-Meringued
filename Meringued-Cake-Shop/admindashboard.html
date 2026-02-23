@@ -367,6 +367,7 @@
         </div>
     </div>
     
+    <script src="js/core/adminOrderStorage.js"></script>
     <script>
         let orders = [];
 
@@ -385,12 +386,11 @@
             renderRecentOrders();
         });
 
-        // Load orders from localStorage
+        // Load orders from all per-user keys (aggregated for admin)
         function loadOrders() {
-            const storedOrders = localStorage.getItem('customerOrders');
-            if (storedOrders) {
-                orders = JSON.parse(storedOrders);
-            }
+            orders = typeof getAllOrdersForAdmin === 'function' ? getAllOrdersForAdmin() : (function() {
+                try { return JSON.parse(localStorage.getItem('customerOrders') || '[]'); } catch(e) { return []; }
+            })();
         }
 
         // Update dashboard statistics
@@ -546,6 +546,7 @@
         });
     </script>
 
+    <script type="module" src="js/admin-inventory-supabase.js"></script>
     <script src="js/admin-inventory.js"></script>
     <!-- Ensure only authenticated admin users can see this page and load Supabase-based stats -->
     <script type="module" src="js/controllers/adminBootstrap.js"></script>

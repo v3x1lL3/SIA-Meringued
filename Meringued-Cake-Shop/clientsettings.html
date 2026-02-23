@@ -94,13 +94,14 @@
         </div>
     </div>
 
+    <script src="js/core/clientStorageKeys.js"></script>
     <script>
-        const STORAGE_KEY = 'clientSettings';
+        function getStorageKey() { return typeof getSettingsKey === 'function' ? getSettingsKey() : 'clientSettings'; }
         function loadSettings() {
             var name = localStorage.getItem('userName') || '';
             var email = localStorage.getItem('userEmail') || '';
             try {
-                var raw = localStorage.getItem(STORAGE_KEY);
+                var raw = localStorage.getItem(getStorageKey());
                 var s = raw ? JSON.parse(raw) : {};
                 document.getElementById('clientName').value = s.clientName || name;
                 document.getElementById('clientEmail').value = s.clientEmail || email;
@@ -122,7 +123,7 @@
                 notifyOrderUpdates: document.getElementById('notifyOrderUpdates').checked,
                 notifyPromos: document.getElementById('notifyPromos').checked
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+            localStorage.setItem(getStorageKey(), JSON.stringify(s));
             localStorage.setItem('userName', s.clientName || localStorage.getItem('userName') || '');
             localStorage.setItem('userEmail', s.clientEmail || localStorage.getItem('userEmail') || '');
             alert('Settings saved.');

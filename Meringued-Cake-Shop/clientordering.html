@@ -227,7 +227,7 @@
 
     <!-- Order Form Modal -->
     <div id="orderModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden transform transition-all">
             <!-- Modal Header -->
             <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center sticky top-0 z-10">
                 <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
@@ -239,7 +239,7 @@
             </div>
             
             <!-- Modal Body -->
-            <div class="p-6 md:p-8 overflow-y-auto max-h-[calc(90vh-200px)]">
+            <div class="p-6 md:p-8 overflow-y-auto max-h-[calc(98vh-200px)]">
             <div class="grid lg:grid-cols-3 gap-8">
                 <!-- Order Form -->
                 <div class="lg:col-span-2">
@@ -769,9 +769,11 @@
         </div>
     </footer>
 
+    <script src="js/core/clientStorageKeys.js"></script>
+    <script type="module" src="js/supabaseOrdersBridge.js"></script>
     <script>
-        // Initialize cart from localStorage
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        // Initialize cart from localStorage (per-user key)
+        let cart = JSON.parse(localStorage.getItem(typeof getCartKey === 'function' ? getCartKey() : 'cart')) || [];
         // Track selections in the cart modal
         let selectedCartIndexes = new Set();
         let orders = [];
@@ -829,14 +831,16 @@
         // Update cart when page becomes visible (when switching tabs)
         document.addEventListener('visibilitychange', function() {
             if (!document.hidden) {
-                cart = JSON.parse(localStorage.getItem('cart')) || [];
+                var cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+                cart = JSON.parse(localStorage.getItem(cartKey)) || [];
                 updateCartBadge();
             }
         });
         
         // Update cart when window regains focus
         window.addEventListener('focus', function() {
-            cart = JSON.parse(localStorage.getItem('cart')) || [];
+            var cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+            cart = JSON.parse(localStorage.getItem(cartKey)) || [];
             updateCartBadge();
         });
         
@@ -883,9 +887,10 @@
             }
         }
         
-        // Load orders from localStorage
+        // Load orders from localStorage (per-user key)
         function loadOrders() {
-            const storedOrders = localStorage.getItem('customerOrders');
+            const key = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
+            const storedOrders = localStorage.getItem(key);
             if (storedOrders) {
                 orders = JSON.parse(storedOrders);
             }
@@ -1015,14 +1020,14 @@
         document.getElementById('frosting').addEventListener('change', calculatePrice);
         function getDefaultDeliveryAddress() {
             try {
-                var raw = localStorage.getItem('clientSettings');
+                var raw = localStorage.getItem(typeof getSettingsKey === 'function' ? getSettingsKey() : 'clientSettings');
                 var s = raw ? JSON.parse(raw) : {};
                 return (s.clientAddress || '').trim();
             } catch (e) { return ''; }
         }
         function getDefaultContactPhone() {
             try {
-                var raw = localStorage.getItem('clientSettings');
+                var raw = localStorage.getItem(typeof getSettingsKey === 'function' ? getSettingsKey() : 'clientSettings');
                 var s = raw ? JSON.parse(raw) : {};
                 return (s.clientPhone || '').trim();
             } catch (e) { return ''; }
@@ -1261,7 +1266,7 @@
             if (phoneEl && (phoneEl.value.trim() || getDefaultContactPhone())) cartItem.customerPhone = phoneEl.value.trim() || getDefaultContactPhone();
             
             cart.push(cartItem);
-            localStorage.setItem('cart', JSON.stringify(cart));
+            localStorage.setItem(typeof getCartKey === 'function' ? getCartKey() : 'cart', JSON.stringify(cart));
             updateCartBadge();
             
             // Reset form
@@ -1367,29 +1372,31 @@
             }
             var ph = document.getElementById('customerPhone');
             if (ph && (ph.value.trim() || getDefaultContactPhone())) order.customerPhone = ph.value.trim() || getDefaultContactPhone();
+            order.userId = localStorage.getItem('userId') || null;
             
-            // Get existing orders
-            orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
-            
-            // Add order
+            var ordersKey = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
+            orders = JSON.parse(localStorage.getItem(ordersKey)) || [];
             orders.push(order);
-            
-            // Save orders
-            localStorage.setItem('customerOrders', JSON.stringify(orders));
-            
+            localStorage.setItem(ordersKey, JSON.stringify(orders));
+            if (typeof window.syncOrderToSupabase === 'function') {
+                window.syncOrderToSupabase(order).then(function (row) {
+                    if (row && row.id) {
+                        var list = JSON.parse(localStorage.getItem(ordersKey) || '[]');
+                        var idx = list.findIndex(function (x) { return x.id === order.id; });
+                        if (idx !== -1) { list[idx].supabase_id = row.id; localStorage.setItem(ordersKey, JSON.stringify(list)); }
+                    }
+                }).catch(function () {});
+            }
             // Refresh orders table
             renderOrdersTable();
-            
             // Reset form
             document.getElementById('orderForm').reset();
             removeDesignImage();
             calculatePrice();
             setMinDate(); // Reset date to minimum
-            
             // Close modals
             closeOrderModal();
             closeReceiptUploadModal();
-            
             // Show success modal
             document.getElementById('successModal').classList.remove('hidden');
             document.getElementById('successModal').classList.add('flex');
@@ -1410,8 +1417,8 @@
 
         // Open cart modal
         function openCartModal() {
-            // Reload cart from localStorage to ensure it's synchronized
-            cart = JSON.parse(localStorage.getItem('cart')) || [];
+            var cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+            cart = JSON.parse(localStorage.getItem(cartKey)) || [];
             // Reconcile previous selections
             const keptSelections = new Set();
             cart.forEach((_, idx) => { if (selectedCartIndexes.has(idx)) keptSelections.add(idx); });
@@ -1513,7 +1520,7 @@
         // Remove item from cart
         function removeFromCart(index) {
             cart.splice(index, 1);
-            localStorage.setItem('cart', JSON.stringify(cart));
+            localStorage.setItem(typeof getCartKey === 'function' ? getCartKey() : 'cart', JSON.stringify(cart));
             updateCartBadge();
             renderCart();
             showToast('Item removed from cart', 'info');
@@ -1551,14 +1558,13 @@
         
         // Process cart orders (with or without receipt)
         function processCartOrders(receiptData, receiptFileName, items = null) {
-            // Get existing orders
-            orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
-            
+            var ordersKey = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
+            orders = JSON.parse(localStorage.getItem(ordersKey)) || [];
             const orderGroupId = generateOrderGroupId();
-            const defaultPhone = (function(){ try { var s = JSON.parse(localStorage.getItem('clientSettings') || '{}'); return (s.clientPhone || '').trim(); } catch(e){ return ''; } })();
+            const defaultPhone = (function(){ try { var k = typeof getSettingsKey === 'function' ? getSettingsKey() : 'clientSettings'; var s = JSON.parse(localStorage.getItem(k) || '{}'); return (s.clientPhone || '').trim(); } catch(e){ return ''; } })();
             const currentPhone = document.getElementById('customerPhone')?.value?.trim() || defaultPhone;
             const itemsToProcess = items || cart;
-            // Add selected cart items to orders
+            const uid = localStorage.getItem('userId') || null;
             itemsToProcess.forEach(item => {
                 const orderData = {
                     id: Date.now() + Math.floor(Math.random()*10000),
@@ -1567,21 +1573,28 @@
                     customer: localStorage.getItem('userName') || 'Guest',
                     customerPhone: item.customerPhone || currentPhone,
                     status: 'Pending',
-                    date: new Date().toLocaleDateString()
+                    date: new Date().toLocaleDateString(),
+                    userId: uid
                 };
-                
-                // If item has Online Payment, attach receipt
                 if (item.paymentMethod === 'Online Payment') {
                     orderData.receipt = receiptData;
                     orderData.receiptFileName = receiptFileName;
                 }
-                
                 orders.push(orderData);
             });
-            
-            // Save orders
-            localStorage.setItem('customerOrders', JSON.stringify(orders));
-            
+            localStorage.setItem(ordersKey, JSON.stringify(orders));
+            itemsToProcess.forEach(function (_, i) {
+                var o = orders[orders.length - itemsToProcess.length + i];
+                if (o && typeof window.syncOrderToSupabase === 'function') {
+                    window.syncOrderToSupabase(o).then(function (row) {
+                        if (row && row.id) {
+                            var list = JSON.parse(localStorage.getItem(ordersKey) || '[]');
+                            var idx = list.findIndex(function (x) { return x.id === o.id; });
+                            if (idx !== -1) { list[idx].supabase_id = row.id; localStorage.setItem(ordersKey, JSON.stringify(list)); }
+                        }
+                    }).catch(function () {});
+                }
+            });
             // Remove processed items from cart (keep unselected if items provided)
             if (items) {
                 cart = cart.filter((_, i) => !selectedCartIndexes.has(i));
@@ -1589,7 +1602,7 @@
                 cart = [];
             }
             selectedCartIndexes.clear();
-            localStorage.setItem('cart', JSON.stringify(cart));
+            localStorage.setItem(typeof getCartKey === 'function' ? getCartKey() : 'cart', JSON.stringify(cart));
             updateCartBadge();
             
             // Close modals
@@ -1840,15 +1853,13 @@
 
         function confirmCancelOrder() {
             if (!pendingCancelOrderId) return;
-
-            // Load latest orders
-            const storedOrders = localStorage.getItem('customerOrders');
+            var ordersKey = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
+            const storedOrders = localStorage.getItem(ordersKey);
             orders = storedOrders ? JSON.parse(storedOrders) : [];
-
             const idx = orders.findIndex(o => o.id === pendingCancelOrderId);
             if (idx !== -1 && (orders[idx].status === 'Pending' || !orders[idx].status)) {
                 orders[idx].status = 'Cancelled';
-                localStorage.setItem('customerOrders', JSON.stringify(orders));
+                localStorage.setItem(ordersKey, JSON.stringify(orders));
                 renderOrdersTable();
                 showToast('Order cancelled', 'info');
             } else {

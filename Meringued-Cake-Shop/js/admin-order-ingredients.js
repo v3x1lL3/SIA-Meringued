@@ -92,6 +92,7 @@
 
     /**
      * Apply delta to ingredient quantity by name (case-insensitive match).
+     * Updates localStorage; also syncs to Supabase when OrderIngredientsSupabase is available (POS).
      * Does not re-render UI; call window.renderInventory() from page if needed.
      */
     function applyStockDeltaByName(ingredientName, delta) {
@@ -104,6 +105,9 @@
         const current = Number(item.quantity) || 0;
         item.quantity = Math.max(0, current + delta);
         saveInventory(items);
+        if (window.OrderIngredientsSupabase && typeof window.OrderIngredientsSupabase.applyDeltaByName === 'function') {
+            window.OrderIngredientsSupabase.applyDeltaByName(ingredientName, delta);
+        }
         if (typeof window.renderInventory === 'function') {
             window.renderInventory();
         }
@@ -130,13 +134,14 @@
     }
 
     /**
-     * On admin load: restore stock for any order that is Cancelled and had ingredients deducted
-     * (e.g. client cancelled on same browser). Updates customerOrders in localStorage.
+     * On admin load: restore stock for any order that is Cancelled and had ingredients deducted.
+     * Uses per-user order storage when available (getAllOrdersForAdmin / saveOrdersForUser).
      */
     function restoreCancelledOrdersIngredientStock() {
-        const raw = localStorage.getItem(ORDERS_KEY);
-        const orders = raw ? JSON.parse(raw) : [];
-        let changed = false;
+        var orders = (typeof window.getAllOrdersForAdmin === 'function')
+            ? window.getAllOrdersForAdmin()
+            : (function () { try { return JSON.parse(localStorage.getItem(ORDERS_KEY) || '[]'); } catch (e) { return []; } })();
+        var changed = false;
         orders.forEach(function (order) {
             if ((order.status === 'Cancelled') && order.ingredientsDeducted) {
                 restoreIngredientsForOrder(order);
@@ -144,8 +149,18 @@
                 changed = true;
             }
         });
-        if (changed) {
-            localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+        if (changed && typeof window.saveOrdersForUser === 'function') {
+            var byUser = {};
+            orders.forEach(function (o) {
+                var uid = o.userId || 'guest';
+                if (!byUser[uid]) byUser[uid] = [];
+                byUser[uid].push(o);
+            });
+            Object.keys(byUser).forEach(function (uid) {
+                window.saveOrdersForUser(uid, byUser[uid]);
+            });
+        } else if (changed) {
+            try { localStorage.setItem(ORDERS_KEY, JSON.stringify(orders)); } catch (e) {}
         }
         return orders;
     }

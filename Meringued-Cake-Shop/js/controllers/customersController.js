@@ -40,8 +40,9 @@ function getStatusColor(status) {
   return map[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
 }
 
-/** Get all orders from localStorage. */
+/** Get all orders (admin: aggregated from per-user keys; fallback: single key). */
 function getAllOrders() {
+  if (typeof window.getAllOrdersForAdmin === 'function') return window.getAllOrdersForAdmin();
   try {
     const raw = localStorage.getItem(ORDERS_KEY);
     return raw ? JSON.parse(raw) : [];

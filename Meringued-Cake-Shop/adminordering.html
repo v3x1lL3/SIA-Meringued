@@ -306,7 +306,10 @@
         </div>
     </div>
 
+    <script src="js/core/adminOrderStorage.js"></script>
     <script src="js/admin-order-ingredients.js"></script>
+    <script type="module" src="js/supabaseOrdersBridge.js"></script>
+    <script type="module" src="js/order-ingredients-supabase.js"></script>
     <script>
         let orders = [];
         let currentOrderId = null; // For status change
@@ -322,12 +325,11 @@
             renderOrdersTable();
         });
 
-        // Load orders from localStorage
+        // Load orders from all per-user keys (aggregated for admin)
         function loadOrders() {
-            const storedOrders = localStorage.getItem('customerOrders');
-            if (storedOrders) {
-                orders = JSON.parse(storedOrders);
-            }
+            orders = typeof getAllOrdersForAdmin === 'function' ? getAllOrdersForAdmin() : (function() {
+                try { return JSON.parse(localStorage.getItem('customerOrders') || '[]'); } catch(e) { return []; }
+            })();
         }
 
         // Render orders table
@@ -707,9 +709,24 @@
                 }
             }
 
-            localStorage.setItem('customerOrders', JSON.stringify(orders));
+            // Save to the correct user's list (per-user storage)
+            var uid = order.userId;
+            if (uid && typeof getOrdersForUser === 'function' && typeof saveOrdersForUser === 'function') {
+                var list = getOrdersForUser(uid);
+                var idx = list.findIndex(function(o) { return o.id === order.id; });
+                if (idx !== -1) list[idx] = order;
+                saveOrdersForUser(uid, list);
+            } else if (typeof updateOrderInStorage === 'function') {
+                updateOrderInStorage(order.id, { status: order.status, ingredientsDeducted: order.ingredientsDeducted });
+            } else {
+                try { localStorage.setItem('customerOrders', JSON.stringify(orders)); } catch(e) {}
+            }
+            loadOrders();
             renderOrdersTable();
             closeStatusModal();
+            if (order.supabase_id && typeof window.updateOrderInSupabase === 'function') {
+                window.updateOrderInSupabase(order.supabase_id, { status: newStatus });
+            }
 
             // Show success message
             showToast('Order status updated successfully!');

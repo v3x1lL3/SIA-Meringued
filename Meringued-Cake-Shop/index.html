@@ -26,430 +26,6 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
-        
-        :root {
-            --gold: #D4AF37;
-            --dark-gold: #B8941E;
-            --cream: #FFF8F0;
-            --light-pink: #FFF0F5;
-            --soft-peach: #FFE5E0;
-            --rose-gold: #E8C4B8;
-            --charcoal: #2C2C2C;
-            --text-dark: #3D3D3D;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        
-        /* Animated theme background (inline so it always loads) */
-        .meringued-bg { position: relative; min-height: 100vh; overflow-x: hidden; background: transparent !important; }
-        .meringued-bg::before {
-            content: ''; position: fixed; inset: 0; z-index: -2;
-            background: linear-gradient(120deg, #FFF8F0 0%, #FFEDE6 20%, #FFE5E0 40%, #FFF0F5 60%, #FFE8E8 80%, #FFF8F0 100%);
-            background-size: 300% 300%;
-            animation: meringuedGradient 14s ease-in-out infinite;
-        }
-        .meringued-bg::after {
-            content: ''; position: fixed; width: 80vmax; height: 80vmax; border-radius: 50%;
-            top: -20vmax; right: -20vmax; z-index: -1; pointer-events: none;
-            background: radial-gradient(circle at 40% 40%, rgba(212,175,55,0.12) 0%, rgba(255,229,224,0.06) 45%, transparent 70%);
-            animation: meringuedOrb 18s ease-in-out infinite;
-        }
-        @keyframes meringuedGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-        @keyframes meringuedOrb { 0%, 100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-6%,-3%) scale(1.05); } 66% { transform: translate(3%,-6%) scale(0.97); } }
-        
-        .font-display {
-            font-family: 'Playfair Display', serif;
-        }
-        
-        .gold-text {
-            color: var(--gold);
-        }
-        
-        .gold-bg {
-            background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);
-        }
-        
-        .hero-gradient {
-            background: linear-gradient(135deg, rgba(255, 248, 240, 0.95) 0%, rgba(255, 240, 245, 0.95) 100%);
-        }
-        
-        .cake-card {
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            background: white !important;
-        }
-        
-        .cake-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 40px rgba(212, 175, 55, 0.4);
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
-        }
-        
-        .modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal-content {
-            background: linear-gradient(135deg, #FFFFFF 0%, #FFF8F0 100%);
-            border: 2px solid var(--gold);
-            border-radius: 20px;
-            padding: 2rem;
-            max-width: 500px;
-            width: 90%;
-            animation: slideDown 0.3s ease;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-        }
-        
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .input-field {
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            color: var(--text-dark);
-        }
-        
-        .input-field:focus {
-            outline: none;
-            border-color: var(--gold);
-            background: white;
-        }
-        
-        .btn-gold {
-            background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);
-            transition: all 0.3s ease;
-        }
-        
-        .btn-gold:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
-        }
-        
-        .section-divider {
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--gold), transparent);
-            margin: 4rem 0;
-        }
-        
-        .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-        
-        @media (max-width: 768px) {
-            .gallery-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .navbar {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 20px rgba(212, 175, 55, 0.1);
-        }
-        
-        .scroll-smooth {
-            scroll-behavior: smooth;
-        }
-        
-        .text-main {
-            color: var(--text-dark);
-        }
-        
-        /* Elegant Navbar Hover Effects */
-        .nav-link {
-            position: relative;
-            display: inline-block;
-            padding: 0.5rem 0;
-            transition: all 0.3s ease;
-            color: var(--text-dark);
-            font-weight: 500;
-        }
-        
-        .nav-link::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            width: 0;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, var(--gold), transparent);
-            transform: translateX(-50%);
-            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.4);
-            border-radius: 2px;
-        }
-        
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            bottom: -3px;
-            left: 50%;
-            width: 8px;
-            height: 8px;
-            background: var(--gold);
-            border-radius: 50%;
-            transform: translateX(-50%) scale(0);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
-        }
-        
-        .nav-link:hover {
-            color: var(--gold);
-            transform: translateY(-3px);
-            text-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
-        }
-        
-        .nav-link:hover::before {
-            width: 100%;
-            box-shadow: 0 2px 12px rgba(212, 175, 55, 0.6);
-        }
-        
-        .nav-link:hover::after {
-            transform: translateX(-50%) scale(1);
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
-        }
-        
-        /* Active nav link */
-        .nav-link.active {
-            color: var(--gold);
-            text-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
-        }
-        
-        .nav-link.active::before {
-            width: 100%;
-            box-shadow: 0 2px 12px rgba(212, 175, 55, 0.6);
-        }
-        
-        .nav-link.active::after {
-            transform: translateX(-50%) scale(1);
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
-        }
-        
-        /* Mobile nav link hover */
-        .mobile-nav-link {
-            position: relative;
-            display: block;
-            padding: 0.75rem 1rem;
-            transition: all 0.3s ease;
-            border-radius: 8px;
-            margin: 0.25rem 0;
-        }
-        
-        .mobile-nav-link::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            width: 3px;
-            height: 0;
-            background: linear-gradient(180deg, transparent, var(--gold), transparent);
-            transform: translateY(-50%);
-            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 0 3px 3px 0;
-        }
-        
-        .mobile-nav-link:hover {
-            background: rgba(212, 175, 55, 0.1);
-            color: var(--gold);
-            padding-left: 1.5rem;
-        }
-        
-        .mobile-nav-link:hover::before {
-            height: 80%;
-        }
-        
-        /* Navbar logo hover effect */
-        .navbar-brand {
-            transition: all 0.3s ease;
-        }
-        
-        .navbar-brand:hover {
-            transform: scale(1.05);
-        }
-        
-        .navbar-brand:hover .gold-text {
-            text-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
-        }
-        
-        /* New enhancements based on food website research */
-        .floating-cta {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            z-index: 100;
-            opacity: 0;
-            transform: translateY(100px);
-            transition: all 0.3s ease;
-        }
-        
-        .floating-cta.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        .feature-card {
-            transition: all 0.3s ease;
-        }
-        
-        .feature-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .testimonial-card {
-            background: white;
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-        }
-        
-        .testimonial-card:hover {
-            box-shadow: 0 15px 40px rgba(212, 175, 55, 0.2);
-            transform: translateY(-5px);
-        }
-        
-        .stat-number {
-            font-size: 3rem;
-            font-weight: bold;
-            background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .step-number {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin: 0 auto 1rem;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        .animate-float {
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .fade-in-up {
-            animation: fadeInUp 0.6s ease-out;
-        }
-        
-        .image-overlay {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .image-overlay::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(184, 148, 30, 0.1) 100%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 1;
-        }
-        
-        .image-overlay:hover::before {
-            opacity: 1;
-        }
-        
-        .scroll-to-top {
-            position: fixed;
-            bottom: 100px;
-            right: 30px;
-            z-index: 90;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            opacity: 0;
-            transform: translateY(100px);
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
-        }
-        
-        .scroll-to-top.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        .scroll-to-top:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(212, 175, 55, 0.4);
-        }
-        
-        @media (max-width: 768px) {
-            .scroll-to-top {
-                bottom: 90px;
-                right: 20px;
-                width: 45px;
-                height: 45px;
-            }
-            
-            .floating-cta {
-                bottom: 20px;
-                right: 20px;
-                font-size: 0.9rem;
-                padding: 0.75rem 1.25rem;
-            }
-        }
-    </style>
 </head>
 <body class="meringued-bg text-main scroll-smooth">
     <!-- Navigation -->
@@ -484,7 +60,7 @@
 
     <!-- Hero Section -->
     <section id="home" class="min-h-screen flex items-center justify-center hero-gradient px-6" style="padding-top: 100px;">
-        <div class="container mx-auto text-center">
+        <div class="container mx-auto text-center hero-content-motion">
             <div class="mb-8">
                 <h1 class="font-display text-6xl md:text-8xl font-bold mb-4 gold-text">
                     Meringued
@@ -507,7 +83,7 @@
     </section>
 
     <!-- About Section -->
-    <section id="about" class="py-20 px-6">
+    <section id="about" class="section-motion py-20 px-6">
         <div class="container mx-auto max-w-4xl">
             <h2 class="font-display text-5xl font-bold text-center mb-12 gold-text">About Us</h2>
             <div class="bg-white/80 rounded-2xl p-8 md:p-12 backdrop-blur-sm border border-gold/30 shadow-xl">
@@ -532,31 +108,31 @@
     <div class="section-divider"></div>
 
     <!-- Features Section -->
-    <section class="py-20 px-6 bg-white/50">
+    <section class="section-motion py-20 px-6 bg-white/50">
         <div class="container mx-auto">
             <h2 class="font-display text-5xl font-bold text-center mb-6 gold-text">Why Choose Meringued?</h2>
             <p class="text-center text-gray-600 mb-16 max-w-2xl mx-auto">We bring your dream cakes to life with creativity, quality, and passion</p>
             
-            <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto section-motion-stagger">
                 <div class="feature-card text-center p-8 bg-white rounded-2xl shadow-lg">
-                    <div class="text-5xl mb-4 animate-float">
-                        <i class="fas fa-paint-brush gold-text"></i>
+                    <div class="text-5xl mb-4 gold-text">
+                        <i class="fas fa-paint-brush"></i>
                     </div>
                     <h3 class="font-display text-2xl font-semibold mb-3 text-main">Custom Designs</h3>
                     <p class="text-gray-600">Each cake is uniquely crafted to match your vision and occasion perfectly</p>
                 </div>
                 
                 <div class="feature-card text-center p-8 bg-white rounded-2xl shadow-lg">
-                    <div class="text-5xl mb-4 animate-float" style="animation-delay: 0.2s;">
-                        <i class="fas fa-award gold-text"></i>
+                    <div class="text-5xl mb-4 gold-text">
+                        <i class="fas fa-award"></i>
                     </div>
                     <h3 class="font-display text-2xl font-semibold mb-3 text-main">Premium Quality</h3>
                     <p class="text-gray-600">We use only the finest ingredients to ensure taste matches beauty</p>
                 </div>
                 
                 <div class="feature-card text-center p-8 bg-white rounded-2xl shadow-lg">
-                    <div class="text-5xl mb-4 animate-float" style="animation-delay: 0.4s;">
-                        <i class="fas fa-heart gold-text"></i>
+                    <div class="text-5xl mb-4 gold-text">
+                        <i class="fas fa-heart"></i>
                     </div>
                     <h3 class="font-display text-2xl font-semibold mb-3 text-main">Made with Love</h3>
                     <p class="text-gray-600">Every creation is handcrafted with attention to detail and passion</p>
@@ -568,9 +144,9 @@
     <div class="section-divider"></div>
 
     <!-- Stats Section -->
-    <section class="py-20 px-6">
+    <section class="section-motion py-20 px-6">
         <div class="container mx-auto">
-            <div class="grid md:grid-cols-4 gap-8 text-center">
+            <div class="grid md:grid-cols-4 gap-8 text-center section-motion-stagger">
                 <div>
                     <div class="stat-number font-display">500+</div>
                     <p class="text-lg text-gray-600 font-medium">Happy Customers</p>
@@ -594,12 +170,12 @@
     <div class="section-divider"></div>
 
     <!-- How It Works Section -->
-    <section class="py-20 px-6 bg-white/50">
+    <section class="section-motion py-20 px-6 bg-white/50">
         <div class="container mx-auto max-w-5xl">
             <h2 class="font-display text-5xl font-bold text-center mb-6 gold-text">How It Works</h2>
             <p class="text-center text-gray-600 mb-16 max-w-2xl mx-auto">From concept to celebration in four simple steps</p>
             
-            <div class="grid md:grid-cols-4 gap-8">
+            <div class="grid md:grid-cols-4 gap-8 section-motion-stagger">
                 <div class="text-center">
                     <div class="step-number">1</div>
                     <h3 class="font-display text-xl font-semibold mb-3 text-main">Order</h3>
@@ -630,12 +206,12 @@
     <div class="section-divider"></div>
 
     <!-- Gallery Section -->
-    <section id="gallery" class="py-20 px-6">
+    <section id="gallery" class="section-motion py-20 px-6">
         <div class="container mx-auto">
             <h2 class="font-display text-5xl font-bold text-center mb-16 gold-text">Our Creations</h2>
-            <div class="gallery-grid">
+            <div class="gallery-grid section-motion-stagger">
                 <!-- Cake 1 -->
-                <div class="cake-card bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl overflow-hidden border border-gold/20 shadow-lg">
+                <div class="cake-card rounded-xl overflow-hidden shadow-sm">
                     <div class="h-64 bg-gray-100 flex items-center justify-center overflow-hidden image-overlay">
                         <img src="images/c1.jpg" alt="Custom Cake Design" class="w-full h-full object-cover">
                     </div>
@@ -646,7 +222,7 @@
                 </div>
 
                 <!-- Cake 2 -->
-                <div class="cake-card bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl overflow-hidden border border-gold/20 shadow-lg">
+                <div class="cake-card rounded-xl overflow-hidden shadow-sm">
                     <div class="h-64 bg-gray-100 flex items-center justify-center overflow-hidden image-overlay">
                         <img src="images/c2.jpg" alt="Custom Cake Design" class="w-full h-full object-cover">
                     </div>
@@ -657,7 +233,7 @@
                 </div>
 
                 <!-- Cake 3 -->
-                <div class="cake-card bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl overflow-hidden border border-gold/20 shadow-lg">
+                <div class="cake-card rounded-xl overflow-hidden shadow-sm">
                     <div class="h-64 bg-gray-100 flex items-center justify-center overflow-hidden image-overlay">
                         <img src="images/c3.jpg" alt="Custom Cake Design" class="w-full h-full object-cover">
                     </div>
@@ -668,7 +244,7 @@
                 </div>
 
                 <!-- Cake 4 -->
-                <div class="cake-card bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl overflow-hidden border border-gold/20 shadow-lg">
+                <div class="cake-card rounded-xl overflow-hidden shadow-sm">
                     <div class="h-64 bg-gray-100 flex items-center justify-center overflow-hidden image-overlay">
                         <img src="images/c4.jpg" alt="Custom Cake Design" class="w-full h-full object-cover">
                     </div>
@@ -679,7 +255,7 @@
                 </div>
 
                 <!-- Cake 5 -->
-                <div class="cake-card bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl overflow-hidden border border-gold/20 shadow-lg">
+                <div class="cake-card rounded-xl overflow-hidden shadow-sm">
                     <div class="h-64 bg-gray-100 flex items-center justify-center overflow-hidden image-overlay">
                         <img src="images/c5.jpg" alt="Custom Cake Design" class="w-full h-full object-cover">
                     </div>
@@ -690,7 +266,7 @@
                 </div>
 
                 <!-- Cake 6 -->
-                <div class="cake-card bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl overflow-hidden border border-gold/20 shadow-lg">
+                <div class="cake-card rounded-xl overflow-hidden shadow-sm">
                     <div class="h-64 bg-gray-100 flex items-center justify-center overflow-hidden image-overlay">
                         <img src="images/c6.jpg" alt="Custom Cake Design" class="w-full h-full object-cover">
                     </div>
@@ -706,12 +282,12 @@
     <div class="section-divider"></div>
 
     <!-- Testimonials Section -->
-    <section class="py-20 px-6 bg-white/50">
+    <section class="section-motion py-20 px-6 bg-white/50">
         <div class="container mx-auto max-w-6xl">
             <h2 class="font-display text-5xl font-bold text-center mb-6 gold-text">What Our Customers Say</h2>
             <p class="text-center text-gray-600 mb-16">Real reviews from real customers who love our cakes</p>
             
-            <div class="grid md:grid-cols-3 gap-8">
+            <div class="grid md:grid-cols-3 gap-8 section-motion-stagger">
                 <div class="testimonial-card">
                     <div class="flex items-center mb-4">
                         <div class="text-gold text-xl">
@@ -784,7 +360,7 @@
     <div class="section-divider"></div>
 
     <!-- Order Section -->
-    <section id="order" class="py-20 px-6">
+    <section id="order" class="section-motion py-20 px-6">
         <div class="container mx-auto max-w-4xl text-center">
             <h2 class="font-display text-5xl font-bold mb-8 gold-text">Ready to Order?</h2>
             <p class="text-xl text-gray-700 mb-12 max-w-2xl mx-auto">
@@ -798,12 +374,12 @@
     </section>
 
     <!-- FAQ Section -->
-    <section class="py-20 px-6 bg-white/50">
+    <section class="section-motion py-20 px-6 bg-white/50">
         <div class="container mx-auto max-w-4xl">
             <h2 class="font-display text-5xl font-bold text-center mb-6 gold-text">Frequently Asked Questions</h2>
             <p class="text-center text-gray-600 mb-16">Everything you need to know about ordering custom cakes</p>
             
-            <div class="space-y-6">
+            <div class="space-y-6 section-motion-stagger">
                 <div class="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition">
                     <h3 class="font-display text-xl font-semibold mb-3 text-main flex items-center">
                         <i class="fas fa-question-circle gold-text mr-3"></i>
@@ -842,7 +418,7 @@
     <div class="section-divider"></div>
 
     <!-- Footer -->
-    <footer class="py-16 px-6 border-t border-gold/20 bg-white/50">
+    <footer class="section-motion py-16 px-6 border-t border-gold/20 bg-white/50">
         <div class="container mx-auto max-w-6xl">
             <div class="grid md:grid-cols-4 gap-8 mb-8">
                 <div class="md:col-span-2">
@@ -888,10 +464,10 @@
                             <i class="fas fa-clock gold-text mr-2 mt-1"></i>
                             <span>Mon-Sun: 8AM - 6PM</span>
                         </li>
-                        <li class="flex items-start">
-                            <i class="fas fa-map-marker-alt gold-text mr-2 mt-1"></i>
-                            <span id="footerAddressText" class="mr-2">Davao City</span>
-                            <a id="footerMapLink" href="https://www.google.com/maps?q=7.079683,125.539021" target="_blank" rel="noopener noreferrer" class="gold-text hover:underline">Get directions</a>
+                        <li class="flex flex-wrap items-start gap-x-2 gap-y-1">
+                            <i class="fas fa-map-marker-alt gold-text mr-0 mt-1 flex-shrink-0"></i>
+                            <span id="footerAddressText" class="mr-1">Davao City</span>
+                            <a id="footerMapLink" href="https://www.google.com/maps?q=7.079683,125.539021" target="_blank" rel="noopener noreferrer" class="footer-directions-link inline-block">Get directions</a>
                         </li>
                     </ul>
                 </div>
@@ -913,60 +489,102 @@
         <i class="fas fa-arrow-up text-xl"></i>
     </div>
     
-    <!-- Login/Signup Modal -->
+    <!-- Login/Signup Modal: "Continue as" (Customer/Admin × Sign in/Sign up). Revert: see REVERT_AUTH_MODAL.txt in this folder. -->
     <div id="authModal" class="modal">
-        <div class="modal-content">
-            <div class="flex justify-between items-center mb-6">
-                <h2 id="modalTitle" class="font-display text-3xl gold-text font-bold">Login</h2>
-                <button onclick="closeModal()" class="text-gray-600 hover:text-gray-900 text-2xl">
+        <div class="modal-content max-w-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="authModalTitle" class="font-display text-2xl md:text-3xl gold-text font-bold">Continue as</h2>
+                <button type="button" onclick="closeModal()" class="text-gray-500 hover:text-gray-800 text-xl leading-none" aria-label="Close">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            
-            <!-- Login Form -->
-            <div id="loginForm">
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2 font-medium">Email</label>
-                    <input type="email" id="loginEmail" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your email">
+
+            <!-- Step 1: Choose account type and action -->
+            <div id="authContinueAs">
+                <p class="text-gray-600 text-sm mb-6">Choose your account type to sign in or create an account.</p>
+                <div class="grid grid-cols-2 gap-3 md:gap-4">
+                    <button type="button" onclick="authShowLogin('customer')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
+                        <i class="fas fa-user text-2xl md:text-3xl gold-text mb-2"></i>
+                        <span class="font-semibold text-gray-800">Customer</span>
+                        <span class="text-sm text-gray-600">Sign in</span>
+                    </button>
+                    <button type="button" onclick="authShowLogin('admin')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
+                        <i class="fas fa-user-shield text-2xl md:text-3xl gold-text mb-2"></i>
+                        <span class="font-semibold text-gray-800">Admin</span>
+                        <span class="text-sm text-gray-600">Sign in</span>
+                    </button>
+                    <button type="button" onclick="authShowSignup('customer')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
+                        <i class="fas fa-user-plus text-2xl md:text-3xl gold-text mb-2"></i>
+                        <span class="font-semibold text-gray-800">Customer</span>
+                        <span class="text-sm text-gray-600">Sign up</span>
+                    </button>
+                    <button type="button" onclick="authShowSignup('admin')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
+                        <i class="fas fa-user-cog text-2xl md:text-3xl gold-text mb-2"></i>
+                        <span class="font-semibold text-gray-800">Admin</span>
+                        <span class="text-sm text-gray-600">Sign up</span>
+                    </button>
                 </div>
-                <div class="mb-6">
-                    <label class="block text-gray-700 mb-2 font-medium">Password</label>
-                    <input type="password" id="loginPassword" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your password">
-                </div>
-                <button onclick="handleLogin()" class="btn-gold w-full py-3 rounded-lg font-semibold text-white mb-4">
-                    Login
-                </button>
-                <p class="text-center text-gray-600">
-                    Don't have an account? 
-                    <a href="#" onclick="showSignup()" class="gold-text hover:underline font-medium">Sign up</a>
-                </p>
             </div>
 
-            <!-- Signup Form -->
-            <div id="signupForm" style="display: none;">
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2 font-medium">Full Name</label>
-                    <input type="text" id="signupName" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your full name">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2 font-medium">Email</label>
-                    <input type="email" id="signupEmail" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your email">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2 font-medium">Password</label>
-                    <input type="password" id="signupPassword" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Create a password">
-                </div>
-                <div class="mb-6">
-                    <label class="block text-gray-700 mb-2 font-medium">Confirm Password</label>
-                    <input type="password" id="signupConfirmPassword" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Confirm your password">
-                </div>
-                <button onclick="handleSignup()" class="btn-gold w-full py-3 rounded-lg font-semibold text-white mb-4">
-                    Sign Up
+            <!-- Step 2: Login or Signup form -->
+            <div id="authFormStep" class="hidden">
+                <button type="button" onclick="authBackToContinueAs()" class="text-gray-500 hover:text-[#D4AF37] text-sm mb-4 flex items-center gap-1">
+                    <i class="fas fa-arrow-left"></i> Back
                 </button>
-                <p class="text-center text-gray-600">
-                    Already have an account? 
-                    <a href="#" onclick="showLogin()" class="gold-text hover:underline font-medium">Login</a>
-                </p>
+                <div id="loginForm">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2 font-medium">Email</label>
+                        <input type="email" id="loginEmail" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your email">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2 font-medium">Password</label>
+                        <input type="password" id="loginPassword" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your password">
+                    </div>
+                    <button type="button" onclick="handleLogin()" class="btn-gold w-full py-3 rounded-lg font-semibold text-white mb-4">Sign in</button>
+                </div>
+                <div id="signupForm" style="display: none;">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2 font-medium">Full Name</label>
+                        <input type="text" id="signupName" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your full name">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2 font-medium">Email</label>
+                        <input type="email" id="signupEmail" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Enter your email">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2 font-medium">Password</label>
+                        <input type="password" id="signupPassword" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Create a password">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2 font-medium">Confirm Password</label>
+                        <input type="password" id="signupConfirmPassword" class="input-field w-full px-4 py-3 rounded-lg" placeholder="Confirm your password">
+                    </div>
+                    <button type="button" onclick="handleSignup()" class="btn-gold w-full py-3 rounded-lg font-semibold text-white mb-4">Sign up</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Two-factor authentication (6-digit code) -->
+            <div id="auth2FAStep" class="hidden">
+                <button type="button" onclick="authBackToLoginFrom2FA()" class="text-gray-500 hover:text-[#D4AF37] text-sm mb-4 flex items-center gap-1">
+                    <i class="fas fa-arrow-left"></i> Back to sign in
+                </button>
+                <div class="flex justify-center mb-2">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center bg-[#D4AF37]/20 text-[#D4AF37]">
+                        <i class="fas fa-shield-alt text-xl"></i>
+                    </div>
+                </div>
+                <h3 class="font-display text-xl font-bold text-center text-gray-800 mb-1">Two-factor authentication</h3>
+                <p class="text-gray-600 text-sm text-center mb-6">Enter the 6-digit code from your authenticator app</p>
+                <div id="twoFAInputs" class="flex justify-center gap-2 mb-6">
+                    <input type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" class="twofa-digit w-11 h-12 text-center text-lg font-semibold rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" data-idx="0" aria-label="Digit 1">
+                    <input type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" class="twofa-digit w-11 h-12 text-center text-lg font-semibold rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" data-idx="1" aria-label="Digit 2">
+                    <input type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" class="twofa-digit w-11 h-12 text-center text-lg font-semibold rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" data-idx="2" aria-label="Digit 3">
+                    <input type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" class="twofa-digit w-11 h-12 text-center text-lg font-semibold rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" data-idx="3" aria-label="Digit 4">
+                    <input type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" class="twofa-digit w-11 h-12 text-center text-lg font-semibold rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" data-idx="4" aria-label="Digit 5">
+                    <input type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" class="twofa-digit w-11 h-12 text-center text-lg font-semibold rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" data-idx="5" aria-label="Digit 6">
+                </div>
+                <button type="button" id="verify2FABtn" onclick="verify2FA()" class="btn-gold w-full py-3 rounded-lg font-semibold text-white mb-3">Verify</button>
+                <p class="text-xs text-gray-500 text-center">Enter the verification code from your authenticator app to complete sign-in.</p>
             </div>
         </div>
     </div>
@@ -978,10 +596,11 @@
             menu.classList.toggle('hidden');
         });
 
-        // Set initial active nav link
+        // Set initial active nav link (desktop + mobile) for underline highlight
         function setActiveNavLink() {
             const sections = document.querySelectorAll('section[id]');
             const navLinks = document.querySelectorAll('.nav-link');
+            const mobileLinks = document.querySelectorAll('.mobile-nav-link');
             
             let currentSection = '';
             if (window.scrollY < 100) {
@@ -997,6 +616,12 @@
             }
             
             navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + currentSection) {
+                    link.classList.add('active');
+                }
+            });
+            mobileLinks.forEach(link => {
                 link.classList.remove('active');
                 if (link.getAttribute('href') === '#' + currentSection) {
                     link.classList.add('active');
@@ -1025,32 +650,117 @@
             });
         });
 
-        // Modal Functions
+        // Modal Functions ("Continue as" flow)
         function openAuthModal() {
             document.getElementById('authModal').classList.add('active');
-            showLogin();
+            authBackToContinueAs();
         }
 
         function openOrderModal() {
             document.getElementById('authModal').classList.add('active');
-            showLogin();
+            authBackToContinueAs();
         }
 
         function closeModal() {
             document.getElementById('authModal').classList.remove('active');
         }
 
-        function showLogin() {
-            document.getElementById('loginForm').style.display = 'block';
-            document.getElementById('signupForm').style.display = 'none';
-            document.getElementById('modalTitle').textContent = 'Login';
+        function authBackToContinueAs() {
+            document.getElementById('authContinueAs').classList.remove('hidden');
+            document.getElementById('authFormStep').classList.add('hidden');
+            var step2FA = document.getElementById('auth2FAStep');
+            if (step2FA) step2FA.classList.add('hidden');
+            document.getElementById('authModalTitle').textContent = 'Continue as';
         }
 
-        function showSignup() {
+        /** Reset auth modal to step 1 (Continue as) after role mismatch; called from auth controller. */
+        window.resetAuthModalToStep1 = function() {
+            document.getElementById('authContinueAs').classList.remove('hidden');
+            document.getElementById('authFormStep').classList.add('hidden');
+            var step2FA = document.getElementById('auth2FAStep');
+            if (step2FA) step2FA.classList.add('hidden');
+            document.getElementById('authModalTitle').textContent = 'Continue as';
+            window._authLoginIntent = null;
+            window._pendingProfileAfter2FA = null;
+        };
+
+        function authShowLogin(role) {
+            window._authSignupRole = null;
+            window._authLoginIntent = role || null;
+            window._authLoginTitle = (role === 'admin' ? 'Admin' : 'Customer') + ' – Sign in';
+            document.getElementById('authContinueAs').classList.add('hidden');
+            document.getElementById('authFormStep').classList.remove('hidden');
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('signupForm').style.display = 'none';
+            document.getElementById('authModalTitle').textContent = window._authLoginTitle;
+        }
+
+        function authShowSignup(role) {
+            window._authSignupRole = role || 'customer';
+            window._authLoginIntent = null;
+            document.getElementById('authContinueAs').classList.add('hidden');
+            document.getElementById('authFormStep').classList.remove('hidden');
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('signupForm').style.display = 'block';
-            document.getElementById('modalTitle').textContent = 'Sign Up';
+            document.getElementById('authModalTitle').textContent = (role === 'admin' ? 'Admin' : 'Customer') + ' – Sign up';
         }
+
+        function show2FAStep() {
+            document.getElementById('authContinueAs').classList.add('hidden');
+            document.getElementById('authFormStep').classList.add('hidden');
+            document.getElementById('auth2FAStep').classList.remove('hidden');
+            document.getElementById('authModalTitle').textContent = 'Verify your identity';
+            var digits = document.querySelectorAll('.twofa-digit');
+            digits.forEach(function(d) { d.value = ''; });
+            if (digits[0]) digits[0].focus();
+        }
+
+        function authBackToLoginFrom2FA() {
+            window._pendingProfileAfter2FA = null;
+            document.getElementById('auth2FAStep').classList.add('hidden');
+            document.getElementById('authFormStep').classList.remove('hidden');
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('signupForm').style.display = 'none';
+            document.getElementById('authModalTitle').textContent = (window._authLoginTitle || 'Sign in');
+        }
+
+        function get2FACode() {
+            var digits = document.querySelectorAll('.twofa-digit');
+            return Array.from(digits).map(function(d) { return d.value; }).join('');
+        }
+
+        function verify2FA() {
+            var code = get2FACode();
+            if (code.length !== 6) {
+                if (typeof showToast === 'function') showToast('Please enter all 6 digits.', 'error');
+                else alert('Please enter all 6 digits.');
+                return;
+            }
+            if (typeof window.complete2FAAndRedirect === 'function') {
+                window.complete2FAAndRedirect();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var digits = document.querySelectorAll('.twofa-digit');
+            digits.forEach(function(input, i) {
+                input.addEventListener('input', function() {
+                    var v = this.value.replace(/\D/g, '');
+                    this.value = v.slice(-1);
+                    if (v && i < digits.length - 1) digits[i + 1].focus();
+                });
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Backspace' && !this.value && i > 0) digits[i - 1].focus();
+                });
+                input.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    var pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+                    for (var j = 0; j < pasted.length && (i + j) < digits.length; j++) digits[i + j].value = pasted[j];
+                    if (i + pasted.length < digits.length) digits[i + pasted.length].focus();
+                    else if (digits[5]) digits[5].focus();
+                });
+            });
+        });
 
         // Close modal when clicking outside
         document.getElementById('authModal').addEventListener('click', function(e) {
@@ -1074,35 +784,17 @@
             setActiveNavLink();
         });
 
-        // Add animation on scroll
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver(function(entries) {
+        // Section scroll animations – add .in-view when section enters viewport
+        const sectionMotionObserver = new IntersectionObserver(function(entries) {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
+                    entry.target.classList.add('in-view');
                 }
             });
-        }, observerOptions);
+        }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
 
-        // Observe cake cards
-        document.querySelectorAll('.cake-card').forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(card);
-        });
-
-        // Observe feature cards
-        document.querySelectorAll('.feature-card, .testimonial-card').forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(card);
+        document.querySelectorAll('.section-motion').forEach(el => {
+            sectionMotionObserver.observe(el);
         });
 
         // Floating CTA Button and Scroll to Top - Show after scrolling past hero
@@ -1188,7 +880,443 @@
     </script>
 
     <!-- Auth controller (local login & signup) -->
-<script type="module" src="js/controllers/authController.js"></script>
+    <script type="module" src="js/controllers/authController.js"></script>
+
+    <!-- Custom theme CSS: loaded last so it overrides Tailwind's injected styles -->
+    <style>
+        /* Minimalistic theme: gold, cream, same as rest of site. Plain CSS only. */
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+        :root {
+            --gold: #D4AF37;
+            --dark-gold: #B8941E;
+            --cream: #FFF8F0;
+            --text-dark: #3D3D3D;
+        }
+
+        body { font-family: 'Inter', sans-serif; }
+
+        .meringued-bg {
+            position: relative;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background: var(--cream) !important;
+        }
+        .meringued-bg::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            background: linear-gradient(160deg, #FFF8F0 0%, #FFEDE6 35%, #FFF0F5 65%, #FFF8F0 100%);
+            background-size: 200% 200%;
+            animation: wallpaperGradient 18s ease-in-out infinite;
+        }
+        @keyframes wallpaperGradient {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .meringued-wallpaper {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .wallpaper-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.22;
+            will-change: transform;
+        }
+        .wallpaper-blob-1 {
+            width: min(70vw, 480px);
+            height: min(70vw, 480px);
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.35) 0%, transparent 70%);
+            top: -15%;
+            left: -10%;
+            animation: wallpaperFloat1 22s ease-in-out infinite;
+        }
+        .wallpaper-blob-2 {
+            width: min(50vw, 320px);
+            height: min(50vw, 320px);
+            background: radial-gradient(circle, rgba(255, 240, 245, 0.9) 0%, rgba(255, 228, 225, 0.4) 50%, transparent 70%);
+            top: 40%;
+            right: -5%;
+            animation: wallpaperFloat2 26s ease-in-out infinite;
+        }
+        .wallpaper-blob-3 {
+            width: min(45vw, 280px);
+            height: min(45vw, 280px);
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.2) 0%, transparent 65%);
+            bottom: 10%;
+            left: 15%;
+            animation: wallpaperFloat3 20s ease-in-out infinite;
+        }
+        .wallpaper-blob-4 {
+            width: min(60vw, 380px);
+            height: min(60vw, 380px);
+            background: radial-gradient(circle, rgba(255, 237, 230, 0.8) 0%, transparent 65%);
+            bottom: -20%;
+            right: 20%;
+            animation: wallpaperFloat4 24s ease-in-out infinite;
+        }
+        .wallpaper-blob-5 {
+            width: min(35vw, 220px);
+            height: min(35vw, 220px);
+            background: radial-gradient(circle, rgba(184, 148, 30, 0.15) 0%, transparent 70%);
+            top: 60%;
+            left: 50%;
+            animation: wallpaperFloat5 28s ease-in-out infinite;
+        }
+        @keyframes wallpaperFloat1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(8%, 12%) scale(1.05); }
+            66% { transform: translate(-5%, 5%) scale(0.98); }
+        }
+        @keyframes wallpaperFloat2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-10%, -8%) scale(1.08); }
+        }
+        @keyframes wallpaperFloat3 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(12%, -6%) scale(1.03); }
+            66% { transform: translate(-8%, 10%) scale(0.97); }
+        }
+        @keyframes wallpaperFloat4 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-6%, -12%) scale(1.06); }
+        }
+        @keyframes wallpaperFloat5 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(5%, 8%) scale(1.04); }
+            75% { transform: translate(-7%, -5%) scale(0.96); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .meringued-bg::before { animation: none; background-size: 100% 100%; }
+            .wallpaper-blob { animation: none !important; }
+        }
+
+        .font-display { font-family: 'Playfair Display', serif; }
+        .gold-text { color: var(--gold); }
+        .text-gold { color: var(--gold); }
+        .gold-bg { background: linear-gradient(135deg, var(--gold) 0%, var(--dark-gold) 100%); }
+        .text-main { color: var(--text-dark); }
+
+        .hero-gradient {
+            background: linear-gradient(180deg, rgba(255,248,240,0.6) 0%, rgba(255,248,240,0.95) 100%);
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* Desktop nav: underline highlight + movement */
+        .nav-link {
+            position: relative;
+            display: inline-block;
+            color: var(--text-dark);
+            font-weight: 500;
+            padding: 0.4rem 0.2rem;
+            transition: color 0.25s ease, transform 0.25s ease;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gold), var(--dark-gold));
+            border-radius: 2px;
+            transform: translateX(-50%);
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover {
+            color: var(--gold);
+            transform: translateY(-2px);
+        }
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        .nav-link.active {
+            color: var(--gold);
+        }
+        .nav-link.active::after {
+            width: 100%;
+        }
+
+        .mobile-nav-link {
+            position: relative;
+            display: block;
+            padding: 0.75rem 1rem;
+            color: var(--text-dark);
+            transition: background 0.25s ease, color 0.25s ease, padding-left 0.25s ease;
+            border-radius: 8px;
+        }
+        .mobile-nav-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 4px;
+            height: 0;
+            background: linear-gradient(180deg, var(--gold), var(--dark-gold));
+            border-radius: 0 4px 4px 0;
+            transform: translateY(-50%);
+            transition: height 0.25s ease;
+        }
+        .mobile-nav-link:hover {
+            background: rgba(212, 175, 55, 0.08);
+            color: var(--gold);
+            padding-left: 1.25rem;
+        }
+        .mobile-nav-link:hover::before,
+        .mobile-nav-link.active::before {
+            height: 60%;
+        }
+        .mobile-nav-link.active {
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        .navbar-brand { transition: opacity 0.2s ease; }
+        .navbar-brand:hover { opacity: 0.85; }
+
+        /* Footer "Get directions" – underline + movement (same style as nav links) */
+        .footer-directions-link {
+            position: relative;
+            color: var(--gold);
+            font-weight: 500;
+            transition: color 0.25s ease, transform 0.25s ease;
+        }
+        .footer-directions-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--gold), var(--dark-gold));
+            border-radius: 1px;
+            transform: translateX(-50%);
+            transition: width 0.3s ease;
+        }
+        .footer-directions-link:hover {
+            color: var(--dark-gold);
+            transform: translateY(-2px);
+        }
+        .footer-directions-link:hover::after {
+            width: 100%;
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--dark-gold) 100%);
+            color: white;
+            transition: opacity 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn-gold:hover { opacity: 0.95; box-shadow: 0 4px 20px rgba(212, 175, 55, 0.35); }
+
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(212,175,55,0.25), transparent);
+            margin: 3rem 0;
+        }
+
+        /* Section scroll animations – responsive movements */
+        .section-motion {
+            opacity: 0;
+            transform: translateY(36px);
+            transition: opacity 0.65s ease-out, transform 0.65s ease-out;
+        }
+        .section-motion.in-view {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .section-motion-stagger > * {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(1) { transition-delay: 0.08s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(2) { transition-delay: 0.14s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(3) { transition-delay: 0.2s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(4) { transition-delay: 0.26s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(5) { transition-delay: 0.32s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(6) { transition-delay: 0.38s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(7) { transition-delay: 0.44s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(8) { transition-delay: 0.5s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(9) { transition-delay: 0.56s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(10) { transition-delay: 0.62s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(11) { transition-delay: 0.68s; opacity: 1; transform: translateY(0); }
+        .section-motion.in-view .section-motion-stagger > *:nth-child(12) { transition-delay: 0.74s; opacity: 1; transform: translateY(0); }
+        @media (prefers-reduced-motion: reduce) {
+            .section-motion,
+            .section-motion-stagger > * {
+                opacity: 1;
+                transform: none;
+                transition: none;
+            }
+            .hero-content-motion { opacity: 1; transform: none; animation: none; }
+        }
+
+        /* Hero entrance – subtle fade/slide on load */
+        .hero-content-motion {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: heroEntrance 0.9s ease-out 0.2s forwards;
+        }
+        @keyframes heroEntrance {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .cake-card {
+            background: #fff !important;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .cake-card:hover {
+            box-shadow: 0 8px 24px rgba(212, 175, 55, 0.15);
+            border-color: rgba(212, 175, 55, 0.35);
+        }
+
+        .image-overlay { position: relative; overflow: hidden; }
+
+        .feature-card {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            transition: box-shadow 0.2s ease;
+        }
+        .feature-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.06); }
+
+        .testimonial-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.5rem 1.75rem;
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            transition: box-shadow 0.2s ease;
+        }
+        .testimonial-card:hover { box-shadow: 0 6px 20px rgba(212, 175, 55, 0.1); }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        .step-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--dark-gold) 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 auto 0.75rem;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) { .gallery-grid { grid-template-columns: 1fr; } }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: #fff;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 16px;
+            padding: 1.75rem;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text-dark);
+            transition: border-color 0.2s ease;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .twofa-digit {
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .twofa-digit:focus {
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+        }
+
+        .scroll-smooth { scroll-behavior: smooth; }
+
+        .floating-cta {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .floating-cta.visible { opacity: 1; transform: translateY(0); }
+
+        .scroll-to-top {
+            position: fixed;
+            bottom: 88px;
+            right: 24px;
+            z-index: 90;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--dark-gold) 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .scroll-to-top.visible { opacity: 1; transform: translateY(0); }
+        .scroll-to-top:hover { opacity: 0.9; }
+
+        @media (max-width: 768px) {
+            .scroll-to-top { bottom: 80px; right: 20px; width: 40px; height: 40px; }
+            .floating-cta { bottom: 20px; right: 20px; }
+        }
+    </style>
 </body>
 </html>
 
