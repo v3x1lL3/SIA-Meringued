@@ -379,10 +379,7 @@ export async function loadCustomers() {
 
   // 3) Fallback: from orders in localStorage (users who placed orders / logged-in names)
   const fromOrders = getCustomersFromOrders();
-  renderCustomers(
-    fromOrders,
-    'From orders in this browser (localStorage). Connect Supabase to see all registered users.'
-  );
+  renderCustomers(fromOrders, '');
   attachCustomersTableListeners();
   exposeCustomerWindowHandlers();
 }

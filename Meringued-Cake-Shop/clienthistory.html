@@ -83,6 +83,15 @@
             background: linear-gradient(135deg, #B8941E 0%, var(--gold) 100%);
             color: white !important;
         }
+        @media (min-width: 768px) {
+            #clientSidebar { transition: transform 0.3s ease; }
+            body.sidebar-hidden #clientSidebar { transform: translateX(-100%) !important; }
+            #clientMainContent { transition: margin-left 0.3s ease; }
+            body.sidebar-hidden #clientMainContent { margin-left: 0 !important; }
+            #clientSidebarToggle { transition: left 0.3s ease; }
+            body.sidebar-hidden #clientSidebarToggle { left: -120px; opacity: 0; pointer-events: none; }
+            body.sidebar-hidden #clientSidebarShow { opacity: 1; pointer-events: auto; }
+        }
     </style>
 </head>
 <body class="meringued-bg">
@@ -144,8 +153,11 @@
     <!-- Overlay for mobile -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden md:hidden"></div>
 
+    <button id="clientSidebarToggle" type="button" onclick="toggleClientSidebar()" class="hidden md:inline-flex fixed left-64 top-6 z-50 px-3 py-2 rounded-r-lg text-sm font-semibold text-gray-700 bg-white/95 border border-l-0 border-[#D4AF37]/30 shadow-md hover:bg-[#FFF8F0] transition items-center" title="Hide sidebar"><i class="fas fa-chevron-left mr-1"></i> Hide sidebar</button>
+    <button id="clientSidebarShow" type="button" onclick="toggleClientSidebar()" class="hidden md:inline-flex fixed left-0 top-6 z-50 px-3 py-2 rounded-r-lg text-sm font-semibold text-white shadow-md opacity-0 pointer-events-none transition items-center" style="background: linear-gradient(135deg, var(--gold) 0%, #B8941E 100%);" title="Show sidebar"><i class="fas fa-chevron-right mr-1"></i> Show sidebar</button>
+
     <!-- Main Content Area -->
-    <div class="md:ml-64 min-h-screen">
+    <div id="clientMainContent" class="md:ml-64 min-h-screen">
         <!-- Top Bar with Cart -->
         <div class="bg-white/80 backdrop-blur-sm shadow-sm border-b border-[#D4AF37]/10 sticky top-0 z-40 pl-0 pr-72 py-10">
             <div class="flex justify-between items-center">
@@ -188,7 +200,7 @@
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Order ID</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Date Ordered</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
-                            <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery</th>
+                            <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery <span class="inline-flex align-middle cursor-help font-normal text-[#D4AF37] hover:text-[#b8942a]" title="Pick up = collect your order at our store. Deliver = we deliver to your address (delivery fee may apply)." aria-label="Help: what does Delivery mean?">(?)</span></th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
@@ -216,7 +228,7 @@
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Order ID</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Date Ordered</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
-                            <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery</th>
+                            <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery <span class="inline-flex align-middle cursor-help font-normal text-[#D4AF37] hover:text-[#b8942a]" title="Pick up = collect your order at our store. Deliver = we deliver to your address (delivery fee may apply)." aria-label="Help: what does Delivery mean?">(?)</span></th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
@@ -411,6 +423,8 @@
         let cart = JSON.parse(localStorage.getItem(typeof getCartKey === 'function' ? getCartKey() : 'cart')) || [];
         let orders = [];
         let currentTab = 'completed';
+
+        function toggleClientSidebar() { document.body.classList.toggle('sidebar-hidden'); }
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {

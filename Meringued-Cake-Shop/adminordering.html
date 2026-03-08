@@ -70,11 +70,18 @@
             background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%);
             color: white !important;
         }
+        #adminSidebar { transition: transform 0.3s ease; }
+        body.sidebar-hidden #adminSidebar { transform: translateX(-100%); }
+        #adminMainContent { transition: margin-left 0.3s ease; }
+        body.sidebar-hidden #adminMainContent { margin-left: 0; }
+        #sidebarToggle { transition: left 0.3s ease; }
+        body.sidebar-hidden #sidebarToggle { left: -120px; opacity: 0; pointer-events: none; }
+        body.sidebar-hidden #sidebarShow { opacity: 1; pointer-events: auto; }
     </style>
 </head>
 <body class="meringued-bg min-h-screen">
     <!-- Sidebar -->
-    <aside class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
+    <aside id="adminSidebar" class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
         <!-- Logo -->
         <div class="p-6 border-b-2 border-[#D4AF37]/20">
             <a href="admindashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">
@@ -134,8 +141,12 @@
         </div>
     </aside>
 
+    <button id="sidebarToggle" type="button" onclick="toggleAdminSidebar()" class="fixed left-64 top-6 z-50 px-3 py-2 rounded-r-lg text-sm font-semibold text-gray-700 bg-white/95 border border-l-0 border-[#D4AF37]/30 shadow-md hover:bg-[#FFF8F0] transition" title="Hide sidebar"><i class="fas fa-chevron-left mr-1"></i> Hide sidebar</button>
+    <button id="sidebarShow" type="button" onclick="toggleAdminSidebar()" class="fixed left-0 top-6 z-50 px-3 py-2 rounded-r-lg text-sm font-semibold text-white shadow-md opacity-0 pointer-events-none transition" style="background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);" title="Show sidebar"><i class="fas fa-chevron-right mr-1"></i> Show sidebar</button>
+    <script>function toggleAdminSidebar(){document.body.classList.toggle('sidebar-hidden');}</script>
+
     <!-- Main Content Area -->
-    <div class="ml-64 min-h-screen">
+    <div id="adminMainContent" class="ml-64 min-h-screen">
         <!-- Main Content -->
         <div class="px-6 py-12">
             <div class="max-w-7xl mx-auto">

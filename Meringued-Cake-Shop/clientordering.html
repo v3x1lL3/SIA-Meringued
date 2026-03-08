@@ -95,6 +95,16 @@
             background: linear-gradient(135deg, #B8941E 0%, var(--gold) 100%);
             color: white !important;
         }
+        /* Sidebar show/hide toggle (desktop only) */
+        @media (min-width: 768px) {
+            #clientSidebar { transition: transform 0.3s ease; }
+            body.sidebar-hidden #clientSidebar { transform: translateX(-100%) !important; }
+            #clientMainContent { transition: margin-left 0.3s ease; }
+            body.sidebar-hidden #clientMainContent { margin-left: 0 !important; }
+            #clientSidebarToggle { transition: left 0.3s ease; }
+            body.sidebar-hidden #clientSidebarToggle { left: -120px; opacity: 0; pointer-events: none; }
+            body.sidebar-hidden #clientSidebarShow { opacity: 1; pointer-events: auto; }
+        }
     </style>
 </head>
 <body class="meringued-bg min-h-screen">
@@ -156,8 +166,11 @@
     <!-- Overlay for mobile -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden md:hidden"></div>
 
+    <button id="clientSidebarToggle" type="button" onclick="toggleClientSidebar()" class="hidden md:inline-flex fixed left-64 top-6 z-50 px-3 py-2 rounded-r-lg text-sm font-semibold text-gray-700 bg-white/95 border border-l-0 border-[#D4AF37]/30 shadow-md hover:bg-[#FFF8F0] transition items-center" title="Hide sidebar"><i class="fas fa-chevron-left mr-1"></i> Hide sidebar</button>
+    <button id="clientSidebarShow" type="button" onclick="toggleClientSidebar()" class="hidden md:inline-flex fixed left-0 top-6 z-50 px-3 py-2 rounded-r-lg text-sm font-semibold text-white shadow-md opacity-0 pointer-events-none transition items-center" style="background: linear-gradient(135deg, var(--gold) 0%, #B8941E 100%);" title="Show sidebar"><i class="fas fa-chevron-right mr-1"></i> Show sidebar</button>
+
     <!-- Main Content Area -->
-    <div class="md:ml-64 min-h-screen">
+    <div id="clientMainContent" class="md:ml-64 min-h-screen">
         <!-- Top Bar with Cart -->
         <div class="bg-white/80 backdrop-blur-sm shadow-sm border-b border-[#D4AF37]/10 sticky top-0 z-40 pl-0 pr-72 py-10">
             <div class="flex justify-between items-center">
@@ -199,7 +212,7 @@
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Order ID</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Date Ordered</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery <span class="inline-flex align-middle cursor-help font-normal text-[#D4AF37] hover:text-[#b8942a]" title="Pick up = collect your order at our store. Deliver = we deliver to your address (delivery fee may apply)." aria-label="Help: what does Delivery mean?">(?)</span></th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
@@ -218,6 +231,18 @@
                         <button onclick="openOrderModal()" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg">
                             Place Your First Order
                         </button>
+                    </div>
+                    <div id="orderLogSection" class="mt-6 pt-6 border-t-2 border-[#D4AF37]/20 hidden">
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-file-alt mr-2 text-gray-500"></i>
+                            Order log — download a copy of your orders as a text file for your own record or printing.
+                        </p>
+                        <div class="flex flex-wrap gap-3">
+                            <button type="button" onclick="downloadAllOrdersTxt()" class="inline-flex items-center gap-2 px-4 py-3 rounded-xl font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition border-2 border-gray-200">
+                                <i class="fas fa-download"></i>
+                                Download all orders (.txt)
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -267,6 +292,10 @@
                                             <p class="text-xs text-gray-500 mt-0.5">We'll deliver to you</p>
                                         </div>
                                     </label>
+                                </div>
+                                <div id="deliveryFeeNote" class="mt-2 hidden flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
+                                    <i class="fas fa-exclamation-circle text-amber-500 shrink-0" aria-hidden="true"></i>
+                                    <span>Delivery fee may rise depending on the customer location.</span>
                                 </div>
                                 <div id="deliveryAddressSection" class="mt-3 hidden">
                                     <label class="block text-gray-700 font-semibold mb-1"><i class="fas fa-map-marker-alt mr-2" style="color: #D4AF37;"></i>Delivery address</label>
@@ -434,7 +463,7 @@
                                     <i class="fas fa-credit-card mr-2" style="color: #D4AF37;"></i>
                                     Payment Method
                                 </label>
-                                <div class="grid grid-cols-2 gap-3">
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     <label class="relative cursor-pointer">
                                         <input type="radio" name="paymentMethod" value="Online Payment" class="peer sr-only" checked>
                                         <div class="border-2 border-gray-200 rounded-lg p-3 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
@@ -449,6 +478,14 @@
                                             <i class="fas fa-money-bill-wave text-xl mb-1 text-gray-600 peer-checked:text-[#D4AF37] transition"></i>
                                             <p class="font-semibold text-sm">Cash on Delivery</p>
                                             <p class="text-xs text-gray-500 mt-0.5">Pay on arrival</p>
+                                        </div>
+                                    </label>
+                                    <label class="relative cursor-pointer">
+                                        <input type="radio" name="paymentMethod" value="50% Down Payment" class="peer sr-only">
+                                        <div class="border-2 border-gray-200 rounded-lg p-3 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
+                                            <i class="fas fa-percent text-xl mb-1 text-gray-600 peer-checked:text-[#D4AF37] transition"></i>
+                                            <p class="font-semibold text-sm">50% Down Payment</p>
+                                            <p class="text-xs text-gray-500 mt-0.5">Pay half now, confirm order</p>
                                         </div>
                                     </label>
                                 </div>
@@ -491,9 +528,17 @@
                                 <span class="text-gray-600">Delivery:</span>
                                 <span id="summaryDelivery" class="font-semibold">Pick up</span>
                             </div>
+                            <div id="summaryDeliveryFeeRow" class="hidden flex justify-between text-sm">
+                                <span class="text-gray-600">Delivery fee:</span>
+                                <span id="summaryDeliveryFeeAmount" class="font-semibold" style="color: #D4AF37;">₱150</span>
+                            </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Payment:</span>
                                 <span id="summaryPayment" class="font-semibold">Online Payment</span>
+                            </div>
+                            <div id="summaryDownPaymentRow" class="hidden justify-between text-sm pt-2 border-t border-gray-200 flex">
+                                <span class="text-gray-600">Amount due now (50%):</span>
+                                <span id="amountDueNow" class="font-bold" style="color: #D4AF37;">₱0</span>
                             </div>
                         </div>
 
@@ -580,11 +625,14 @@
                             <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm text-yellow-700 font-medium">
+                            <p id="receiptUploadModalMessage" class="text-sm text-yellow-700 font-medium">
                                 You chose <strong>Online Payment</strong> as your payment method. Please upload a screenshot of your payment receipt.
                             </p>
                             <p class="text-xs text-yellow-600 mt-2">
                                 <strong>Note:</strong> Incorrect payment receipts or unrelated images will cause your order to be automatically dismissed.
+                            </p>
+                            <p class="text-xs text-yellow-700 mt-2">
+                                We accept GCash, Maya, BDO, or any bank payment methods.
                             </p>
                         </div>
                     </div>
@@ -777,6 +825,8 @@
         // Track selections in the cart modal
         let selectedCartIndexes = new Set();
         let orders = [];
+
+        function toggleClientSidebar() { document.body.classList.toggle('sidebar-hidden'); }
         
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
@@ -909,6 +959,8 @@
                 tbody.innerHTML = '';
                 table.classList.add('hidden');
                 emptyDiv.classList.remove('hidden');
+                var logSectionEmpty = document.getElementById('orderLogSection');
+                if (logSectionEmpty) logSectionEmpty.classList.add('hidden');
                 return;
             }
             
@@ -934,7 +986,7 @@
                                 ${escapeHtml(order.deliveryType || 'Pick up')}
                             </td>
                             <td class="py-4 px-4 text-gray-700">
-                                ${order.paymentMethod === 'Online Payment' && order.receipt ? 
+                                ${(order.paymentMethod === 'Online Payment' || order.paymentMethod === '50% Down Payment') && order.receipt ? 
                                     `<button onclick="viewReceipt(${order.id})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">
                                         ${escapeHtml(order.paymentMethod || 'Online Payment')}
                                     </button>` :
@@ -942,17 +994,23 @@
                                 }
                             </td>
                             <td class="py-4 px-4 text-gray-700">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : '—'}</td>
-                            <td class="py-4 px-4 font-bold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</td>
+                            <td class="py-4 px-4">
+                                <span class="font-bold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</span>
+                                ${order.paymentMethod === '50% Down Payment' && order.downPaymentAmount != null ? `<div class="text-xs text-gray-500 mt-0.5">50% due now: ₱${order.downPaymentAmount}</div>` : ''}
+                            </td>
                             <td class="py-4 px-4">
                                 <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusColor}">
                                     ${escapeHtml(order.status || 'Pending')}
                                 </span>
                             </td>
                             <td class="py-4 px-4 text-gray-700">
+                                <button onclick="downloadSingleOrderTxt(${order.id})" class="px-3 py-1 rounded-lg text-gray-700 bg-gray-100 hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm mr-1" title="Download this order as a text file">
+                                    <i class="fas fa-file-alt mr-1"></i>TXT
+                                </button>
                                 ${
-                                    order.status === 'Pending' && order.paymentMethod === 'Cash on Delivery'
+                                    order.status === 'Pending' && (order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === '50% Down Payment')
                                         ? `<button onclick="openCancelOrderModal(${order.id})" class="px-3 py-1 rounded-lg text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all font-medium text-sm">Cancel</button>`
-                                        : `<span class="text-gray-400">—</span>`
+                                        : ''
                                 }
                             </td>
                         </tr>
@@ -960,6 +1018,8 @@
                 }).join('');
             
             tbody.innerHTML = rowsHTML;
+            var logSection = document.getElementById('orderLogSection');
+            if (logSection) logSection.classList.remove('hidden');
         }
         
         // Get status badge color
@@ -975,12 +1035,19 @@
             return statusColors[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
         }
 
-        // Calculate price (based on size only; frosting has no price add-on)
+        // Minimum delivery fee (manual; may rise depending on location)
+        const MIN_DELIVERY_FEE = 150;
+
+        // Calculate price (size × quantity + delivery fee when Deliver)
         function calculatePrice() {
             const sizeRadio = document.querySelector('input[name="size"]:checked');
             const sizePrice = parseFloat(sizeRadio?.dataset.price) || 450;
             const quantity = parseInt(document.getElementById('quantity').value) || 1;
-            const total = sizePrice * quantity;
+            const deliveryRadio = document.querySelector('input[name="deliveryType"]:checked');
+            const isDeliver = deliveryRadio && deliveryRadio.value === 'Deliver';
+            const deliveryFee = isDeliver ? MIN_DELIVERY_FEE : 0;
+            const baseTotal = sizePrice * quantity;
+            const total = baseTotal + deliveryFee;
 
             document.getElementById('totalPrice').textContent = '₱' + total.toFixed(0);
 
@@ -991,13 +1058,35 @@
             document.getElementById('summarySize').textContent = sizeRadio ? sizeRadio.value : 'Small';
             document.getElementById('summaryQty').textContent = quantity;
             document.getElementById('summaryFrosting').textContent = document.getElementById('frosting').value;
-            
-            // Update delivery type and payment method
-            const deliveryRadio = document.querySelector('input[name="deliveryType"]:checked');
-            const paymentRadio = document.querySelector('input[name="paymentMethod"]:checked');
             document.getElementById('summaryDelivery').textContent = deliveryRadio ? deliveryRadio.value : 'Pick up';
-            document.getElementById('summaryPayment').textContent = paymentRadio ? paymentRadio.value : 'Online Payment';
-            
+
+            // Delivery fee row (show only when Deliver)
+            const deliveryFeeRow = document.getElementById('summaryDeliveryFeeRow');
+            const deliveryFeeAmountEl = document.getElementById('summaryDeliveryFeeAmount');
+            if (deliveryFeeRow && deliveryFeeAmountEl) {
+                if (isDeliver) {
+                    deliveryFeeAmountEl.textContent = '₱' + MIN_DELIVERY_FEE;
+                    deliveryFeeRow.classList.remove('hidden');
+                } else {
+                    deliveryFeeRow.classList.add('hidden');
+                }
+            }
+
+            const paymentRadio = document.querySelector('input[name="paymentMethod"]:checked');
+            const paymentMethod = paymentRadio ? paymentRadio.value : 'Online Payment';
+            document.getElementById('summaryPayment').textContent = paymentMethod;
+
+            // 50% Down Payment: show amount due now (based on full total including delivery)
+            const downPaymentRow = document.getElementById('summaryDownPaymentRow');
+            const amountDueEl = document.getElementById('amountDueNow');
+            if (paymentMethod === '50% Down Payment' && downPaymentRow && amountDueEl) {
+                const amountDue = Math.round(total * 0.5);
+                amountDueEl.textContent = '₱' + amountDue.toFixed(0);
+                downPaymentRow.classList.remove('hidden');
+            } else if (downPaymentRow) {
+                downPaymentRow.classList.add('hidden');
+            }
+
             // Update cake design in summary
             const cakeDesign = document.getElementById('cakeDesign').value.trim();
             const designContainer = document.getElementById('summaryDesignContainer');
@@ -1007,7 +1096,7 @@
             } else {
                 designContainer.classList.add('hidden');
             }
-            
+
             return total;
         }
 
@@ -1058,6 +1147,11 @@
                 } else {
                     section.classList.add('hidden');
                 }
+            }
+            var feeNote = document.getElementById('deliveryFeeNote');
+            if (feeNote) {
+                if (isDeliver) feeNote.classList.remove('hidden');
+                else feeNote.classList.add('hidden');
             }
             if (pickupSection && pickupLink && pickupAddress) {
                 if (!isDeliver) {
@@ -1157,6 +1251,16 @@
         
         // Open receipt upload modal
         function openReceiptUploadModal() {
+            var msgEl = document.getElementById('receiptUploadModalMessage');
+            var paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || 'Online Payment';
+            if (msgEl) {
+                if (paymentMethod === '50% Down Payment') {
+                    var amountDue = Math.round(calculatePrice() * 0.5);
+                    msgEl.innerHTML = 'You chose <strong>50% Down Payment</strong>. Please upload a screenshot of your payment receipt for the amount due now: <strong>₱' + amountDue + '</strong>.';
+                } else {
+                    msgEl.innerHTML = 'You chose <strong>Online Payment</strong> as your payment method. Please upload a screenshot of your payment receipt.';
+                }
+            }
             document.getElementById('receiptUploadModal').classList.remove('hidden');
             document.getElementById('receiptUploadModal').classList.add('flex');
             document.body.style.overflow = 'hidden';
@@ -1255,8 +1359,13 @@
                 dedication: document.getElementById('dedication').value,
                 deliveryType: document.querySelector('input[name="deliveryType"]:checked')?.value || 'Pick up',
                 paymentMethod: document.querySelector('input[name="paymentMethod"]:checked')?.value || 'Online Payment',
-                price: calculatePrice()
+                price: calculatePrice(),
+                deliveryFee: document.querySelector('input[name="deliveryType"]:checked')?.value === 'Deliver' ? MIN_DELIVERY_FEE : 0
             };
+            var pm = cartItem.paymentMethod;
+            if (pm === '50% Down Payment') {
+                cartItem.downPaymentAmount = Math.round(cartItem.price * 0.5);
+            }
             var dt = document.querySelector('input[name="deliveryType"]:checked')?.value;
             if (dt === 'Deliver') {
                 cartItem.deliveryAddress = document.getElementById('deliveryAddress').value.trim() || getDefaultDeliveryAddress();
@@ -1326,8 +1435,8 @@
             
             const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || 'Online Payment';
             
-            // If Online Payment, show receipt upload modal
-            if (paymentMethod === 'Online Payment') {
+            // If Online Payment or 50% Down Payment, show receipt upload modal (pay now / pay 50% now)
+            if (paymentMethod === 'Online Payment' || paymentMethod === '50% Down Payment') {
                 openReceiptUploadModal();
             } else {
                 // Cash on Delivery - place order directly without receipt
@@ -1341,6 +1450,7 @@
             const frosting = document.getElementById('frosting').value;
             const cakeDesign = document.getElementById('cakeDesign').value.trim();
             const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || 'Online Payment';
+            const fullPrice = calculatePrice();
             
             const order = {
                 id: Date.now(),
@@ -1361,10 +1471,14 @@
                 paymentMethod: paymentMethod,
                 receipt: receiptData,
                 receiptFileName: receiptFileName || null,
-                price: calculatePrice(),
+                price: fullPrice,
                 status: 'Pending',
-                date: new Date().toLocaleDateString()
+                date: new Date().toLocaleDateString(),
+                deliveryFee: document.querySelector('input[name="deliveryType"]:checked')?.value === 'Deliver' ? MIN_DELIVERY_FEE : 0
             };
+            if (paymentMethod === '50% Down Payment') {
+                order.downPaymentAmount = Math.round(fullPrice * 0.5);
+            }
             var dt = document.querySelector('input[name="deliveryType"]:checked')?.value;
             if (dt === 'Deliver') {
                 order.deliveryAddress = document.getElementById('deliveryAddress').value.trim() || getDefaultDeliveryAddress();
@@ -1483,7 +1597,7 @@
                                 ${item.cakeDesign ? `<p class="mt-2 pt-2 border-t border-gray-200"><i class="fas fa-palette w-4"></i> <strong>Design:</strong> ${escapeHtml(item.cakeDesign)}</p>` : ''}
                                 ${item.designImage ? `<p class="text-xs text-gray-500 mt-1"><i class="fas fa-image mr-1"></i>Has design image</p>` : ''}
                                 <p>Delivery: ${escapeHtml(item.deliveryType || 'Pick up')}</p>
-                                <p>Payment: ${escapeHtml(item.paymentMethod || 'Online Payment')}</p>
+                                <p>Payment: ${escapeHtml(item.paymentMethod || 'Online Payment')}${item.paymentMethod === '50% Down Payment' && item.downPaymentAmount != null ? ' (₱' + item.downPaymentAmount + ' due now)' : ''}</p>
                                 ${item.dedication ? `<p><i class="fas fa-pen-fancy w-4"></i> "${escapeHtml(item.dedication)}"</p>` : ''}
                             </div>
                         </div>
@@ -1535,14 +1649,12 @@
             
             // Work with selected items only
             const selectedItems = cart.filter((_, i) => selectedCartIndexes.has(i));
-            // Check if any selected items have Online Payment as payment method
-            const hasOnlinePayment = selectedItems.some(item => item.paymentMethod === 'Online Payment');
+            // Check if any selected items need receipt (Online Payment or 50% Down Payment)
+            const needsReceipt = selectedItems.some(item => item.paymentMethod === 'Online Payment' || item.paymentMethod === '50% Down Payment');
             
-            if (hasOnlinePayment) {
-                // Show receipt upload modal for Online Payment items
+            if (needsReceipt) {
                 openReceiptUploadModalForCart();
             } else {
-                // All selected items are Cash on Delivery, place order directly
                 processCartOrders(null, null, selectedItems);
             }
         }
@@ -1576,9 +1688,12 @@
                     date: new Date().toLocaleDateString(),
                     userId: uid
                 };
-                if (item.paymentMethod === 'Online Payment') {
+                if (item.paymentMethod === 'Online Payment' || item.paymentMethod === '50% Down Payment') {
                     orderData.receipt = receiptData;
                     orderData.receiptFileName = receiptFileName;
+                }
+                if (item.paymentMethod === '50% Down Payment' && item.downPaymentAmount != null) {
+                    orderData.downPaymentAmount = item.downPaymentAmount;
                 }
                 orders.push(orderData);
             });
@@ -1713,6 +1828,7 @@
                         <div class="bg-[#FFF8F0] rounded-lg p-4">
                             <p class="text-xs text-gray-500 mb-1">Price</p>
                             <p class="font-semibold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</p>
+                            ${order.paymentMethod === '50% Down Payment' && order.downPaymentAmount != null ? `<p class="text-xs text-gray-600 mt-1">50% due now: ₱${order.downPaymentAmount}</p>` : ''}
                         </div>
                     </div>
                     
@@ -1770,6 +1886,91 @@
             document.body.style.overflow = 'auto';
             // Clear content
             document.getElementById('orderDetailsContent').innerHTML = '';
+        }
+
+        // ===== DOWNLOAD ORDER AS TEXT FILE =====
+        function buildOrderText(order, isSingle) {
+            const lines = [];
+            lines.push('Meringued - ' + (isSingle ? 'Order Receipt' : 'Order Log'));
+            lines.push('================================');
+            lines.push('Generated: ' + new Date().toLocaleString());
+            lines.push('');
+            lines.push('Order ID: ' + (order.orderGroupId || order.id || '—'));
+            lines.push('Date ordered: ' + (order.date || '—'));
+            lines.push('Cake: ' + (order.name || order.cake || 'Custom Order'));
+            lines.push('Size: ' + (order.size || '—'));
+            lines.push('Quantity: ' + (order.quantity != null ? order.quantity : '—'));
+            lines.push('Flavor: ' + (order.flavor || '—'));
+            lines.push('Frosting: ' + (order.frosting || '—'));
+            lines.push('Date needed: ' + (order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : '—'));
+            lines.push('Delivery: ' + (order.deliveryType || 'Pick up'));
+            lines.push('Payment: ' + (order.paymentMethod || '—'));
+            lines.push('Status: ' + (order.status || 'Pending'));
+            const price = order.price != null ? Number(order.price) : 0;
+            lines.push('Price: ₱' + price.toFixed(2));
+            if (order.paymentMethod === '50% Down Payment' && order.downPaymentAmount != null) {
+                lines.push('50% due now: ₱' + order.downPaymentAmount);
+            }
+            if (order.cakeDesign) {
+                lines.push('');
+                lines.push('Design:');
+                lines.push(order.cakeDesign);
+            }
+            if (order.dedication) {
+                lines.push('');
+                lines.push('Dedication:');
+                lines.push('"' + order.dedication + '"');
+            }
+            if (isSingle) {
+                lines.push('');
+                lines.push('Keep this as proof of your order.');
+            }
+            return lines.join('\n');
+        }
+
+        function downloadTextFile(filename, text) {
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 0);
+        }
+
+        function downloadSingleOrderTxt(orderId) {
+            const activeOrders = orders.filter(function (o) { return o.status !== 'Cancelled'; });
+            const order = activeOrders.find(function (o) { return o.id === orderId; });
+            if (!order) {
+                showAlertModal('Order not found.', 'warning');
+                return;
+            }
+            const text = buildOrderText(order, true);
+            const idPart = order.orderGroupId || order.id || 'order';
+            downloadTextFile('meringued-order-' + idPart + '.txt', text);
+        }
+
+        function downloadAllOrdersTxt() {
+            const activeOrders = orders.filter(function (o) { return o.status !== 'Cancelled'; });
+            if (!activeOrders.length) {
+                showAlertModal('No orders to download.', 'info');
+                return;
+            }
+            const sorted = activeOrders.slice().reverse();
+            const parts = [];
+            sorted.forEach(function (o, idx) {
+                if (idx > 0) {
+                    parts.push('');
+                    parts.push('--------------------------------');
+                    parts.push('');
+                }
+                parts.push(buildOrderText(o, false));
+            });
+            downloadTextFile('meringued-orders-log.txt', parts.join('\n'));
         }
 
         // ===== RECEIPT VIEW MODAL FUNCTIONS =====

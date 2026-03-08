@@ -24,9 +24,17 @@ export async function listLowStock(threshold = 5) {
   return data ?? [];
 }
 
-/** Map DB row to app shape: id, name, quantity, reorderLevel, unit, imageSrc */
+/** Map DB row to app shape: id, name, quantity, reorderLevel, unit, imageSrc, expiryDate */
 function rowToItem(row) {
   if (!row) return null;
+  let expiryDate = row.expiry_date;
+  if (expiryDate && typeof expiryDate === 'object' && typeof expiryDate.getFullYear === 'function') {
+    expiryDate = expiryDate.getFullYear() + '-' + String(expiryDate.getMonth() + 1).padStart(2, '0') + '-' + String(expiryDate.getDate()).padStart(2, '0');
+  } else if (expiryDate && typeof expiryDate === 'string') {
+    expiryDate = expiryDate.slice(0, 10);
+  } else {
+    expiryDate = null;
+  }
   return {
     id: row.id,
     name: row.name,
@@ -34,6 +42,7 @@ function rowToItem(row) {
     reorderLevel: Number(row.reorder_level) ?? 0,
     unit: row.unit || 'units',
     imageSrc: row.image_src || '',
+    expiryDate: expiryDate || null,
   };
 }
 
@@ -51,6 +60,7 @@ function itemToRow(item) {
     reorder_level: Number(item.reorderLevel) ?? 0,
     unit: item.unit || 'units',
     image_src: item.imageSrc || null,
+    expiry_date: (item.expiryDate && String(item.expiryDate).slice(0, 10)) || null,
   };
 }
 
@@ -82,6 +92,8 @@ export async function updateInventoryItem(id, patch) {
   if (patch.unit != null) p.unit = patch.unit;
   if (patch.imageSrc != null) p.image_src = patch.imageSrc;
   if (patch.image_src != null) p.image_src = patch.image_src;
+  if (patch.expiryDate !== undefined) p.expiry_date = (patch.expiryDate && String(patch.expiryDate).slice(0, 10)) || null;
+  if (patch.expiry_date !== undefined) p.expiry_date = (patch.expiry_date && String(patch.expiry_date).slice(0, 10)) || null;
   if (Object.keys(p).length === 0) return;
   const { error } = await supabase.from(ITEMS_TABLE).update(p).eq('id', id);
   if (error) console.warn('[InventoryModel] updateInventoryItem failed:', error.message);
