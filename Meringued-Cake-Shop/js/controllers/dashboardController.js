@@ -13,7 +13,7 @@ async function loadAdminDashboard() {
     let orders = [];
     let customers = [];
     let lowStock = [];
-    if (!SUPABASE_AUTH_DISABLED) {
+    if (typeof SUPABASE_AUTH_DISABLED === 'undefined' || !SUPABASE_AUTH_DISABLED) {
       // Each call fails gracefully (e.g. optional customers table missing) so the dashboard still shows orders/low-stock.
       [orders, customers, lowStock] = await Promise.all([
         listOrdersForAdmin().catch((e) => {

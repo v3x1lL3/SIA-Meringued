@@ -43,7 +43,7 @@ export async function signInWithEmail({ email, password }) {
 }
 
 export async function getSessionWithProfile() {
-  if (SUPABASE_AUTH_DISABLED) return getDevBypassSession();
+  if (typeof SUPABASE_AUTH_DISABLED !== 'undefined' && SUPABASE_AUTH_DISABLED) return getDevBypassSession();
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error || !session?.user) return { user: null, profile: null };
   const profile = profileFromUser(session.user);
@@ -55,7 +55,7 @@ export async function listProfiles() {
 }
 
 export function signOut() {
-  if (SUPABASE_AUTH_DISABLED) {
+  if (typeof SUPABASE_AUTH_DISABLED !== 'undefined' && SUPABASE_AUTH_DISABLED) {
     localStorage.removeItem(DEV_BYPASS_KEY);
     return Promise.resolve();
   }
