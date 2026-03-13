@@ -208,8 +208,14 @@
     <!-- Gallery Section -->
     <section id="gallery" class="section-motion py-20 px-6">
         <div class="container mx-auto">
-            <h2 class="font-display text-5xl font-bold text-center mb-16 gold-text">Our Creations</h2>
-            <div class="gallery-grid section-motion-stagger">
+            <h2 class="font-display text-5xl font-bold text-center mb-6 gold-text">Our Creations</h2>
+            <p class="text-center text-gray-600 mb-10 max-w-2xl mx-auto">
+                A curated gallery of highlighted cakes. Browse page 1 and 2 below.
+            </p>
+
+            <!-- Gallery pages (centered masonry) -->
+            <div class="gallery-center">
+            <div id="galleryPage1" class="gallery-grid section-motion-stagger">
                 <!-- Cake 1 -->
                 <div class="cake-card rounded-xl overflow-hidden shadow-sm">
                     <div class="bg-gray-100 flex items-center justify-center overflow-hidden image-overlay">
@@ -253,7 +259,9 @@
                         <p class="text-gray-600">Uniquely designed to make your occasion memorable</p>
                     </div>
                 </div>
+            </div>
 
+            <div id="galleryPage2" class="gallery-grid section-motion-stagger hidden">
                 <!-- Cake 5 -->
                 <div class="cake-card rounded-xl overflow-hidden shadow-sm">
                     <div class="bg-gray-100 flex items-center justify-center overflow-hidden image-overlay">
@@ -297,6 +305,23 @@
                         <p class="text-gray-600">Timeless beauty in every delicious layer</p>
                     </div>
                 </div>
+            </div>
+
+            <!-- Gallery pagination (2 pages) -->
+            <div class="flex items-center justify-center mt-8 space-x-2">
+                <button id="galleryPrevBtn" type="button" class="gallery-page-btn gallery-page-btn--arrow" aria-label="Previous page">
+                    &lt;
+                </button>
+                <button type="button" class="gallery-page-btn gallery-page-btn--number gallery-page-btn--active" data-page="1">
+                    1
+                </button>
+                <button type="button" class="gallery-page-btn gallery-page-btn--number" data-page="2">
+                    2
+                </button>
+                <button id="galleryNextBtn" type="button" class="gallery-page-btn gallery-page-btn--arrow" aria-label="Next page">
+                    &gt;
+                </button>
+            </div>
             </div>
         </div>
     </section>
@@ -407,7 +432,15 @@
                         <i class="fas fa-question-circle gold-text mr-3"></i>
                         How far in advance should I order?
                     </h3>
-                    <p class="text-gray-600 ml-9">We recommend placing orders at least 2-3 weeks in advance for custom cakes.</p>
+                    <p class="text-gray-600 ml-9">We recommend placing orders at least 1-3 weeks in advance for custom cakes.</p>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition">
+                    <h3 class="font-display text-xl font-semibold mb-3 text-main flex items-center">
+                        <i class="fas fa-question-circle gold-text mr-3"></i>
+                        Do you accept rush orders?
+                    </h3>
+                    <p class="text-gray-600 ml-9">Rush orders may be accepted on a case-by-case basis, but we require at least 3 days' notice for any rush booking to check schedule and ingredient availability.</p>
+                    <p class="text-xs text-red-600 ml-9 mt-2 font-medium">All confirmed rush and regular orders are final — no refunds.</p>
                 </div>
                 
                 <div class="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition">
@@ -530,20 +563,15 @@
                         <span class="font-semibold text-gray-800">Customer</span>
                         <span class="text-sm text-gray-600">Sign in</span>
                     </button>
-                    <button type="button" onclick="authShowLogin('admin')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
-                        <i class="fas fa-user-shield text-2xl md:text-3xl gold-text mb-2"></i>
-                        <span class="font-semibold text-gray-800">Admin</span>
-                        <span class="text-sm text-gray-600">Sign in</span>
-                    </button>
                     <button type="button" onclick="authShowSignup('customer')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
                         <i class="fas fa-user-plus text-2xl md:text-3xl gold-text mb-2"></i>
                         <span class="font-semibold text-gray-800">Customer</span>
                         <span class="text-sm text-gray-600">Sign up</span>
                     </button>
-                    <button type="button" onclick="authShowSignup('admin')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
-                        <i class="fas fa-user-cog text-2xl md:text-3xl gold-text mb-2"></i>
+                    <button type="button" onclick="authShowLogin('admin')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left md:col-span-2">
+                        <i class="fas fa-user-shield text-2xl md:text-3xl gold-text mb-2"></i>
                         <span class="font-semibold text-gray-800">Admin</span>
-                        <span class="text-sm text-gray-600">Sign up</span>
+                        <span class="text-sm text-gray-600">Sign in</span>
                     </button>
                 </div>
             </div>
@@ -671,6 +699,56 @@
                 }
             });
         });
+
+        // Our Creations gallery pagination (2 pages of 4 cakes)
+        (function setupGalleryPagination() {
+            var page1 = document.getElementById('galleryPage1');
+            var page2 = document.getElementById('galleryPage2');
+            var numberButtons = document.querySelectorAll('.gallery-page-btn--number');
+            var prevBtn = document.getElementById('galleryPrevBtn');
+            var nextBtn = document.getElementById('galleryNextBtn');
+            var gallerySection = document.getElementById('gallery');
+            if (!page1 || !page2 || numberButtons.length === 0 || !prevBtn || !nextBtn) return;
+
+            function setPage(page, scrollToSection) {
+                var current = page === 1 ? page1 : page2;
+                var other = page === 1 ? page2 : page1;
+                current.classList.remove('hidden');
+                other.classList.add('hidden');
+                numberButtons.forEach(function(btn) {
+                    var btnPage = Number(btn.getAttribute('data-page') || '1');
+                    if (btnPage === page) {
+                        btn.classList.add('gallery-page-btn--active');
+                    } else {
+                        btn.classList.remove('gallery-page-btn--active');
+                    }
+                });
+                if (scrollToSection && gallerySection) {
+                    gallerySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+
+            numberButtons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var page = Number(btn.getAttribute('data-page') || '1');
+                    setPage(page === 2 ? 2 : 1, true);
+                });
+            });
+
+            prevBtn.addEventListener('click', function() {
+                var active = document.querySelector('.gallery-page-btn--number.gallery-page-btn--active');
+                var currentPage = active ? Number(active.getAttribute('data-page') || '1') : 1;
+                setPage(currentPage === 2 ? 1 : 1, true);
+            });
+
+            nextBtn.addEventListener('click', function() {
+                var active = document.querySelector('.gallery-page-btn--number.gallery-page-btn--active');
+                var currentPage = active ? Number(active.getAttribute('data-page') || '1') : 1;
+                setPage(currentPage === 1 ? 2 : 2, true);
+            });
+
+            setPage(1, false);
+        })();
 
         // Modal Functions ("Continue as" flow)
         function openAuthModal() {
@@ -1247,6 +1325,11 @@
             margin: 0 auto 0.75rem;
         }
 
+        .gallery-center {
+            max-width: 72rem;
+            margin-left: auto;
+            margin-right: auto;
+        }
         .gallery-grid {
             columns: 1;
             column-gap: 1.5rem;
@@ -1258,6 +1341,36 @@
             margin-bottom: 1.5rem;
             display: inline-block;
             width: 100%;
+        }
+
+        .gallery-page-btn {
+            min-width: 2.25rem;
+            height: 2.25rem;
+            border-radius: 0.5rem;
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            background: #fff;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #475569;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 0.5rem;
+            transition: all 0.15s ease;
+        }
+        .gallery-page-btn--number:hover {
+            border-color: rgba(212, 175, 55, 0.9);
+            color: #B8860B;
+        }
+        .gallery-page-btn--active {
+            border-color: transparent;
+            background: linear-gradient(135deg, var(--gold), var(--dark-gold));
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(212, 175, 55, 0.35);
+        }
+        .gallery-page-btn--arrow {
+            border-radius: 9999px;
+            padding: 0 0.75rem;
         }
 
         .modal {

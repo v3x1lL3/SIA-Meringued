@@ -182,13 +182,22 @@
         </div>
 
         <!-- Tabs -->
-        <div class="mb-6 flex space-x-4 border-b-2 border-[#D4AF37]/20">
+        <div class="mb-3 flex space-x-4 border-b-2 border-[#D4AF37]/20">
             <button onclick="showTab('completed')" id="tabCompleted" class="px-6 py-3 font-semibold text-[#D4AF37] border-b-2 border-[#D4AF37] transition">
                 <i class="fas fa-check-circle mr-2"></i>Completed
             </button>
             <button onclick="showTab('cancelled')" id="tabCancelled" class="px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#D4AF37] transition">
                 <i class="fas fa-times-circle mr-2"></i>Cancelled
             </button>
+        </div>
+
+        <!-- Order updates banner (customer notifications) -->
+        <div id="orderUpdatesBanner" class="hidden mb-6 rounded-2xl border border-blue-200 bg-blue-50/90 px-4 py-3 text-sm text-blue-800 flex items-start gap-2">
+            <i class="fas fa-info-circle mt-0.5"></i>
+            <div>
+                <p class="font-semibold mb-0.5">Order updates</p>
+                <p id="orderUpdatesText" class="text-xs md:text-sm"></p>
+            </div>
         </div>
 
         <!-- Completed Orders -->
@@ -426,6 +435,61 @@
 
         function toggleClientSidebar() { document.body.classList.toggle('sidebar-hidden'); }
 
+        function getClientSettings() {
+            try {
+                var key = typeof getSettingsKey === 'function' ? getSettingsKey() : 'clientSettings';
+                var raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function showOrderUpdatesBannerIfNeeded() {
+            var settings = getClientSettings();
+            if (settings.notifyOrderUpdates === false) {
+                // User disabled order updates
+                var banner = document.getElementById('orderUpdatesBanner');
+                if (banner) banner.classList.add('hidden');
+                return;
+            }
+            var active = (orders || []).filter(function (o) {
+                return o && ['Pending', 'Acknowledge', 'Baking'].indexOf(o.status) !== -1;
+            });
+            var ready = (orders || []).filter(function (o) {
+                return o && o.status === 'Ready';
+            });
+            var bannerEl = document.getElementById('orderUpdatesBanner');
+            var textEl = document.getElementById('orderUpdatesText');
+            if (!bannerEl || !textEl) return;
+
+            if (ready.length > 0) {
+                // Ready banner – green frame, high priority message
+                var rCount = ready.length;
+                textEl.textContent = 'Great news! You have ' + rCount + ' order' + (rCount > 1 ? 's' : '') + ' marked as Ready. Please check the Completed tab and prepare for pickup/delivery.';
+                bannerEl.classList.remove('hidden');
+                bannerEl.classList.remove('border-blue-200', 'bg-blue-50/90', 'text-blue-800');
+                bannerEl.classList.add('border-green-200', 'bg-green-50/90', 'text-green-800');
+                return;
+            }
+
+            if (active.length === 0) {
+                bannerEl.classList.add('hidden');
+                return;
+            }
+
+            // In-progress banner – blue frame
+            var count = active.length;
+            var statuses = Array.from(new Set(active.map(function (o) { return o.status; })));
+            var parts = [];
+            parts.push('You have ' + count + ' order' + (count > 1 ? 's' : '') + ' in progress (' + statuses.join(', ') + ').');
+            parts.push('We will keep this page updated as your orders move from Pending to Acknowledge, Baking, Ready, and Completed.');
+            textEl.textContent = parts.join(' ');
+            bannerEl.classList.remove('hidden');
+            bannerEl.classList.remove('border-green-200', 'bg-green-50/90', 'text-green-800');
+            bannerEl.classList.add('border-blue-200', 'bg-blue-50/90', 'text-blue-800');
+        }
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadCustomerName();
@@ -433,6 +497,7 @@
             loadOrders();
             renderOrders();
             initializeReceiptUpload();
+            showOrderUpdatesBannerIfNeeded();
 
             // Sidebar responsive toggle
             const sidebar = document.getElementById('clientSidebar');

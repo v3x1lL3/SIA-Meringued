@@ -45,6 +45,25 @@
     }
 
     var ALLOWABLE_EXTENDED_DAYS = 7;
+    var EXPIRY_WARNING_DAYS = 7;
+
+    /** Return days until expiry (YYYY-MM-DD). Positive = future, 0 = today, negative = past. */
+    function getDaysUntilExpiry(expiryDate) {
+        if (!expiryDate || typeof expiryDate !== 'string') return null;
+        var parts = expiryDate.split('-');
+        if (parts.length !== 3) return null;
+        var y = parseInt(parts[0], 10);
+        var m = parseInt(parts[1], 10) - 1;
+        var d = parseInt(parts[2], 10);
+        if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+        var exp = new Date(y, m, d);
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        exp.setHours(0, 0, 0, 0);
+        var diffMs = exp.getTime() - today.getTime();
+        return Math.round(diffMs / (24 * 60 * 60 * 1000));
+    }
+
     function getExtendedExpiryString(expiryDate) {
         if (!expiryDate || typeof expiryDate !== 'string') return '';
         var parts = expiryDate.split('-');
@@ -193,6 +212,44 @@
         }
 
         updateLowStockBanner();
+        updateExpiryBanner();
+    }
+
+    function updateExpiryBanner() {
+        var banner = document.getElementById('inventoryExpiryBanner');
+        var listEl = document.getElementById('inventoryExpiryList');
+        if (!banner || !listEl) return;
+        var expiringSoon = [];
+        var expired = [];
+        (inventoryItems || []).forEach(function (item) {
+            if (!item.expiryDate || !String(item.expiryDate).trim()) return;
+            var days = getDaysUntilExpiry(String(item.expiryDate).slice(0, 10));
+            if (days === null) return;
+            var displayDate = String(item.expiryDate).slice(0, 10);
+            if (days < 0) {
+                expired.push({ name: item.name, date: displayDate, days: days });
+            } else if (days <= EXPIRY_WARNING_DAYS) {
+                expiringSoon.push({ name: item.name, date: displayDate, days: days });
+            }
+        });
+        if (expiringSoon.length === 0 && expired.length === 0) {
+            banner.classList.add('hidden');
+            return;
+        }
+        var parts = [];
+        if (expiringSoon.length > 0) {
+            parts.push(expiringSoon.map(function (x) {
+                var label = x.days === 0 ? 'today' : (x.days === 1 ? 'tomorrow' : 'in ' + x.days + ' days');
+                return x.name + ' (expires ' + x.date + ' — ' + label + ')';
+            }).join('; '));
+        }
+        if (expired.length > 0) {
+            parts.push('Already expired (check extended expiry date): ' + expired.map(function (x) {
+                return x.name + ' (' + x.date + ')';
+            }).join('; '));
+        }
+        listEl.textContent = parts.join(' · ');
+        banner.classList.remove('hidden');
     }
 
     function updateLowStockBanner() {

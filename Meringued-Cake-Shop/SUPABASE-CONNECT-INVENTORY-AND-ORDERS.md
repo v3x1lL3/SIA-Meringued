@@ -40,7 +40,7 @@ select id, coalesce(raw_user_meta_data->>'role', 'customer')
 from auth.users
 on conflict (id) do update set role = coalesce(excluded.role, profiles.role);
 
--- Inventory table (matches app: name, quantity, reorder_level, unit, image_src)
+-- Inventory table (matches app: name, quantity, reorder_level, unit, image_src, expiry_date)
 create table if not exists public.inventory_items (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -48,11 +48,15 @@ create table if not exists public.inventory_items (
   reorder_level numeric not null default 0,
   unit text not null default 'units',
   image_src text,
+  expiry_date date,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
 alter table public.inventory_items enable row level security;
+
+-- If inventory_items already existed without expiry_date, add it (run once):
+alter table public.inventory_items add column if not exists expiry_date date;
 
 create policy "Allow read for authenticated"
   on public.inventory_items for select
@@ -193,7 +197,7 @@ Use this as a checklist so you know what’s already wired and what might still 
 | Area | Status | Notes |
 |------|--------|------|
 | **Orders** | ✅ Connected | Client places order → insert to Supabase; admin status change → update. |
-| **Inventory** | ✅ Connected | Admin load/add/edit/delete/stock in/out sync to `inventory_items`. |
+| **Inventory** | ✅ Connected | Admin load/add/edit/delete/stock in/out sync to `inventory_items`. Expiry/Extended dates use `expiry_date` column. |
 | **POS (stock on order)** | ✅ Connected | Confirm order → deduct ingredients in Supabase; cancel → restore. |
 | **Purchase orders** | ✅ Optional (Section 6) | Run the optional SQL in Section 6 to create `purchase_orders` and `purchase_order_items`; the app already uses them. |
 | **Customers** | ✅ Optional (Section 6) | Run the optional SQL in Section 6 to create `customers`; Admin → Customers and dashboard will use it when the table exists. |
@@ -213,6 +217,10 @@ Use this as a checklist so you know what’s already wired and what might still 
 - **Orders or inventory not appearing in Supabase**  
   - Check the browser console for errors (e.g. RLS or missing columns).  
   - Confirm the anon key and URL in `js/core/supabaseClient.js` match your project.
+
+- **Inventory expiry date not saving after navigating away**  
+  - Ensure `inventory_items` has an `expiry_date` column. In Supabase **SQL Editor** run:  
+    `alter table public.inventory_items add column if not exists expiry_date date;`
 
 - **“Permission denied” or RLS errors**  
   - Ensure the user is signed in (Supabase Auth).  
