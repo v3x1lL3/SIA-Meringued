@@ -24,6 +24,23 @@
     
     <!-- Favicon (add your own favicon.ico file) -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
+    
+    <script>
+        // If the site is opened at "/Meringued-Cake-Shop" (no trailing slash),
+        // relative URLs like "js/..." can resolve to the wrong place and auth won't load.
+        // This normalizes the URL to ".../Meringued-Cake-Shop/".
+        (function () {
+            try {
+                if (location.protocol === 'http:' || location.protocol === 'https:') {
+                    var p = location.pathname || '';
+                    var last = p.split('/').pop() || '';
+                    if (p && !p.endsWith('/') && last && !last.includes('.')) {
+                        location.replace(p + '/' + location.search + location.hash);
+                    }
+                }
+            } catch (e) { }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -39,9 +56,12 @@
                 <a href="#about" class="nav-link">About</a>
                 <a href="#gallery" class="nav-link">Gallery</a>
                 <a href="#order" class="nav-link">Order</a>
-                <button onclick="openAuthModal()" class="btn-gold text-white font-semibold px-5 py-2.5 rounded-full text-sm hover:shadow-lg transition">
-                    Login / Sign Up
-                </button>
+                <a href="customer-login.html" class="btn-gold text-white font-semibold px-5 py-2.5 rounded-full text-sm hover:shadow-lg transition inline-flex items-center gap-2">
+                    <i class="fas fa-user"></i> Customer
+                </a>
+                <a href="admin-login.html" class="px-5 py-2.5 rounded-full text-sm font-semibold border-2 border-[#D4AF37]/50 text-[#B8941E] hover:bg-[#FFF8F0] hover:border-[#D4AF37] transition inline-flex items-center gap-2">
+                    <i class="fas fa-user-shield"></i> Admin
+                </a>
             </div>
             <button id="menuBtn" class="md:hidden text-gold hover:scale-110 transition-transform">
                 <i class="fas fa-bars text-2xl"></i>
@@ -52,9 +72,12 @@
             <a href="#about" class="mobile-nav-link">About</a>
             <a href="#gallery" class="mobile-nav-link">Gallery</a>
             <a href="#order" class="mobile-nav-link">Order</a>
-            <button onclick="openAuthModal(); document.getElementById('mobileMenu').classList.add('hidden');" class="btn-gold text-white font-semibold w-full py-3 rounded-lg mt-2">
-                Login / Sign Up
-            </button>
+            <a href="customer-login.html" onclick="document.getElementById('mobileMenu').classList.add('hidden');" class="btn-gold text-white font-semibold w-full py-3 rounded-lg mt-2 inline-flex items-center justify-center gap-2">
+                <i class="fas fa-user"></i> Customer
+            </a>
+            <a href="admin-login.html" onclick="document.getElementById('mobileMenu').classList.add('hidden');" class="w-full py-3 rounded-lg mt-2 inline-flex items-center justify-center gap-2 font-semibold border-2 border-[#D4AF37]/50 text-[#B8941E] hover:bg-[#FFF8F0] hover:border-[#D4AF37] transition">
+                <i class="fas fa-user-shield"></i> Admin
+            </a>
         </div>
     </nav>
 
@@ -558,25 +581,30 @@
             <div id="authContinueAs">
                 <p class="text-gray-600 text-sm mb-6">Choose your account type to sign in or create an account.</p>
                 <div class="grid grid-cols-2 gap-3 md:gap-4">
-                    <button type="button" onclick="authShowLogin('customer')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
+                    <a href="customer-login.html" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
                         <i class="fas fa-user text-2xl md:text-3xl gold-text mb-2"></i>
                         <span class="font-semibold text-gray-800">Customer</span>
                         <span class="text-sm text-gray-600">Sign in</span>
-                    </button>
-                    <button type="button" onclick="authShowSignup('customer')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
+                    </a>
+                    <a href="customer-signup.html" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
                         <i class="fas fa-user-plus text-2xl md:text-3xl gold-text mb-2"></i>
                         <span class="font-semibold text-gray-800">Customer</span>
                         <span class="text-sm text-gray-600">Sign up</span>
-                    </button>
-                    <button type="button" onclick="authShowLogin('admin')" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left md:col-span-2">
+                    </a>
+                    <a href="admin-login.html" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
                         <i class="fas fa-user-shield text-2xl md:text-3xl gold-text mb-2"></i>
                         <span class="font-semibold text-gray-800">Admin</span>
                         <span class="text-sm text-gray-600">Sign in</span>
-                    </button>
+                    </a>
+                    <a href="admin-signup.html" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
+                        <i class="fas fa-user-shield text-2xl md:text-3xl gold-text mb-2"></i>
+                        <span class="font-semibold text-gray-800">Admin</span>
+                        <span class="text-sm text-gray-600">Sign up</span>
+                    </a>
                 </div>
             </div>
 
-            <!-- Step 2: Login or Signup form -->
+            <!-- Step 2: Login or Signup form (legacy; kept for compatibility) -->
             <div id="authFormStep" class="hidden">
                 <button type="button" onclick="authBackToContinueAs()" class="text-gray-500 hover:text-[#D4AF37] text-sm mb-4 flex items-center gap-1">
                     <i class="fas fa-arrow-left"></i> Back

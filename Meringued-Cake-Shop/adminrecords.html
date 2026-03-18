@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Records - Admin - Meringued</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+    :root { --gold: #D4AF37; --gold-dark: #B8941E; --cream: #FFF8F0; }
+    body { font-family: 'Inter', sans-serif; min-height: 100vh; }
+    .font-display { font-family: 'Playfair Display', serif; }
+    .btn-primary { background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); transition: all 0.3s ease; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(212, 175, 55, 0.4); }
+    .sidebar-active { background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); color: white !important; }
+    .sidebar-active:hover { background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%); color: white !important; }
+    #adminSidebar { transition: transform 0.3s ease; }
+    body.sidebar-hidden #adminSidebar { transform: translateX(-100%); }
+    #adminMainContent { transition: margin-left 0.3s ease; }
+    body.sidebar-hidden #adminMainContent { margin-left: 0; }
+    #sidebarToggle { transition: left 0.3s ease; }
+    body.sidebar-hidden #sidebarToggle { left: -120px; opacity: 0; pointer-events: none; }
+    body.sidebar-hidden #sidebarShow { opacity: 1; pointer-events: auto; }
+    .tab-active { border-bottom: 2px solid var(--gold); color: var(--gold); }
+  </style>
+</head>
+<body class="bg-[#FFF8F0]/30">
+  <!-- Sidebar -->
+  <aside id="adminSidebar" class="fixed left-0 top-0 h-screen w-64 overflow-y-auto bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
+    <div class="p-6 border-b-2 border-[#D4AF37]/20">
+      <a href="admindashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">Meringued</a>
+      <p class="text-xs text-gray-500 mt-1">Admin Panel</p>
+    </div>
+    <nav class="flex-1 p-6">
+      <ul class="space-y-2">
+        <li><a href="adminordering.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-shopping-bag w-5"></i><span>Orders</span></a></li>
+        <li><a href="admininventory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-boxes-stacked w-5"></i><span>Inventory</span></a></li>
+        <li><a href="adminrecords.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium sidebar-active"><i class="fas fa-file-invoice-dollar w-5"></i><span>Records</span></a></li>
+        <li><a href="adminhistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-history w-5"></i><span>Logs</span></a></li>
+        <li><a href="admincustomers.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-users w-5"></i><span>Customers</span></a></li>
+        <li><a href="adminfeedback.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-comment-alt w-5"></i><span>Feedback</span></a></li>
+        <li><a href="adminsettings.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-cog w-5"></i><span>Settings</span></a></li>
+        <li><button type="button" onclick="openLogoutModal()" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium"><i class="fas fa-sign-out-alt w-5"></i><span>Logout</span></button></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <button id="sidebarToggle" type="button" onclick="toggleAdminSidebar()" class="fixed left-64 top-6 z-50 px-3 py-2 rounded-r-lg text-sm font-semibold text-gray-700 bg-white/95 border border-l-0 border-[#D4AF37]/30 shadow-md hover:bg-[#FFF8F0] transition" title="Hide sidebar"><i class="fas fa-chevron-left mr-1"></i> Hide sidebar</button>
+  <button id="sidebarShow" type="button" onclick="toggleAdminSidebar()" class="fixed left-0 top-6 z-50 px-3 py-2 rounded-r-lg text-sm font-semibold text-white shadow-md opacity-0 pointer-events-none transition" style="background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);" title="Show sidebar"><i class="fas fa-chevron-right mr-1"></i> Show sidebar</button>
+  <script>function toggleAdminSidebar(){document.body.classList.toggle('sidebar-hidden');}</script>
+
+  <!-- Main Content -->
+  <div id="adminMainContent" class="ml-64 min-h-screen">
+    <div class="px-6 py-8 md:py-12">
+      <div class="mb-6 flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 class="font-display text-4xl md:text-5xl font-bold mb-2 text-[#D4AF37]">
+            <i class="fas fa-file-invoice-dollar mr-3"></i>Records
+          </h1>
+          <p class="text-gray-600">Track audits, expenses, receipts, and purchases with dates.</p>
+        </div>
+        <button id="addRecordBtn" class="btn-primary text-white font-semibold px-5 py-3 rounded-xl shadow-lg">
+          <i class="fas fa-plus mr-2"></i>Add record
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="bg-white/90 rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-5 md:p-6 mb-6">
+        <div class="flex flex-wrap items-end gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">From</label>
+            <input id="filterFrom" type="date" class="px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">To</label>
+            <input id="filterTo" type="date" class="px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" />
+          </div>
+          <div class="flex-1 min-w-[220px]">
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Search</label>
+            <input id="filterSearch" type="text" placeholder="Search title/notes…" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" />
+          </div>
+          <div class="flex gap-2">
+            <button id="applyFiltersBtn" class="px-5 py-3 rounded-xl font-semibold text-white btn-primary shadow-lg">
+              <i class="fas fa-filter mr-2"></i>Apply
+            </button>
+            <button id="resetFiltersBtn" class="px-5 py-3 rounded-xl font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="bg-white/90 rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-5 md:p-6">
+        <div class="flex flex-wrap gap-4 border-b-2 border-[#D4AF37]/20 mb-4">
+          <button class="records-tab px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition tab-active" data-type="eod_inventory_audit">
+            EOD Inventory Audit
+          </button>
+          <button class="records-tab px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition" data-type="daily_expenses">
+            Daily expenses
+          </button>
+          <button class="records-tab px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition" data-type="inventory_audit">
+            Inventory audit (with date)
+          </button>
+          <button class="records-tab px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition" data-type="sales_receipts">
+            Sales receipts (with date)
+          </button>
+          <button class="records-tab px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition" data-type="purchase_expenses">
+            Purchase expenses (with date)
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <p id="recordsSummary" class="text-sm text-gray-600"></p>
+          <p id="recordsSource" class="text-xs text-gray-400"></p>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[860px]">
+            <thead>
+              <tr class="border-b-2 border-[#D4AF37]/20 text-left">
+                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Date</th>
+                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Title</th>
+                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Amount (₱)</th>
+                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Notes</th>
+                <th class="py-3 px-3 text-sm font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="recordsTableBody"></tbody>
+          </table>
+
+          <div id="recordsEmpty" class="text-center py-12 text-gray-400 hidden">
+            <i class="fas fa-folder-open text-6xl mb-4 opacity-30"></i>
+            <h3 class="text-xl font-semibold mb-2">No records yet</h3>
+            <p>Add your first entry using “Add record”.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit modal -->
+  <div id="recordModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden">
+      <div class="flex items-center justify-between p-4 border-b-2 border-[#D4AF37]/20 bg-[#FFF8F0]/60">
+        <h2 id="recordModalTitle" class="font-display text-xl font-bold text-[#D4AF37]"><i class="fas fa-pen mr-2"></i>Record</h2>
+        <button type="button" id="closeRecordModalBtn" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition"><i class="fas fa-times text-xl"></i></button>
+      </div>
+      <form id="recordForm" class="p-5 md:p-6 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Type</label>
+            <select id="recordType" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none">
+              <option value="eod_inventory_audit">EOD Inventory Audit</option>
+              <option value="daily_expenses">Daily expenses</option>
+              <option value="inventory_audit">Inventory audit (with date)</option>
+              <option value="sales_receipts">Sales receipts (with date)</option>
+              <option value="purchase_expenses">Purchase expenses (with date)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Date</label>
+            <input id="recordDate" type="date" required class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Title</label>
+          <input id="recordTitle" type="text" required placeholder="e.g. End-of-day count, Receipt #123, Delivery supplies…" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" />
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Amount (₱) <span class="text-gray-400 font-normal">(optional)</span></label>
+            <input id="recordAmount" type="number" step="0.01" min="0" placeholder="0.00" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Reference / Tag <span class="text-gray-400 font-normal">(optional)</span></label>
+            <input id="recordRef" type="text" placeholder="e.g. OR-00012, supplier name, batch…" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
+          <textarea id="recordNotes" rows="4" placeholder="Details (counts, items, remarks, etc.)" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none"></textarea>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button type="button" id="deleteRecordBtn" class="px-5 py-3 rounded-xl font-semibold text-white bg-red-600 hover:bg-red-700 transition hidden">
+            <i class="fas fa-trash mr-2"></i>Delete
+          </button>
+          <button type="button" id="cancelRecordBtn" class="px-5 py-3 rounded-xl font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition">Cancel</button>
+          <button type="submit" class="px-6 py-3 rounded-xl font-semibold text-white btn-primary shadow-lg">
+            <i class="fas fa-save mr-2"></i>Save
+          </button>
+        </div>
+        <input type="hidden" id="recordId" />
+      </form>
+    </div>
+  </div>
+
+  <!-- Logout modal (matches other admin pages) -->
+  <div id="logoutModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+      <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 btn-primary">
+        <i class="fas fa-sign-out-alt text-white text-3xl"></i>
+      </div>
+      <h3 class="font-display text-2xl font-bold mb-2 text-[#D4AF37]">Logout?</h3>
+      <p class="text-gray-600 mb-6">Are you sure you want to logout?</p>
+      <div class="flex space-x-4 justify-center">
+        <button onclick="closeLogoutModal()" class="px-6 py-3 rounded-lg font-semibold bg-gray-200 hover:bg-gray-300 transition">Cancel</button>
+        <button onclick="confirmLogout()" class="px-6 py-3 rounded-lg font-semibold text-white btn-primary">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openLogoutModal(){ document.getElementById('logoutModal').classList.remove('hidden'); document.getElementById('logoutModal').classList.add('flex'); document.body.style.overflow='hidden'; }
+    function closeLogoutModal(){ document.getElementById('logoutModal').classList.add('hidden'); document.getElementById('logoutModal').classList.remove('flex'); document.body.style.overflow='auto'; }
+    function confirmLogout(){ window.location.href='index.html'; }
+    document.getElementById('logoutModal').addEventListener('click', function(e){ if (e.target === e.currentTarget) closeLogoutModal(); });
+  </script>
+
+  <script type="module" src="js/controllers/adminRecordsController.js"></script>
+</body>
+</html>
+

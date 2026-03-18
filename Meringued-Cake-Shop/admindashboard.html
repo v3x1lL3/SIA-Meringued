@@ -108,7 +108,7 @@
 </head>
 <body>
     <!-- Sidebar -->
-    <aside id="adminSidebar" class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
+    <aside id="adminSidebar" class="fixed left-0 top-0 h-screen w-64 overflow-y-auto bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
         <!-- Logo -->
         <div class="p-6 border-b-2 border-[#D4AF37]/20">
             <a href="admindashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">
@@ -130,6 +130,12 @@
                     <a href="admininventory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
                         <i class="fas fa-boxes-stacked w-5"></i>
                         <span>Inventory</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminrecords.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-file-invoice-dollar w-5"></i>
+                        <span>Records</span>
                     </a>
                 </li>
                 <li>
@@ -156,16 +162,14 @@
                         <span>Settings</span>
                     </a>
                 </li>
+                <li>
+                    <button type="button" onclick="openLogoutModal()" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium">
+                        <i class="fas fa-sign-out-alt w-5"></i>
+                        <span>Logout</span>
+                    </button>
+                </li>
             </ul>
         </nav>
-        
-        <!-- Logout -->
-        <div class="p-6 border-t-2 border-[#D4AF37]/20">
-            <button onclick="openLogoutModal()" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium w-full">
-                <i class="fas fa-sign-out-alt w-5"></i>
-                <span>Logout</span>
-            </button>
-        </div>
     </aside>
 
     <!-- Toggle sidebar (visible when sidebar is shown) -->

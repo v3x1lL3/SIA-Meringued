@@ -74,7 +74,7 @@
 </head>
 <body>
     <!-- Sidebar -->
-    <aside id="adminSidebar" class="fixed left-0 top-0 h-screen w-64 bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
+    <aside id="adminSidebar" class="fixed left-0 top-0 h-screen w-64 overflow-y-auto bg-white/95 backdrop-blur-md shadow-xl border-r-2 border-[#D4AF37]/20 z-50 flex flex-col">
         <div class="p-6 border-b-2 border-[#D4AF37]/20">
             <a href="admindashboard.html" class="font-display text-3xl font-bold text-[#D4AF37] hover:opacity-80 transition">Meringued</a>
             <p class="text-xs text-gray-500 mt-1">Admin Panel</p>
@@ -89,6 +89,11 @@
                 <li>
                     <a href="admininventory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium sidebar-active">
                         <i class="fas fa-boxes-stacked w-5"></i><span>Inventory</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="adminrecords.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
+                        <i class="fas fa-file-invoice-dollar w-5"></i><span>Records</span>
                     </a>
                 </li>
                 <li>
@@ -111,17 +116,20 @@
                         <i class="fas fa-cog w-5"></i><span>Settings</span>
                     </a>
                 </li>
+                <li>
+                    <button type="button" onclick="openLogoutModal()" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium">
+                        <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>
+                    </button>
+                </li>
             </ul>
         </nav>
-        <div class="p-6 border-t-2 border-[#D4AF37]/20">
-            <button onclick="openLogoutModal()" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium w-full">
-                <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>
-            </button>
-        </div>
     </aside>
 
     <button id="sidebarToggle" type="button" onclick="toggleAdminSidebar()" class="fixed left-64 top-6 z-50 px-3 py-2 rounded-r-lg text-sm font-semibold text-gray-700 bg-white/95 border border-l-0 border-[#D4AF37]/30 shadow-md hover:bg-[#FFF8F0] transition" title="Hide sidebar"><i class="fas fa-chevron-left mr-1"></i> Hide sidebar</button>
     <button id="sidebarShow" type="button" onclick="toggleAdminSidebar()" class="fixed left-0 top-6 z-50 px-3 py-2 rounded-r-lg text-sm font-semibold text-white shadow-md opacity-0 pointer-events-none transition" style="background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);" title="Show sidebar"><i class="fas fa-chevron-right mr-1"></i> Show sidebar</button>
+    <style>
+        #adminSidebar { overscroll-behavior: contain; }
+    </style>
 
     <!-- Main Content -->
     <div id="adminMainContent" class="ml-64 min-h-screen">
