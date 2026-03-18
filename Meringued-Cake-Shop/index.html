@@ -979,7 +979,16 @@
         })();
     </script>
 
-    <!-- Auth controller (local login & signup) -->
+    <!-- Fallback so onclick never throws if the auth module fails to load (e.g. file:// or CORS) -->
+    <script>
+        window.handleLogin = window.handleLogin || function() {
+            console.warn('Auth not loaded. Open this page from a local web server (e.g. npx serve Meringued-Cake-Shop) for login to work.');
+        };
+        window.handleSignup = window.handleSignup || function() {
+            console.warn('Auth not loaded. Open this page from a local web server (e.g. npx serve Meringued-Cake-Shop) for signup to work.');
+        };
+    </script>
+    <!-- Auth controller (local login & signup); overwrites handleLogin/handleSignup when loaded -->
     <script type="module" src="js/controllers/authController.js"></script>
 
     <!-- Custom theme CSS: loaded last so it overrides Tailwind's injected styles -->
