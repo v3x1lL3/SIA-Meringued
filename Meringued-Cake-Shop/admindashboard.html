@@ -90,6 +90,13 @@
             outline-offset: -2px;
             background-color: #FFF8E5;
         }
+        .inventory-row--active td {
+            padding-top: 0.45rem !important;
+            padding-bottom: 0.45rem !important;
+        }
+        .inventory-row--active .inv-edit-only {
+            margin-top: 0 !important;
+        }
         .inventory-pill {
             display: inline-flex;
             align-items: center;
@@ -307,22 +314,22 @@
                 </div>
 
                 <!-- Add Ingredient Template -->
-                <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-5 md:p-6 mb-6">
-                    <h3 class="font-display text-xl font-bold text-gray-800 mb-4">
+                <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-4 md:p-5 mb-4">
+                    <h3 class="font-display text-lg font-bold text-gray-800 mb-3">
                         <i class="fas fa-plus-circle mr-2 text-[#D4AF37]"></i>Add Ingredient
                     </h3>
-                    <form id="inventoryAddForm" class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                    <form id="inventoryAddForm" class="grid grid-cols-1 md:grid-cols-6 gap-3">
                         <div class="md:col-span-2">
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Ingredient name</label>
-                            <input id="invName" type="text" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g., Fondant" required />
+                            <input id="invName" type="text" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g., Fondant" required />
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
-                            <input id="invQty" type="number" min="0" step="0.01" value="0" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" />
+                            <input id="invQty" type="number" min="0" step="0.01" value="0" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" />
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Unit</label>
-                            <select id="invUnit" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
+                            <select id="invUnit" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
                                 <option value="units" selected>units</option>
                                 <option value="kg">kg</option>
                                 <option value="g">g</option>
@@ -332,24 +339,19 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Reorder level</label>
-                            <input id="invReorder" type="number" min="0" step="0.01" value="0" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" />
-                            <p class="text-xs text-gray-500 mt-1">You’ll be notified when stock falls to this level or below (e.g. 10 for Fondant).</p>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Reorder</label>
+                            <input id="invReorder" type="number" min="0" step="0.01" value="0" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" />
                         </div>
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Expiry (from label)</label>
-                            <input id="invExpiryDate" type="date" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" title="Pick expiry date" />
-                            <p class="text-xs text-gray-500 mt-1">Allowable extended: up to 1 week after expiry if properly stored.</p>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Expiry</label>
+                            <input id="invExpiryDate" type="date" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" title="Pick expiry date" />
                         </div>
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Image (paste path or upload)</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Image</label>
                             <div class="flex flex-col md:flex-row gap-3">
-                                <input id="invImageUrl" type="text" class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g., images/ingredients/fondant.png" />
+                                <input id="invImageUrl" type="text" class="flex-1 px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g., images/ingredients/fondant.png" />
                                 <input id="invImageFile" type="file" accept="image/*" class="flex-1 text-sm" />
                             </div>
-                            <p class="text-xs text-gray-500 mt-2">
-                                Tip: If you want a local image, put it in the project and use a relative path (example above), or upload it here (saved as base64 in your browser).
-                            </p>
                         </div>
                         <div class="md:col-span-6 flex justify-end gap-3 pt-2">
                             <button type="submit" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg">
@@ -376,7 +378,7 @@
                     </div>
 
                     <!-- New card-style ingredient overview -->
-                    <div id="inventoryCardsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+                    <div id="inventoryCardsGrid" class="hidden">
                         <!-- Cards are rendered by js/admin-inventory.js -->
                     </div>
 
@@ -388,6 +390,7 @@
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Ingredient</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Qty</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Unit</th>
+                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Price</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Reorder</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Expiry / Extended</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Stock In/Out</th>
@@ -607,6 +610,7 @@
         });
     </script>
 
+    <script type="module" src="js/adminRecordsBridge.js"></script>
     <script type="module" src="js/admin-inventory-supabase.js"></script>
     <script src="js/admin-inventory.js"></script>
     <!-- Ensure only authenticated admin users can see this page and load Supabase-based stats -->

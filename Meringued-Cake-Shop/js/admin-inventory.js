@@ -36,6 +36,7 @@
                 name: name,
                 quantity: 0,
                 unit: 'units',
+                unitCost: 0,
                 reorderLevel: 0,
                 imageSrc: '',
                 expiryDate: null
@@ -106,6 +107,27 @@
         }
         if (emptyEl) emptyEl.classList.add('hidden');
 
+        function setRowEditable(rowEl, editable) {
+            if (!rowEl) return;
+
+            // View mode: show only spans/text (no boxes).
+            // Edit mode: show inputs/selects/buttons for editing.
+            var editEls = rowEl.querySelectorAll('.inv-edit-only');
+            for (var i = 0; i < editEls.length; i++) {
+                editEls[i].classList.toggle('hidden', !editable);
+            }
+            var viewEls = rowEl.querySelectorAll('.inv-view-only');
+            for (var j = 0; j < viewEls.length; j++) {
+                viewEls[j].classList.toggle('hidden', editable);
+            }
+
+            // Update Edit button label.
+            var editBtn = rowEl.querySelector('button[data-action="edit"]');
+            if (editBtn) {
+                editBtn.textContent = editable ? 'Done' : 'Edit';
+            }
+        }
+
         tbody.innerHTML = inventoryItems.map(function (item) {
             var qty = Number(item.quantity) || 0;
             var reorder = Number(item.reorderLevel) || 0;
@@ -115,39 +137,61 @@
                 ? '<img src="' + item.imageSrc.replace(/"/g, '&quot;') + '" alt="' + escapeHtml(item.name) + '" class="w-12 h-12 rounded-lg object-cover border border-gray-200" />'
                 : '<div class="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400"><i class="fas fa-image"></i></div>';
 
-            return '<tr class="inventory-row border-b border-gray-100 hover:bg-[#FFF8F0]/40 transition" data-id="' + escapeHtml(item.id) + '">' +
+            return '<tr class="inventory-row border-b border-gray-100 hover:bg-[#FFF8F0]/40 transition ' + (item._editing ? 'inventory-row--active' : '') + '" data-id="' + escapeHtml(item.id) + '">' +
                 '<td class="py-3 px-3">' + imgHtml + '</td>' +
                 '<td class="py-3 px-3">' +
                 '<div class="font-semibold text-gray-800">' + escapeHtml(item.name) + '</div>' +
-                '<div class="text-xs text-gray-500 mt-1"><span class="font-medium">Image:</span> <span class="break-all">' + (item.imageSrc ? escapeHtml(item.imageSrc) : '—') + '</span></div>' +
-                '<div class="mt-2 flex flex-col md:flex-row gap-2">' +
-                '<input data-action="imgUrl" data-id="' + escapeHtml(item.id) + '" type="text" class="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm" placeholder="Paste image path" value="' + escapeHtml(item.imageSrc || '') + '">' +
-                '<input data-action="imgFile" data-id="' + escapeHtml(item.id) + '" type="file" accept="image/*" class="flex-1 text-xs">' +
+                '<div class="text-xs text-gray-500 mt-1 inv-view-only"><span class="font-medium">Image:</span> <span class="break-all">' + (item.imageSrc ? escapeHtml(item.imageSrc) : '—') + '</span></div>' +
+                '<div class="mt-1 flex flex-col md:flex-row gap-1 inv-edit-only">' +
+                '<input data-action="imgUrl" data-id="' + escapeHtml(item.id) + '" type="text" class="flex-1 px-2 py-1 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-xs" placeholder="Image path" value="' + escapeHtml(item.imageSrc || '') + '">' +
+                '<input data-action="imgFile" data-id="' + escapeHtml(item.id) + '" type="file" accept="image/*" class="flex-1 text-[11px]">' +
                 '</div>' +
-                '<div class="mt-2 flex justify-end">' +
-                '<button data-action="saveImage" data-id="' + escapeHtml(item.id) + '" class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-700 text-sm font-semibold"><i class="fas fa-floppy-disk mr-2"></i>Save image</button>' +
+                '<div class="mt-1 flex justify-end inv-edit-only">' +
+                '<button data-action="saveImage" data-id="' + escapeHtml(item.id) + '" class="px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-700 text-xs font-semibold"><i class="fas fa-floppy-disk mr-1"></i>Save</button>' +
                 '</div>' +
                 '</td>' +
                 '<td class="py-3 px-3"><span class="font-bold ' + qtyClass + '">' + qty.toFixed(2) + '</span></td>' +
-                '<td class="py-3 px-3"><select data-action="unit" data-id="' + escapeHtml(item.id) + '" class="px-3 py-2 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm">' + renderUnitOptions(item.unit || 'units') + '</select></td>' +
+                '<td class="py-3 px-3"><span class="inv-view-only text-gray-800 font-semibold text-sm">' + escapeHtml(item.unit || 'units') + '</span>' +
+                '<select data-action="unit" data-id="' + escapeHtml(item.id) + '" class="inv-edit-only px-2 py-1 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-xs">' + renderUnitOptions(item.unit || 'units') + '</select></td>' +
+                '<td class="py-3 px-3"><span class="inv-view-only text-gray-800 font-semibold text-sm">₱' + Number(item.unitCost != null ? item.unitCost : 0).toFixed(2) + '</span>' +
+                '<input data-action="unitCost" data-id="' + escapeHtml(item.id) + '" type="number" min="0" step="0.01" class="inv-edit-only w-20 px-2 py-1 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-xs" placeholder="₱/unit" value="' + escapeHtml(String(item.unitCost != null ? item.unitCost : 0)) + '"></td>' +
                 '<td class="py-3 px-3">' +
-                '<input data-action="reorder" data-id="' + escapeHtml(item.id) + '" type="number" min="0" step="0.01" class="w-28 px-3 py-2 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm" value="' + escapeHtml(String(item.reorderLevel != null ? item.reorderLevel : 0)) + '">' +
+                '<span class="inv-view-only text-gray-800 font-semibold text-sm">' + escapeHtml(String(item.reorderLevel != null ? item.reorderLevel : 0)) + '</span>' +
+                '<input data-action="reorder" data-id="' + escapeHtml(item.id) + '" type="number" min="0" step="0.01" class="inv-edit-only w-20 px-2 py-1 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-xs" value="' + escapeHtml(String(item.reorderLevel != null ? item.reorderLevel : 0)) + '">' +
                 (low ? '<div class="text-xs text-red-600 mt-1"><i class="fas fa-triangle-exclamation mr-1"></i>Low stock</div>' : '<div class="text-xs text-gray-400 mt-1">—</div>') +
                 '</td>' +
                 '<td class="py-3 px-3">' +
-                '<input data-action="expiryDate" data-id="' + escapeHtml(item.id) + '" type="date" class="w-full min-w-[130px] px-2 py-2 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm" value="' + escapeHtml((item.expiryDate && item.expiryDate.slice(0, 10)) || '') + '" title="Expiry date (from product label)">' +
-                (item.expiryDate && getExtendedExpiryString(item.expiryDate) ? '<div class="text-xs mt-1 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-amber-800"><span class="font-medium">Extended:</span> ' + escapeHtml(getExtendedExpiryString(item.expiryDate)) + ' <span class="text-amber-600">(1 wk)</span></div>' : '<div class="text-xs text-gray-400 mt-1">—</div>') +
+                '<span class="inv-view-only text-gray-700 font-semibold text-sm">' + (item.expiryDate ? escapeHtml(String(item.expiryDate).slice(0, 10)) : '—') + '</span>' +
+                (item.expiryDate && getExtendedExpiryString(item.expiryDate)
+                    ? '<div class="inv-view-only text-xs mt-1 text-amber-700">Extended: ' + escapeHtml(getExtendedExpiryString(item.expiryDate)) + '</div>'
+                    : '<div class="inv-view-only text-xs text-gray-400 mt-1">—</div>') +
+                '<input data-action="expiryDate" data-id="' + escapeHtml(item.id) + '" type="date" class="inv-edit-only w-full min-w-[120px] px-2 py-1 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-xs" value="' + escapeHtml((item.expiryDate && item.expiryDate.slice(0, 10)) || '') + '" title="Expiry date">' +
+                (item.expiryDate && getExtendedExpiryString(item.expiryDate) ? '<div class="inv-edit-only text-[11px] mt-1 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-amber-800"><span class="font-medium">Ext:</span> ' + escapeHtml(getExtendedExpiryString(item.expiryDate)) + '</div>' : '<div class="inv-edit-only text-xs text-gray-400 mt-1">—</div>') +
                 '</td>' +
                 '<td class="py-3 px-3">' +
-                '<div class="flex items-center gap-2">' +
-                '<input data-action="delta" data-id="' + escapeHtml(item.id) + '" type="number" min="0" step="0.01" class="w-28 px-3 py-2 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm" placeholder="0">' +
-                '<button data-action="stockIn" data-id="' + escapeHtml(item.id) + '" class="px-3 py-2 rounded-lg bg-green-50 text-green-700 hover:bg-green-600 hover:text-white transition text-sm font-semibold"><i class="fas fa-plus mr-1"></i>In</button>' +
-                '<button data-action="stockOut" data-id="' + escapeHtml(item.id) + '" class="px-3 py-2 rounded-lg bg-red-50 text-red-700 hover:bg-red-600 hover:text-white transition text-sm font-semibold"><i class="fas fa-minus mr-1"></i>Out</button>' +
+                '<span class="inv-view-only text-gray-500 text-sm">—</span>' +
+                '<div class="inv-edit-only flex items-center gap-2">' +
+                '<input data-action="delta" data-id="' + escapeHtml(item.id) + '" type="number" min="0" step="0.01" class="w-20 px-2 py-1 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-xs" placeholder="Qty">' +
+                '<button data-action="stockIn" data-id="' + escapeHtml(item.id) + '" class="px-2 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-600 hover:text-white transition text-xs font-semibold"><i class="fas fa-plus mr-1"></i>In</button>' +
+                '<button data-action="stockOut" data-id="' + escapeHtml(item.id) + '" class="px-2 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-600 hover:text-white transition text-xs font-semibold"><i class="fas fa-minus mr-1"></i>Out</button>' +
                 '</div></td>' +
-                '<td class="py-3 px-3"><div class="flex gap-2 justify-end">' +
+                '<td class="py-3 px-3"><div class="flex flex-col gap-2 items-end">' +
+                '<button data-action="edit" data-id="' + escapeHtml(item.id) + '" class="px-3 py-2 rounded-lg bg-[#FFF8F0] text-[#B8941E] hover:bg-[#FFEFD6] transition text-sm font-semibold">Edit</button>' +
                 '<button data-action="delete" data-id="' + escapeHtml(item.id) + '" class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-700 text-sm font-semibold"><i class="fas fa-trash mr-2 text-red-600"></i>Delete</button>' +
                 '</div></td></tr>';
         }).join('');
+
+        // Apply edit-mode state per row.
+        // (We re-render the row on Edit/Done, so this stays consistent.)
+        var rowEls = tbody.querySelectorAll('tr[data-id]');
+        for (var r = 0; r < rowEls.length; r++) {
+            var rowEl = rowEls[r];
+            var rowId = rowEl.getAttribute('data-id');
+            var item = inventoryItems.find(function (x) { return x.id === rowId; });
+            var editing = !!(item && item._editing);
+            rowEl.dataset.editing = editing ? '1' : '0';
+            setRowEditable(rowEl, editing);
+        }
 
         if (cardsGrid) {
             cardsGrid.innerHTML = inventoryItems.map(function (item) {
@@ -285,7 +329,7 @@
     function applyStockDelta(id, delta) {
         loadInventory();
         var item = inventoryItems.find(function (x) { return x.id === id; });
-        if (!item) return;
+        if (!item) return null;
         var current = Number(item.quantity) || 0;
         item.quantity = Math.max(0, current + delta);
         saveInventory();
@@ -293,6 +337,7 @@
         if (isSupabaseId(item.id) && window.InventorySupabase && window.InventorySupabase.update) {
             window.InventorySupabase.update(item.id, { quantity: item.quantity });
         }
+        return { item: item, before: current, delta: delta };
     }
 
     function readFileAsDataUrl(file) {
@@ -336,6 +381,7 @@
                 name: name,
                 quantity: Math.max(0, qty),
                 unit: unit,
+                unitCost: 0,
                 reorderLevel: Math.max(0, reorderLevel),
                 imageSrc: imageSrc || '',
                 expiryDate: expiryDate || null
@@ -412,11 +458,101 @@
         if (!tbody) return;
 
         tbody.addEventListener('click', function (e) {
-            var btn = e.target.closest('button[data-action]');
+            var t = e.target;
+            var btn = (t && typeof t.closest === 'function') ? t.closest('button[data-action]') : null;
             if (!btn) return;
             var action = btn.getAttribute('data-action');
             var id = btn.getAttribute('data-id');
             if (!id) return;
+
+            if (action === 'edit') {
+                var rowEl = btn.closest('tr[data-id]');
+                if (!rowEl) return;
+                var isEditing = rowEl.dataset.editing === '1';
+                var rowId = rowEl.getAttribute('data-id');
+                var item = inventoryItems.find(function (x) { return x.id === rowId; });
+                if (!item) return;
+
+                if (!isEditing) {
+                    // Enter edit mode: toggle state + re-render.
+                    // Only one row can be in edit mode at a time.
+                    inventoryItems.forEach(function (x) { x._editing = false; });
+                    item._editing = true;
+                    saveInventory(); // persist edit state in-memory->localStorage list shape not critical
+                    renderInventory();
+                    return;
+                }
+
+                // Done: persist changes, exit edit mode, re-render.
+                var unitSel = rowEl.querySelector('select[data-action="unit"][data-id="' + rowId + '"]');
+                var unitCostEl = rowEl.querySelector('input[data-action="unitCost"][data-id="' + rowId + '"]');
+                var reorderEl = rowEl.querySelector('input[data-action="reorder"][data-id="' + rowId + '"]');
+                var expiryEl = rowEl.querySelector('input[data-action="expiryDate"][data-id="' + rowId + '"]');
+                var imgUrlInput = rowEl.querySelector('input[data-action="imgUrl"][data-id="' + rowId + '"]');
+                var imgFileInput = rowEl.querySelector('input[data-action="imgFile"][data-id="' + rowId + '"]');
+
+                if (unitSel) item.unit = unitSel.value || 'units';
+                if (unitCostEl) item.unitCost = Number(unitCostEl.value) || 0;
+                if (reorderEl) item.reorderLevel = Number(reorderEl.value) || 0;
+                if (expiryEl) item.expiryDate = expiryEl.value ? String(expiryEl.value).slice(0, 10) : null;
+                if (imgUrlInput && imgUrlInput.value != null && (!imgFileInput || !imgFileInput.files || !imgFileInput.files[0])) {
+                    item.imageSrc = imgUrlInput.value || '';
+                }
+
+                // Immediately exit edit mode and show pure text view.
+                item._editing = false;
+                saveInventory();
+                renderInventory();
+
+                // If a new file was selected, update image after async read.
+                if (imgFileInput && imgFileInput.files && imgFileInput.files[0]) {
+                    var fileObj = imgFileInput.files[0];
+                    var fileToDataUrl = function (file) {
+                        return new Promise(function (resolve, reject) {
+                            try {
+                                var reader = new FileReader();
+                                reader.onload = function () { resolve(reader.result); };
+                                reader.onerror = function () { reject(new Error('Failed to read file')); };
+                                reader.readAsDataURL(file);
+                            } catch (err) {
+                                reject(err);
+                            }
+                        });
+                    };
+
+                    fileToDataUrl(fileObj).then(function (dataUrl) {
+                        item.imageSrc = dataUrl || '';
+                        saveInventory();
+                        if (isSupabaseId(item.id) && window.InventorySupabase && window.InventorySupabase.update) {
+                            window.InventorySupabase.update(item.id, {
+                                unit: item.unit,
+                                unitCost: item.unitCost,
+                                reorderLevel: item.reorderLevel,
+                                expiryDate: item.expiryDate,
+                                imageSrc: item.imageSrc
+                            });
+                        }
+                        renderInventory();
+                    }).catch(function () {
+                        // If reading fails, still exit edit mode.
+                        saveInventory();
+                        renderInventory();
+                    });
+                    return;
+                }
+
+                // No new file: update immediately (numeric fields already saved above).
+                if (isSupabaseId(item.id) && window.InventorySupabase && window.InventorySupabase.update) {
+                    window.InventorySupabase.update(item.id, {
+                        unit: item.unit,
+                        unitCost: item.unitCost,
+                        reorderLevel: item.reorderLevel,
+                        expiryDate: item.expiryDate,
+                        imageSrc: item.imageSrc
+                    });
+                }
+                return;
+            }
 
             if (action === 'delete') {
                 var item = inventoryItems.find(function (x) { return x.id === id; });
@@ -434,7 +570,44 @@
                 var raw = deltaInput ? Number(deltaInput.value) : 0;
                 if (!raw || raw <= 0) { alert('Please enter a valid amount.'); return; }
                 var delta = action === 'stockIn' ? raw : -raw;
-                applyStockDelta(id, delta);
+                var applied = applyStockDelta(id, delta);
+                if (applied && applied.item && window.AdminRecords && typeof window.AdminRecords.logInventoryMovement === 'function') {
+                    try {
+                        window.AdminRecords.logInventoryMovement({
+                            itemId: applied.item.id,
+                            itemName: applied.item.name,
+                            delta: applied.delta,
+                            newQty: applied.item.quantity,
+                            unit: applied.item.unit,
+                            reason: 'Manual stock ' + (applied.delta >= 0 ? 'in' : 'out')
+                        });
+                    } catch (err) { /* noop */ }
+                }
+
+                // When stocking IN, also log Purchase expenses with an amount.
+                // Requires Cost/Unit input for this ingredient row.
+                if (action === 'stockIn' && applied && applied.item && window.AdminRecords && typeof window.AdminRecords.logPurchaseExpense === 'function') {
+                    var costInput = tbody.querySelector('input[data-action="unitCost"][data-id="' + id + '"]');
+                    var costPerUnit = costInput ? Number(costInput.value) : 0;
+                    if (costPerUnit && costPerUnit > 0) {
+                        var totalCost = raw * costPerUnit;
+                        try {
+                            window.AdminRecords.logPurchaseExpense({
+                                itemName: applied.item.name,
+                                quantity: raw,
+                                unit: applied.item.unit,
+                                unitCost: costPerUnit,
+                                totalCost: totalCost,
+                                ref: '',
+                                notes: `Stock In: ${raw} ${applied.item.unit || 'units'}`
+                            });
+                        } catch (err) { /* noop */ }
+                    } else if (costInput && (!costInput.value || Number(costInput.value) <= 0)) {
+                        // If they left it empty, we skip purchase expense logging.
+                        // (Prevents unwanted ₱0 rows.)
+                    }
+                }
+
                 if (deltaInput) deltaInput.value = '';
                 return;
             }
@@ -457,6 +630,19 @@
                     renderInventory();
                     if (isSupabaseId(u.id) && window.InventorySupabase && window.InventorySupabase.update) {
                         window.InventorySupabase.update(u.id, { unit: u.unit });
+                    }
+                }
+                return;
+            }
+            if (action === 'unitCost') {
+                var u2 = inventoryItems.find(function (x) { return x.id === id; });
+                if (u2) {
+                    var v2 = Number(el.value);
+                    u2.unitCost = (Number.isFinite(v2) && v2 >= 0) ? v2 : 0;
+                    saveInventory();
+                    renderInventory();
+                    if (isSupabaseId(u2.id) && window.InventorySupabase && window.InventorySupabase.update) {
+                        window.InventorySupabase.update(u2.id, { unitCost: u2.unitCost });
                     }
                 }
                 return;

@@ -95,7 +95,7 @@
      * Updates localStorage; also syncs to Supabase when OrderIngredientsSupabase is available (POS).
      * Does not re-render UI; call window.renderInventory() from page if needed.
      */
-    function applyStockDeltaByName(ingredientName, delta) {
+    function applyStockDeltaByName(ingredientName, delta, meta) {
         const items = loadInventory();
         const nameLower = (ingredientName || '').toLowerCase();
         const item = items.find(function (x) {
@@ -108,6 +108,18 @@
         if (window.OrderIngredientsSupabase && typeof window.OrderIngredientsSupabase.applyDeltaByName === 'function') {
             window.OrderIngredientsSupabase.applyDeltaByName(ingredientName, delta);
         }
+        if (window.AdminRecords && typeof window.AdminRecords.logInventoryMovement === 'function') {
+            try {
+                window.AdminRecords.logInventoryMovement({
+                    itemId: item.id,
+                    itemName: item.name,
+                    delta: delta,
+                    newQty: item.quantity,
+                    unit: item.unit,
+                    reason: meta && meta.reason ? meta.reason : 'Order-linked stock movement'
+                });
+            } catch (err) { /* noop */ }
+        }
         if (typeof window.renderInventory === 'function') {
             window.renderInventory();
         }
@@ -118,8 +130,10 @@
      */
     function deductIngredientsForOrder(order) {
         const list = getIngredientsNeededForOrder(order);
+        const ref = order && (order.orderGroupId || order.supabase_id || order.id) ? String(order.orderGroupId || order.supabase_id || order.id) : '';
+        const reason = 'Order confirmed — stock out' + (ref ? (' (' + ref + ')') : '');
         list.forEach(function (entry) {
-            applyStockDeltaByName(entry.name, -entry.quantity);
+            applyStockDeltaByName(entry.name, -entry.quantity, { reason: reason });
         });
     }
 
@@ -128,8 +142,10 @@
      */
     function restoreIngredientsForOrder(order) {
         const list = getIngredientsNeededForOrder(order);
+        const ref = order && (order.orderGroupId || order.supabase_id || order.id) ? String(order.orderGroupId || order.supabase_id || order.id) : '';
+        const reason = 'Order cancelled — stock restored' + (ref ? (' (' + ref + ')') : '');
         list.forEach(function (entry) {
-            applyStockDeltaByName(entry.name, entry.quantity);
+            applyStockDeltaByName(entry.name, entry.quantity, { reason: reason });
         });
     }
 

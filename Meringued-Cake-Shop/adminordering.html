@@ -326,6 +326,8 @@
 
     <script src="js/core/adminOrderStorage.js"></script>
     <script src="js/admin-order-ingredients.js"></script>
+    <script type="module" src="js/adminRecordsBridge.js"></script>
+    <script type="module" src="js/adminPaymentsBridge.js"></script>
     <script type="module" src="js/supabaseOrdersBridge.js"></script>
     <script type="module" src="js/order-ingredients-supabase.js"></script>
     <script>
@@ -713,6 +715,18 @@
 // Update order status
             const order = orders[orderIndex];
             order.status = newStatus;
+
+            // Sales receipt: when an order becomes Completed, log the earned amount.
+            if (newStatus === 'Completed' && currentStatus !== 'Completed') {
+                // Sales receipt (admin_records)
+                if (window.AdminRecords && typeof window.AdminRecords.logSaleFromOrder === 'function') {
+                    try { window.AdminRecords.logSaleFromOrder(order); } catch (err) { /* noop */ }
+                }
+                // Payment transaction (payments)
+                if (window.AdminPayments && typeof window.AdminPayments.logPaymentFromOrder === 'function') {
+                    try { window.AdminPayments.logPaymentFromOrder(order); } catch (err) { /* noop */ }
+                }
+            }
 
             // Ingredients: deduct when confirming (Pending -> Acknowledge/Baking/Ready/Completed), restore when cancelling
             if (window.OrderIngredients) {

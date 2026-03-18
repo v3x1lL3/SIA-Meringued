@@ -1,6 +1,7 @@
 import { ensureAuthenticated, handleLogoutRedirectToHome } from './authController.js';
 import { showToast, showLoadingOverlay, hideLoadingOverlay } from '../core/utils.js';
 import { listAdminRecords, upsertAdminRecord, deleteAdminRecord } from '../models/adminRecordsModel.js';
+import { listInventoryItemsForApp } from '../models/inventoryModel.js';
 
 const TYPE_LABEL = {
   eod_inventory_audit: 'EOD Inventory Audit',
@@ -72,6 +73,62 @@ function getActiveType() {
   return active?.getAttribute('data-type') || 'eod_inventory_audit';
 }
 
+function getStockFilter() {
+  const el = qs('#stockInOutFilter');
+  if (!el || el.classList.contains('hidden')) return 'all';
+  const activeBtn = el.querySelector('.stock-filter-btn.active');
+  return activeBtn?.getAttribute('data-stock') || 'all';
+}
+
+function setStockFilter(stock) {
+  const el = qs('#stockInOutFilter');
+  if (!el) return;
+  el.querySelectorAll('.stock-filter-btn').forEach(btn => {
+    const isActive = btn.getAttribute('data-stock') === stock;
+    btn.classList.toggle('active', isActive);
+    // Lightweight styling switch
+    if (isActive) {
+      btn.classList.remove('bg-white');
+      btn.classList.remove('bg-gray-200');
+      btn.classList.add('bg-[#FFF8F0]');
+      btn.classList.remove('text-gray-700');
+      btn.classList.add('text-[#B8941E]');
+      btn.classList.remove('border');
+      btn.classList.remove('border-[#D4AF37]/20');
+    } else {
+      btn.classList.add('bg-white');
+      btn.classList.remove('bg-[#FFF8F0]');
+      btn.classList.add('text-gray-700');
+      btn.classList.remove('text-[#B8941E]');
+      btn.classList.add('border');
+      btn.classList.add('border-[#D4AF37]/20');
+    }
+  });
+}
+
+function toggleStockFilterForType(type) {
+  const el = qs('#stockInOutFilter');
+  if (!el) return;
+  const shouldShow = type === 'inventory_audit';
+  el.classList.toggle('hidden', !shouldShow);
+  if (shouldShow) setStockFilter(getStockFilter() || 'all');
+}
+
+function applyStockInOutFilter(rows, type) {
+  if (type !== 'inventory_audit') return rows;
+  const stock = getStockFilter();
+  if (!stock || stock === 'all') return rows;
+
+  return rows.filter(r => {
+    const titleLc = String(r?.title || '').toLowerCase();
+    const notesLc = String(r?.notes || '').toLowerCase();
+    const hay = `${titleLc} ${notesLc}`;
+    if (stock === 'in') return hay.includes('stock in');
+    if (stock === 'out') return hay.includes('stock out');
+    return true;
+  });
+}
+
 function setModalMode(mode, row) {
   const title = qs('#recordModalTitle');
   const delBtn = qs('#deleteRecordBtn');
@@ -120,30 +177,124 @@ function renderRows(rows) {
   if (!rows.length) {
     body.innerHTML = '';
     empty.classList.remove('hidden');
+    if (getActiveType() === 'eod_inventory_audit') {
+      const h3 = empty.querySelector('h3');
+      const p = empty.querySelector('p');
+      const btn = empty.querySelector('button');
+      if (h3) h3.textContent = 'No EOD snapshot for today yet';
+      if (p) p.innerHTML = `This page auto-generates your EOD Inventory Audit from your current inventory quantities. Refresh in a moment if needed.`;
+      if (btn) btn.classList.add('hidden');
+    }
     return;
   }
 
   empty.classList.add('hidden');
+
+  function formatInventoryNotes(notesRaw) {
+    const parts = String(notesRaw || '')
+      // Notes are stored like: "Stock Out • Δ -0.50 units • New qty: 92.50 units"
+      // But spacing may vary, so split on bullet/middot robustly.
+      .split(/\s*[•·]\s*/g)
+      .map(p => p.trim())
+      .filter(Boolean);
+
+    const stockPart = parts.find(p => /^Stock\s+(In|Out)\b/i.test(p));
+    const deltaPart = parts.find(p => /^Δ/i.test(p));
+    const newQtyPart = parts.find(p => /^New\s*qty:/i.test(p));
+
+    const stock = stockPart || '';
+
+    let deltaVal = null;
+    let unit = '';
+    if (deltaPart) {
+      const m = deltaPart.match(/^Δ\s*([+-]?\d+(?:\.\d+)?)\s*(.*)$/i);
+      if (m) {
+        deltaVal = Number(m[1]);
+        unit = (m[2] || '').trim();
+      }
+    }
+
+    let newQtyVal = null;
+    if (newQtyPart) {
+      const m = newQtyPart.match(/^New qty:\s*([+-]?\d+(?:\.\d+)?)\s*(.*)$/i);
+      if (m) newQtyVal = Number(m[1]);
+    }
+
+    // User request: show only qty (hide Stock In/Out + delta lines).
+    if (newQtyVal != null) {
+      const unitLabel = unit || 'unit';
+      return `<div>Qty: ${escapeHtml(newQtyVal.toFixed(2))} ${escapeHtml(unitLabel)}</div>`;
+    }
+
+    // Fallback for older rows (or EOD rows that only have "Qty: ...").
+    return escapeHtml(notesRaw || '—');
+  }
+
   body.innerHTML = rows
     .map(r => {
       const amount = r.amount == null ? '—' : formatMoney(r.amount);
-      const notes = (r.notes || '').trim();
+      let notes = (r.notes || '').trim();
+      // Clean up inventory notes: remove verbose "Reason: ..." chunk.
+      if (r.type === 'inventory_audit' && notes) {
+        notes = notes
+          .split(' • ')
+          .filter(part => !String(part || '').toLowerCase().startsWith('reason:'))
+          .join(' • ');
+      }
+      // For existing rows where title still contains "Inventory Stock In/Out — X",
+      // show only X as title and move Stock In/Out into notes.
+      let displayTitle = r.title || '';
+      if (r.type === 'inventory_audit') {
+        const m = String(r.title || '').match(/Inventory\s+(Stock In|Stock Out)\s*[—-]\s+(.+)$/i);
+        if (m) {
+          displayTitle = m[2] || r.title || '';
+          const stockLabel = m[1];
+          const alreadyHasStock = notes.toLowerCase().includes('stock in') || notes.toLowerCase().includes('stock out');
+          if (!alreadyHasStock && stockLabel) {
+            notes = (stockLabel + (notes ? ' • ' + notes : '')).trim();
+          }
+        }
+      }
       const notesShort = notes.length > 80 ? notes.slice(0, 80) + '…' : notes;
+
+      const typeLabel = TYPE_LABEL[r.type] || r.type || '';
+      const isEod = r.type === 'eod_inventory_audit';
+      const isLockedType = isEod || r.type === 'inventory_audit';
+      const subLine = (r.type === 'inventory_audit' || isEod) ? '' : (typeLabel + (r.ref ? ' • ' + r.ref : ''));
+      let notesCell = '—';
+      if (r.type === 'inventory_audit' || r.type === 'eod_inventory_audit') {
+        notesCell = formatInventoryNotes(notes);
+      } else if (r.type === 'sales_receipts') {
+        // Render "Cake: x • Qty: y • Delivery: z • Payment: m" as clean lines.
+        const raw = notesShort || '';
+        const parts = String(raw)
+          .split(/\s*[•·]\s*/g)
+          .map(p => p.trim())
+          .filter(Boolean);
+        if (parts.length === 0) notesCell = '—';
+        else {
+          notesCell = `<div class="space-y-0.5">${parts.map(p => `<div>${escapeHtml(p)}</div>`).join('')}</div>`;
+        }
+      } else {
+        notesCell = escapeHtml(notesShort || '—');
+      }
       return `
         <tr class="border-b border-gray-100 hover:bg-[#FFF8F0]/60">
           <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">${escapeHtml(formatDate(r.record_date))}</td>
-          <td class="py-3 px-3 text-sm font-semibold text-gray-800">${escapeHtml(r.title || '')}<div class="text-xs text-gray-400 mt-0.5">${escapeHtml(TYPE_LABEL[r.type] || r.type || '')}${r.ref ? ' • ' + escapeHtml(r.ref) : ''}</div></td>
+          <td class="py-3 px-3 text-sm font-semibold text-gray-800">${escapeHtml(displayTitle || '')}${subLine ? `<div class="text-xs text-gray-400 mt-0.5">${escapeHtml(subLine)}</div>` : ''}</td>
           <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">${escapeHtml(amount)}</td>
-          <td class="py-3 px-3 text-sm text-gray-600">${escapeHtml(notesShort || '—')}</td>
-          <td class="py-3 px-3 text-sm">
-            <div class="flex gap-2">
-              <button class="edit-record px-3 py-2 rounded-lg bg-[#FFF8F0] text-[#B8941E] hover:bg-[#FFEFD6] transition font-semibold" data-id="${escapeHtml(r.id)}">
-                <i class="fas fa-edit mr-1"></i>Edit
-              </button>
-              <button class="delete-record px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition font-semibold" data-id="${escapeHtml(r.id)}">
-                <i class="fas fa-trash mr-1"></i>Delete
-              </button>
-            </div>
+          <td class="py-3 px-3 text-sm text-gray-600">${notesCell}</td>
+          <td class="py-3 px-3 text-sm records-actions-cell">
+            ${isLockedType ? '' : `
+              <div class="flex gap-2">
+                <button class="edit-record px-3 py-2 rounded-lg bg-[#FFF8F0] text-[#B8941E] hover:bg-[#FFEFD6] transition font-semibold" data-id="${escapeHtml(r.id)}">
+                  <i class="fas fa-edit mr-1"></i>Edit
+                </button>
+                <button class="delete-record px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition font-semibold" data-id="${escapeHtml(r.id)}">
+                  <i class="fas fa-trash mr-1"></i>Delete
+                </button>
+              </div>
+            `}
           </td>
         </tr>
       `;
@@ -155,27 +306,166 @@ let lastLoaded = [];
 let lastSource = 'local';
 
 async function refresh() {
-  const type = getActiveType();
+  const activeType = getActiveType();
   const from = qs('#filterFrom')?.value || '';
   const to = qs('#filterTo')?.value || '';
   const search = qs('#filterSearch')?.value || '';
 
   showLoadingOverlay('Loading records...');
-  const { rows, source } = await listAdminRecords({ type, from: from || undefined, to: to || undefined });
+  const { rows, source } = await listAdminRecords({ type: activeType, from: from || undefined, to: to || undefined });
   hideLoadingOverlay();
 
-  lastLoaded = applySearch(rows, search);
+  const searched = applySearch(rows, search);
+  lastLoaded = applyStockInOutFilter(searched, activeType);
   lastSource = source;
 
   renderRows(lastLoaded);
+  updateActionsVisibility(activeType);
   const summary = qs('#recordsSummary');
   const src = qs('#recordsSource');
-  if (summary) summary.textContent = `${TYPE_LABEL[type] || type}: ${lastLoaded.length} record${lastLoaded.length === 1 ? '' : 's'}`;
+  if (summary) summary.textContent = `${TYPE_LABEL[activeType] || activeType}: ${lastLoaded.length} record${lastLoaded.length === 1 ? '' : 's'}`;
   if (src) src.textContent = source === 'supabase' ? 'Source: Supabase' : 'Source: localStorage (Supabase table not configured yet)';
 }
 
 function findById(id) {
   return lastLoaded.find(r => r.id === id) || null;
+}
+
+function getTodayYmd() {
+  // Use Philippine time so "today" matches Asia/Manila (UTC+8) instead of UTC.
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date());
+  } catch {
+    // Fallback: local/UTC best-effort (older browsers).
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+function loadLocalInventoryItemsForEod() {
+  const INVENTORY_STORAGE_KEY = 'adminInventoryItems';
+  try {
+    const raw = localStorage.getItem(INVENTORY_STORAGE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(arr)) return [];
+    return arr.map(it => ({
+      name: String(it?.name || '').trim(),
+      quantity: Number(it?.quantity) || 0,
+      unit: String(it?.unit || 'units').trim() || 'units',
+    })).filter(x => x.name);
+  } catch {
+    return [];
+  }
+}
+
+async function ensureEodAutoSnapshotForToday() {
+  const today = getTodayYmd();
+  const eodType = 'eod_inventory_audit';
+
+  // Inventory items (source of truth for EOD "New Qty").
+  let items = [];
+  try {
+    items = await listInventoryItemsForApp();
+  } catch {
+    items = [];
+  }
+  if (!items.length) items = loadLocalInventoryItemsForEod();
+
+  if (!items.length) {
+    showToast('EOD snapshot: no inventory items found to snapshot.', 'error');
+    return;
+  }
+
+  // Existing EOD rows today (we update them to keep notes accurate).
+  const existingRes = await listAdminRecords({ type: eodType, from: today, to: today });
+  const existingRows = existingRes?.rows || [];
+
+  // Inventory movements today (type=`inventory_audit`) to decide Stock In vs Stock Out in EOD notes.
+  let movementRows = [];
+  try {
+    const mvRes = await listAdminRecords({ type: 'inventory_audit', from: today, to: today });
+    movementRows = mvRes?.rows || [];
+  } catch {
+    movementRows = [];
+  }
+
+  // Keep the latest movement row per item title.
+  const lastMovementByTitle = new Map();
+  for (const r of movementRows) {
+    const key = String(r?.title || '').toLowerCase().trim();
+    if (!key) continue;
+    if (!lastMovementByTitle.has(key)) lastMovementByTitle.set(key, r);
+  }
+
+  function parseInventoryAuditNotes(notesRaw, fallbackUnit) {
+    const s = String(notesRaw || '');
+    const stockMatch = s.match(/Stock\s+(In|Out)\b/i);
+    const deltaMatch = s.match(/Δ\s*([+-]?\d+(?:\.\d+)?)\s*([^•]*)/i);
+    const deltaVal = deltaMatch ? Number(deltaMatch[1]) : null;
+    const unitLabel = (deltaMatch?.[2] || '').trim() || fallbackUnit || 'units';
+    const stockLabel =
+      stockMatch?.[0]
+        ? `Stock ${String(stockMatch[1]).charAt(0).toUpperCase()}${String(stockMatch[1]).slice(1).toLowerCase()}`
+        : (deltaVal == null ? '' : (deltaVal >= 0 ? 'Stock In' : 'Stock Out'));
+    return { stockLabel, deltaVal, unitLabel };
+  }
+
+  // Upsert one EOD row per inventory item.
+  for (const item of items) {
+    const qty = Number(item?.quantity) || 0;
+    const unit = String(item?.unit || 'units').trim() || 'units';
+    const title = String(item?.name || '').trim();
+    if (!title) continue;
+
+    const titleKey = title.toLowerCase().trim();
+    const lastMovement = lastMovementByTitle.get(titleKey);
+
+    let notes = `Qty: ${qty.toFixed(2)} ${unit}`;
+
+    if (lastMovement && lastMovement.notes) {
+      const parsed = parseInventoryAuditNotes(lastMovement.notes, unit);
+      if (parsed.stockLabel && parsed.deltaVal != null && Number.isFinite(parsed.deltaVal)) {
+        const deltaAbs = Math.abs(parsed.deltaVal).toFixed(2);
+        const deltaSigned = parsed.deltaVal >= 0 ? `+${deltaAbs}` : `-${deltaAbs}`;
+        const unitLabel = parsed.unitLabel || unit;
+        notes = [
+          parsed.stockLabel,
+          `Δ ${deltaSigned} ${unitLabel}`,
+          `New qty: ${qty.toFixed(2)} ${unitLabel}`,
+        ].join(' • ');
+      }
+    }
+
+    const existing = existingRows.find(r => String(r?.title || '').toLowerCase().trim() === titleKey);
+    const payload = {
+      id: existing?.id,
+      type: eodType,
+      record_date: today,
+      title,
+      amount: null,
+      ref: '',
+      notes,
+    };
+
+    await upsertAdminRecord(payload);
+  }
+
+  showToast('EOD Inventory Audit auto-snapshot created/updated.', 'success');
+}
+
+function updateAddRecordButtonForType(type) {
+  const btn = qs('#addRecordBtn');
+  if (!btn) return;
+  const shouldHide = type === 'eod_inventory_audit' || type === 'inventory_audit';
+  btn.classList.toggle('hidden', shouldHide);
+}
+
+function updateActionsVisibility(type) {
+  const header = qs('.records-actions-header');
+  const cells = qsa('td.records-actions-cell');
+  // User requested: hide Actions everywhere (no Edit/Delete UI).
+  const shouldHide = true;
+  if (header) header.classList.toggle('hidden', shouldHide);
+  cells.forEach(td => td.classList.toggle('hidden', shouldHide));
 }
 
 async function init() {
@@ -192,6 +482,9 @@ async function init() {
       const type = btn.getAttribute('data-type') || 'eod_inventory_audit';
       setActiveTab(type);
       qs('#recordType').value = type;
+      toggleStockFilterForType(type);
+      updateAddRecordButtonForType(type);
+      updateActionsVisibility(type);
       await refresh();
     });
   });
@@ -201,7 +494,14 @@ async function init() {
     qs('#filterFrom').value = '';
     qs('#filterTo').value = '';
     qs('#filterSearch').value = '';
+    setStockFilter('all');
     await refresh();
+  });
+  qs('#stockInOutFilter')?.querySelectorAll('.stock-filter-btn')?.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      setStockFilter(btn.getAttribute('data-stock') || 'all');
+      await refresh();
+    });
   });
   qs('#filterSearch')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -211,6 +511,14 @@ async function init() {
   });
 
   qs('#addRecordBtn')?.addEventListener('click', () => {
+    if (getActiveType() === 'eod_inventory_audit') {
+      showToast('EOD Inventory Audit is auto-generated and not editable.', 'info');
+      return;
+    }
+    if (getActiveType() === 'inventory_audit') {
+      showToast('Inventory audit records are auto-generated and not editable.', 'info');
+      return;
+    }
     setModalMode('add');
     fillForm(null, getActiveType());
     openModal();
@@ -225,6 +533,14 @@ async function init() {
   qs('#recordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const payload = readForm();
+    if (payload.type === 'eod_inventory_audit') {
+      showToast('EOD Inventory Audit is auto-generated and not editable.', 'info');
+      return;
+    }
+    if (payload.type === 'inventory_audit') {
+      showToast('Inventory audit records are auto-generated and not editable.', 'info');
+      return;
+    }
     if (!payload.type || !payload.record_date || !payload.title) {
       showToast('Please fill in Type, Date, and Title.', 'error');
       return;
@@ -256,8 +572,17 @@ async function init() {
     const id = target.getAttribute('data-id');
     if (!id) return;
 
+    const row = findById(id);
+    if (row?.type === 'eod_inventory_audit') {
+      showToast('EOD Inventory Audit is auto-generated and not editable.', 'info');
+      return;
+    }
+    if (row?.type === 'inventory_audit') {
+      showToast('Inventory audit records are auto-generated and not editable.', 'info');
+      return;
+    }
+
     if (target.classList.contains('edit-record')) {
-      const row = findById(id);
       if (!row) return;
       setModalMode('edit', row);
       fillForm(row);
@@ -276,7 +601,10 @@ async function init() {
   });
 
   // Default tab
+  await ensureEodAutoSnapshotForToday();
   setActiveTab('eod_inventory_audit');
+  toggleStockFilterForType('eod_inventory_audit');
+  updateAddRecordButtonForType('eod_inventory_audit');
   await refresh();
 
   if (lastSource === 'local') {

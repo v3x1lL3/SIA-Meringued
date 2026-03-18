@@ -13,7 +13,7 @@ export function renderPayments(containerId, payments) {
       (p) => `
       <div class="border border-gray-200 rounded-xl p-3 flex justify-between items-center text-sm">
         <div>
-          <div class="font-semibold text-gray-800">${escapeHtml(p.provider || 'Payment')}</div>
+          <div class="font-semibold text-gray-800">${escapeHtml(p.method || 'Payment')}</div>
           <div class="text-gray-500">${escapeHtml(p.status || '')}</div>
         </div>
         <div class="font-bold text-[#D4AF37]">₱${(p.amount || 0).toFixed(2)}</div>

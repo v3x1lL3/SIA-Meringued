@@ -8,8 +8,8 @@ export async function simulatePayment(orderId, amount) {
       order_id: orderId,
       amount,
       status: 'paid',
-      provider: 'mock',
-      provider_ref: `MOCK-${Date.now()}`,
+      method: 'mock',
+      reference: `MOCK-${Date.now()}`,
     });
     showToast('Payment recorded (mock).', 'success');
   } catch (err) {

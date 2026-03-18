@@ -24,7 +24,7 @@ export async function listLowStock(threshold = 5) {
   return data ?? [];
 }
 
-/** Map DB row to app shape: id, name, quantity, reorderLevel, unit, imageSrc, expiryDate */
+/** Map DB row to app shape: id, name, quantity, reorderLevel, unit, unitCost, imageSrc, expiryDate */
 function rowToItem(row) {
   if (!row) return null;
   let expiryDate = row.expiry_date;
@@ -41,6 +41,7 @@ function rowToItem(row) {
     quantity: Number(row.quantity) ?? 0,
     reorderLevel: Number(row.reorder_level) ?? 0,
     unit: row.unit || 'units',
+    unitCost: Number(row.unit_cost) ?? 0,
     imageSrc: row.image_src || '',
     expiryDate: expiryDate || null,
   };
@@ -59,6 +60,7 @@ function itemToRow(item) {
     quantity: Number(item.quantity) ?? 0,
     reorder_level: Number(item.reorderLevel) ?? 0,
     unit: item.unit || 'units',
+    unit_cost: Number(item.unitCost) ?? 0,
     image_src: item.imageSrc || null,
     expiry_date: (item.expiryDate && String(item.expiryDate).slice(0, 10)) || null,
   };
@@ -90,6 +92,8 @@ export async function updateInventoryItem(id, patch) {
   if (patch.reorderLevel != null) p.reorder_level = Number(patch.reorderLevel);
   if (patch.reorder_level != null) p.reorder_level = Number(patch.reorder_level);
   if (patch.unit != null) p.unit = patch.unit;
+  if (patch.unitCost != null) p.unit_cost = Number(patch.unitCost);
+  if (patch.unit_cost != null) p.unit_cost = Number(patch.unit_cost);
   if (patch.imageSrc != null) p.image_src = patch.imageSrc;
   if (patch.image_src != null) p.image_src = patch.image_src;
   if (patch.expiryDate !== undefined) p.expiry_date = (patch.expiryDate && String(patch.expiryDate).slice(0, 10)) || null;

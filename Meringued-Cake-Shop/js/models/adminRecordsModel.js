@@ -11,11 +11,26 @@ function nowIso() {
   }
 }
 
-function makeId() {
+function makeUuid() {
+  // Prefer built-in UUID support.
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
-  return 'rec_' + Math.random().toString(16).slice(2) + '_' + Date.now().toString(16);
+
+  // Fallback: manual UUID v4 using crypto.getRandomValues (still browser-safe).
+  // Format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
+  // Last resort: should rarely happen, but keep something valid-ish.
+  // (Still better than 'sale_...' which definitely fails UUID column.)
+  return '00000000-0000-4000-8000-000000000000';
 }
 
 function safeParse(json, fallback) {
@@ -51,8 +66,17 @@ function normalizeRow(row) {
 }
 
 function mapToInsert(payload) {
+  // `admin_records.id` is a UUID column. Some bridge payloads generate ids like
+  // `sale_<orderId>` which will fail Supabase writes. If it's not a UUID,
+  // we generate a proper one so upsert can succeed.
+  function isUuidLike(v) {
+    const s = String(v || '');
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+  }
+
+  const safeId = payload.id && isUuidLike(payload.id) ? String(payload.id) : makeUuid();
   return {
-    id: payload.id || makeId(),
+    id: safeId,
     type: payload.type,
     record_date: payload.record_date,
     title: payload.title || '',
@@ -107,6 +131,8 @@ export async function upsertAdminRecord(payload) {
     const row = await trySupabaseUpsert(payload);
     return { row, source: 'supabase' };
   } catch (e) {
+    // Helps diagnose RLS / column mismatches from browser console.
+    try { console.error('[adminRecordsModel] Supabase upsert failed:', e); } catch (_) {}
     const all = loadLocalAll();
     const row = mapToInsert(payload);
     const idx = all.findIndex(r => r.id === row.id);
