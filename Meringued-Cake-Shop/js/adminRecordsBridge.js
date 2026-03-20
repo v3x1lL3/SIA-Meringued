@@ -57,6 +57,8 @@ export async function logInventoryMovement({ itemId, itemName, delta, newQty, un
 
   const payload = {
     id: `inv_${itemId || itemName}_${Date.now()}`,
+    // Inventory movements are logged under Inventory audit (with time/date),
+    // while EOD Inventory Audit is created as an end-of-day snapshot.
     type: 'inventory_audit',
     record_date: ymd(),
     title,

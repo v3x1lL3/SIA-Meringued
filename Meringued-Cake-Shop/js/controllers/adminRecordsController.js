@@ -181,8 +181,8 @@ function renderRows(rows) {
       const h3 = empty.querySelector('h3');
       const p = empty.querySelector('p');
       const btn = empty.querySelector('button');
-      if (h3) h3.textContent = 'No EOD snapshot for today yet';
-      if (p) p.innerHTML = `This page auto-generates your EOD Inventory Audit from your current inventory quantities. Refresh in a moment if needed.`;
+      if (h3) h3.textContent = 'No EOD Inventory Audit for today yet';
+      if (p) p.innerHTML = `The EOD snapshot is created when you open this tab (based on current inventory quantities).`;
       if (btn) btn.classList.add('hidden');
     }
     return;
@@ -190,7 +190,7 @@ function renderRows(rows) {
 
   empty.classList.add('hidden');
 
-  function formatInventoryNotes(notesRaw) {
+  function formatInventoryNotes(notesRaw, showStockLines) {
     const parts = String(notesRaw || '')
       // Notes are stored like: "Stock Out • Δ -0.50 units • New qty: 92.50 units"
       // But spacing may vary, so split on bullet/middot robustly.
@@ -201,6 +201,7 @@ function renderRows(rows) {
     const stockPart = parts.find(p => /^Stock\s+(In|Out)\b/i.test(p));
     const deltaPart = parts.find(p => /^Δ/i.test(p));
     const newQtyPart = parts.find(p => /^New\s*qty:/i.test(p));
+    const qtyPart = parts.find(p => /^Qty:/i.test(p));
 
     const stock = stockPart || '';
 
@@ -220,13 +221,33 @@ function renderRows(rows) {
       if (m) newQtyVal = Number(m[1]);
     }
 
-    // User request: show only qty (hide Stock In/Out + delta lines).
-    if (newQtyVal != null) {
-      const unitLabel = unit || 'unit';
-      return `<div>Qty: ${escapeHtml(newQtyVal.toFixed(2))} ${escapeHtml(unitLabel)}</div>`;
+    let qtyVal = null;
+    let qtyUnit = '';
+    if (qtyPart) {
+      const m = qtyPart.match(/^Qty:\s*([+-]?\d+(?:\.\d+)?)\s*(.*)$/i);
+      if (m) {
+        qtyVal = Number(m[1]);
+        qtyUnit = (m[2] || '').trim();
+      }
     }
 
-    // Fallback for older rows (or EOD rows that only have "Qty: ...").
+    if (showStockLines) {
+      if (stock && deltaVal != null && newQtyVal != null) {
+        const mag = Math.abs(deltaVal).toFixed(2);
+        const unitLabel = unit || qtyUnit || 'unit';
+        const line1 = `${escapeHtml(stock)} = ${escapeHtml(mag)} ${escapeHtml(unitLabel)}`;
+        const line2 = `<div>New Qty: ${escapeHtml(newQtyVal.toFixed(2))}</div>`;
+        return `<div>${line1}</div>${line2}`;
+      }
+      return escapeHtml(notesRaw || '—');
+    }
+
+    // EOD: show only qty.
+    const valToShow = qtyVal != null ? qtyVal : newQtyVal;
+    const unitLabel = qtyUnit || unit || 'unit';
+    if (valToShow != null && Number.isFinite(valToShow)) {
+      return `<div>Qty: ${escapeHtml(Number(valToShow).toFixed(2))} ${escapeHtml(unitLabel)}</div>`;
+    }
     return escapeHtml(notesRaw || '—');
   }
 
@@ -262,8 +283,10 @@ function renderRows(rows) {
       const isLockedType = isEod || r.type === 'inventory_audit';
       const subLine = (r.type === 'inventory_audit' || isEod) ? '' : (typeLabel + (r.ref ? ' • ' + r.ref : ''));
       let notesCell = '—';
-      if (r.type === 'inventory_audit' || r.type === 'eod_inventory_audit') {
-        notesCell = formatInventoryNotes(notes);
+      if (r.type === 'inventory_audit') {
+        notesCell = formatInventoryNotes(notes, true);
+      } else if (r.type === 'eod_inventory_audit') {
+        notesCell = formatInventoryNotes(notes, true);
       } else if (r.type === 'sales_receipts') {
         // Render "Cake: x • Qty: y • Delivery: z • Payment: m" as clean lines.
         const raw = notesShort || '';
@@ -312,7 +335,23 @@ async function refresh() {
   const search = qs('#filterSearch')?.value || '';
 
   showLoadingOverlay('Loading records...');
-  const { rows, source } = await listAdminRecords({ type: activeType, from: from || undefined, to: to || undefined });
+  // EOD Inventory Audit must show ONLY today's records (it refreshes at 12:00 AM Manila).
+  let effectiveFrom = from;
+  let effectiveTo = to;
+  if (activeType === 'eod_inventory_audit') {
+    effectiveFrom = getTodayYmd();
+    effectiveTo = effectiveFrom;
+    const fromEl = qs('#filterFrom');
+    const toEl = qs('#filterTo');
+    if (fromEl) fromEl.value = effectiveFrom;
+    if (toEl) toEl.value = effectiveTo;
+  }
+
+  const { rows, source } = await listAdminRecords({
+    type: activeType,
+    from: effectiveFrom || undefined,
+    to: effectiveTo || undefined,
+  });
   hideLoadingOverlay();
 
   const searched = applySearch(rows, search);
@@ -357,29 +396,45 @@ function loadLocalInventoryItemsForEod() {
   }
 }
 
+function getNextMidnightManilaMs(now = new Date()) {
+  // Asia/Manila is UTC+8 with no DST; we can compute next midnight using a fixed offset.
+  const OFFSET_MS = 8 * 60 * 60 * 1000;
+  const MANILA_NOW = now.getTime() + OFFSET_MS;
+  const NEXT_MANILA_MIDNIGHT = Math.floor(MANILA_NOW / 86400000 + 1) * 86400000;
+  return NEXT_MANILA_MIDNIGHT - OFFSET_MS;
+}
+
+function scheduleMidnightEodRefresh() {
+  const delay = getNextMidnightManilaMs(new Date()) - Date.now();
+  const ms = Math.max(1000, delay + 250); // tiny buffer so date flips cleanly
+  setTimeout(async () => {
+    try {
+      await ensureEodAutoSnapshotForToday();
+      if (getActiveType() === 'eod_inventory_audit') await refresh();
+    } catch {
+      // best-effort; don't crash the page
+    } finally {
+      scheduleMidnightEodRefresh();
+    }
+  }, ms);
+}
+
 async function ensureEodAutoSnapshotForToday() {
   const today = getTodayYmd();
   const eodType = 'eod_inventory_audit';
 
-  // Inventory items (source of truth for EOD "New Qty").
-  let items = [];
-  try {
-    items = await listInventoryItemsForApp();
-  } catch {
-    items = [];
-  }
-  if (!items.length) items = loadLocalInventoryItemsForEod();
-
-  if (!items.length) {
-    showToast('EOD snapshot: no inventory items found to snapshot.', 'error');
-    return;
-  }
-
-  // Existing EOD rows today (we update them to keep notes accurate).
+  // Get existing EOD rows for today (we will update them by UUID, not delete/recreate).
   const existingRes = await listAdminRecords({ type: eodType, from: today, to: today });
   const existingRows = existingRes?.rows || [];
+  const existingByTitle = new Map(); // titleKey -> row (latest we see first due to model ordering)
+  for (const r of existingRows) {
+    if (!r?.title) continue;
+    const key = String(r.title).toLowerCase().trim();
+    if (!key) continue;
+    if (!existingByTitle.has(key)) existingByTitle.set(key, r);
+  }
 
-  // Inventory movements today (type=`inventory_audit`) to decide Stock In vs Stock Out in EOD notes.
+  // Latest inventory movements today (type=`inventory_audit`) used to infer Stock In/Out in EOD notes.
   let movementRows = [];
   try {
     const mvRes = await listAdminRecords({ type: 'inventory_audit', from: today, to: today });
@@ -388,28 +443,89 @@ async function ensureEodAutoSnapshotForToday() {
     movementRows = [];
   }
 
-  // Keep the latest movement row per item title.
-  const lastMovementByTitle = new Map();
+  const lastMovementByTitle = new Map(); // titleKey -> movement row
   for (const r of movementRows) {
     const key = String(r?.title || '').toLowerCase().trim();
     if (!key) continue;
     if (!lastMovementByTitle.has(key)) lastMovementByTitle.set(key, r);
   }
 
-  function parseInventoryAuditNotes(notesRaw, fallbackUnit) {
-    const s = String(notesRaw || '');
-    const stockMatch = s.match(/Stock\s+(In|Out)\b/i);
-    const deltaMatch = s.match(/Δ\s*([+-]?\d+(?:\.\d+)?)\s*([^•]*)/i);
-    const deltaVal = deltaMatch ? Number(deltaMatch[1]) : null;
-    const unitLabel = (deltaMatch?.[2] || '').trim() || fallbackUnit || 'units';
-    const stockLabel =
-      stockMatch?.[0]
-        ? `Stock ${String(stockMatch[1]).charAt(0).toUpperCase()}${String(stockMatch[1]).slice(1).toLowerCase()}`
-        : (deltaVal == null ? '' : (deltaVal >= 0 ? 'Stock In' : 'Stock Out'));
-    return { stockLabel, deltaVal, unitLabel };
+  // Fallback: if movement data is missing, infer direction from yesterday’s EOD qty.
+  function getYmdManilaOffset(days) {
+    const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(d);
+    } catch {
+      return d.toISOString().slice(0, 10);
+    }
   }
 
-  // Upsert one EOD row per inventory item.
+  const yesterday = getYmdManilaOffset(-1);
+  let yesterdayEodRows = [];
+  try {
+    const yRes = await listAdminRecords({ type: eodType, from: yesterday, to: yesterday });
+    yesterdayEodRows = yRes?.rows || [];
+  } catch {
+    yesterdayEodRows = [];
+  }
+
+  const prevQtyByTitle = new Map();
+  for (const r of yesterdayEodRows) {
+    if (!r?.title || !r?.notes) continue;
+    const key = String(r.title).toLowerCase().trim();
+    if (!key) continue;
+    const s = String(r.notes);
+    const mQty = s.match(/^Qty:\s*([+-]?\d+(?:\.\d+)?)/i);
+    const mNew = s.match(/New\s*qty:\s*([+-]?\d+(?:\.\d+)?)/i);
+    const val = mQty ? Number(mQty[1]) : (mNew ? Number(mNew[1]) : null);
+    if (val != null && Number.isFinite(val) && !prevQtyByTitle.has(key)) prevQtyByTitle.set(key, val);
+  }
+
+  function parseMovementNotes(notesRaw, fallbackUnit) {
+    const parts = String(notesRaw || '')
+      .split(/\s*[•·]\s*/g)
+      .map(p => p.trim())
+      .filter(Boolean);
+
+    const stockPart = parts.find(p => /^Stock\s+(In|Out)\b/i.test(p));
+    const deltaPart = parts.find(p => /^Δ/i.test(p));
+
+    const stockMatch = stockPart ? stockPart.match(/^Stock\s+(In|Out)\b/i) : null;
+    const stockLabel = stockMatch
+      ? `Stock ${stockMatch[1].charAt(0).toUpperCase()}${stockMatch[1].slice(1).toLowerCase()}`
+      : '';
+
+    let deltaVal = null;
+    let unitLabel = '';
+    if (deltaPart) {
+      const m = deltaPart.match(/^Δ\s*([+-]?\d+(?:\.\d+)?)\s*(.*)$/i);
+      if (m) {
+        deltaVal = Number(m[1]);
+        unitLabel = (m[2] || '').trim();
+      }
+    }
+
+    return {
+      stockLabel,
+      deltaVal,
+      unitLabel: unitLabel || fallbackUnit || 'units',
+    };
+  }
+
+  // Inventory items source of truth for end-of-day qty.
+  let items = [];
+  try {
+    items = await listInventoryItemsForApp();
+  } catch {
+    items = [];
+  }
+  if (!items.length) items = loadLocalInventoryItemsForEod();
+  if (!items.length) {
+    showToast('EOD snapshot: no inventory items found to snapshot.', 'error');
+    return;
+  }
+
+  let updated = 0;
   for (const item of items) {
     const qty = Number(item?.quantity) || 0;
     const unit = String(item?.unit || 'units').trim() || 'units';
@@ -417,39 +533,59 @@ async function ensureEodAutoSnapshotForToday() {
     if (!title) continue;
 
     const titleKey = title.toLowerCase().trim();
+    const existingRow = existingByTitle.get(titleKey);
+    const existingNotes = String(existingRow?.notes || '').trim();
+    const existingHasStock = /^Stock\s+(In|Out)\b/i.test(existingNotes);
+    if (existingHasStock) continue;
+
     const lastMovement = lastMovementByTitle.get(titleKey);
 
     let notes = `Qty: ${qty.toFixed(2)} ${unit}`;
-
-    if (lastMovement && lastMovement.notes) {
-      const parsed = parseInventoryAuditNotes(lastMovement.notes, unit);
+    if (lastMovement?.notes) {
+      const parsed = parseMovementNotes(lastMovement.notes, unit);
       if (parsed.stockLabel && parsed.deltaVal != null && Number.isFinite(parsed.deltaVal)) {
-        const deltaAbs = Math.abs(parsed.deltaVal).toFixed(2);
-        const deltaSigned = parsed.deltaVal >= 0 ? `+${deltaAbs}` : `-${deltaAbs}`;
-        const unitLabel = parsed.unitLabel || unit;
+        const abs = Math.abs(parsed.deltaVal).toFixed(2);
+        const sign = parsed.deltaVal >= 0 ? '+' : '-';
+        const u = parsed.unitLabel || unit;
         notes = [
           parsed.stockLabel,
-          `Δ ${deltaSigned} ${unitLabel}`,
-          `New qty: ${qty.toFixed(2)} ${unitLabel}`,
+          `Δ ${sign}${abs} ${u}`,
+          `New qty: ${qty.toFixed(2)} ${u}`,
         ].join(' • ');
       }
     }
 
-    const existing = existingRows.find(r => String(r?.title || '').toLowerCase().trim() === titleKey);
-    const payload = {
-      id: existing?.id,
+    // Fallback when movement rows are missing/unparseable.
+    if (!/^Stock\s+(In|Out)\b/i.test(notes)) {
+      if (prevQtyByTitle.has(titleKey)) {
+        const prevQty = prevQtyByTitle.get(titleKey);
+        const delta = qty - prevQty;
+        if (Number.isFinite(delta)) {
+          const stockLabel = delta >= 0 ? 'Stock In' : 'Stock Out';
+          const abs = Math.abs(delta).toFixed(2);
+          const sign = delta >= 0 ? '+' : '-';
+          notes = [
+            stockLabel,
+            `Δ ${sign}${abs} ${unit}`,
+            `New qty: ${qty.toFixed(2)} ${unit}`,
+          ].join(' • ');
+        }
+      }
+    }
+
+    await upsertAdminRecord({
+      id: existingRow?.id,
       type: eodType,
       record_date: today,
       title,
       amount: null,
       ref: '',
       notes,
-    };
-
-    await upsertAdminRecord(payload);
+    });
+    updated += 1;
   }
 
-  showToast('EOD Inventory Audit auto-snapshot created/updated.', 'success');
+  if (updated > 0) showToast('EOD Inventory Audit ensured for today.', 'success');
 }
 
 function updateAddRecordButtonForType(type) {
@@ -602,6 +738,7 @@ async function init() {
 
   // Default tab
   await ensureEodAutoSnapshotForToday();
+  scheduleMidnightEodRefresh();
   setActiveTab('eod_inventory_audit');
   toggleStockFilterForType('eod_inventory_audit');
   updateAddRecordButtonForType('eod_inventory_audit');
