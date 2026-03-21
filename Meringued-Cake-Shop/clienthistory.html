@@ -876,21 +876,22 @@
             renderCart();
         }
 
-        function placeOrder() {
+        async function placeOrder() {
             if (cart.length === 0) {
                 alert('Your cart is empty');
                 return;
             }
             
             // Check if any cart items have Online Payment as payment method
-            const hasOnlinePayment = cart.some(item => item.paymentMethod === 'Online Payment');
-            
-            if (hasOnlinePayment) {
-                // Show receipt upload modal for Online Payment items
+            const needsReceipt = cart.some(item =>
+                item.paymentMethod === 'Online Payment' ||
+                item.paymentPlan === '50% Down Payment' ||
+                item.paymentMethod === '50% Down Payment'
+            );
+            if (needsReceipt) {
                 openReceiptUploadModalForCart();
             } else {
-                // All items are Cash on Delivery, place order directly
-                processCartOrders(null, null);
+                await processCartOrders(null, null);
             }
         }
         
@@ -932,64 +933,97 @@
             
             // Convert receipt to base64
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function (e) {
                 const receiptData = e.target.result;
                 
-                // Check if we're processing cart orders
                 if (pendingOrderData === 'cart') {
-                    // Process cart orders with receipt
-                    processCartOrders(receiptData, receiptFile.name);
+                    await processCartOrders(receiptData, receiptFile.name);
                 }
             };
             reader.readAsDataURL(receiptFile);
         }
         
-        // Process cart orders (with or without receipt)
-        function processCartOrders(receiptData, receiptFileName) {
+        function getShopPickupContactPhone() {
+            try {
+                var raw = localStorage.getItem('adminSettings');
+                var s = raw ? JSON.parse(raw) : {};
+                var p = (s.shopPhone || '').trim().replace(/\s/g, '');
+                if (p) return p;
+            } catch (e) { /* noop */ }
+            return '09951016971';
+        }
+
+        // Process cart orders — Supabase insert must succeed (same idea as Records).
+        async function processCartOrders(receiptData, receiptFileName) {
             const ordersKey = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
             const cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
-            orders = JSON.parse(localStorage.getItem(ordersKey)) || [];
+            const cartSnapshot = cart.slice();
+            if (!cartSnapshot.length) {
+                alert('Your cart is empty');
+                return;
+            }
             const orderGroupId = 'ORD-' + Date.now();
             const uid = localStorage.getItem('userId') || null;
-            cart.forEach(item => {
+            var defaultPhone = (function () {
+                try {
+                    var k = typeof getSettingsKey === 'function' ? getSettingsKey() : 'clientSettings';
+                    var s = JSON.parse(localStorage.getItem(k) || '{}');
+                    return (s.clientPhone || '').trim();
+                } catch (e) { return ''; }
+            })();
+
+            if (typeof window.syncOrderToSupabase !== 'function') {
+                alert('Cloud sync is not available. Order was not placed.');
+                return;
+            }
+
+            const synced = [];
+            for (let idx = 0; idx < cartSnapshot.length; idx++) {
+                const item = cartSnapshot[idx];
                 const orderData = {
-                    id: Date.now() + Math.floor(Math.random() * 10000),
+                    id: Date.now() + idx * 100000 + Math.floor(Math.random() * 10000),
                     orderGroupId,
                     ...item,
                     status: 'Pending',
                     date: new Date().toLocaleDateString(),
                     userId: uid
                 };
-                if (item.paymentMethod === 'Online Payment') {
+                if (item.deliveryType === 'Deliver') {
+                    orderData.customerPhone = item.customerPhone || defaultPhone;
+                    orderData.ownerPhone = null;
+                } else {
+                    orderData.ownerPhone = item.ownerPhone || getShopPickupContactPhone();
+                    orderData.customerPhone = null;
+                }
+                if (item.paymentMethod === 'Online Payment' || item.paymentPlan === '50% Down Payment' || item.paymentMethod === '50% Down Payment') {
                     orderData.receipt = receiptData;
                     orderData.receiptFileName = receiptFileName;
                 }
-                orders.push(orderData);
-            });
-            localStorage.setItem(ordersKey, JSON.stringify(orders));
-            var newCount = cart.length;
-            if (typeof window.syncOrderToSupabase === 'function') {
-                for (var i = orders.length - newCount; i < orders.length; i++) {
-                    (function (o) {
-                        window.syncOrderToSupabase(o).then(function (row) {
-                            if (row && row.id) {
-                                var list = JSON.parse(localStorage.getItem(ordersKey) || '[]');
-                                var idx = list.findIndex(function (x) { return x.id === o.id; });
-                                if (idx !== -1) { list[idx].supabase_id = row.id; localStorage.setItem(ordersKey, JSON.stringify(list)); }
-                            }
-                        }).catch(function () {});
-                    })(orders[i]);
+                try {
+                    const row = await window.syncOrderToSupabase(orderData);
+                    if (!row || !row.id) {
+                        alert('Could not save order to Supabase. Order was not placed.');
+                        return;
+                    }
+                    orderData.supabase_id = row.id;
+                    synced.push(orderData);
+                } catch (err) {
+                    console.warn(err);
+                    alert('Could not save order to Supabase. Order was not placed.');
+                    return;
                 }
             }
+
+            orders = JSON.parse(localStorage.getItem(ordersKey)) || [];
+            synced.forEach(function (od) { orders.push(od); });
+            localStorage.setItem(ordersKey, JSON.stringify(orders));
+
             cart = [];
             localStorage.setItem(cartKey, JSON.stringify(cart));
             updateCartBadge();
-            // Close modals
             closeCartModal();
             closeReceiptUploadModal();
-            // Refresh orders display
             renderOrders();
-            // Redirect to ordering page or show success message
             alert('Order placed successfully!');
         }
 

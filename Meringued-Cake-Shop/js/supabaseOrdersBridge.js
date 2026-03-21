@@ -1,6 +1,6 @@
 /**
  * Bridge: expose Supabase order sync on window for inline scripts (client + admin).
- * - syncOrderToSupabase(order) → insert and return { id }; used after client places order.
+ * - syncOrderToSupabase(order) → insert and return { id }; checkout waits for this (like Records → DB).
  * - updateOrderInSupabase(supabaseId, patch) → update order; used when admin changes status.
  */
 import { insertOrder, updateOrder } from './models/orderModel.js';

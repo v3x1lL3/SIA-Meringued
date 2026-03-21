@@ -4,12 +4,231 @@ import { listAdminRecords, upsertAdminRecord, deleteAdminRecord } from '../model
 import { listInventoryItemsForApp } from '../models/inventoryModel.js';
 
 const TYPE_LABEL = {
-  eod_inventory_audit: 'EOD Inventory Audit',
-  daily_expenses: 'Daily expenses',
+  eod_inventory_audit: 'EOD inventory',
   inventory_audit: 'Inventory audit',
   sales_receipts: 'Sales receipts',
   purchase_expenses: 'Purchase expenses',
 };
+
+/** Remember Records tab so reload + slow EOD init don't snap back to EOD and hide Sales receipts. */
+const ADMIN_RECORDS_TAB_KEY = 'adminRecordsActiveTab';
+/**
+ * Per record-type saved filters in sessionStorage: from, to, search, datePreset ('today' | 'all' | 'custom').
+ * On each full page load we reset every tab to datePreset today (Manila); search strings are kept.
+ */
+const ADMIN_RECORDS_FILTERS_PREFIX = 'adminRecordsFilters_v1_';
+
+function getActiveDatePreset() {
+  const active = qs('.records-date-preset-btn.date-preset-active');
+  if (active) return active.getAttribute('data-date-preset') || 'today';
+  return 'custom';
+}
+
+/** @param {'today'|'all'|'custom'} preset */
+function setDatePresetUi(preset) {
+  qsa('.records-date-preset-btn').forEach(btn => {
+    const p = btn.getAttribute('data-date-preset');
+    const on = p === preset;
+    btn.classList.toggle('date-preset-active', on);
+    btn.classList.toggle('bg-[#D4AF37]', on);
+    btn.classList.toggle('text-white', on);
+    btn.classList.toggle('shadow', on);
+    btn.classList.toggle('bg-white', !on);
+    btn.classList.toggle('text-gray-700', !on);
+    btn.classList.toggle('border-2', !on);
+    btn.classList.toggle('border-[#D4AF37]/20', !on);
+    btn.classList.toggle('hover:bg-[#FFF8F0]', !on);
+  });
+}
+
+function saveTabFilters(type) {
+  if (!type || !TYPE_LABEL[type]) return;
+  const datePreset = getActiveDatePreset();
+  let from = qs('#filterFrom')?.value || '';
+  let to = qs('#filterTo')?.value || '';
+  const search = qs('#filterSearch')?.value || '';
+  if (datePreset === 'today') {
+    const t = getTodayYmd();
+    from = t;
+    to = t;
+    const ff = qs('#filterFrom');
+    const ft = qs('#filterTo');
+    if (ff) ff.value = t;
+    if (ft) ft.value = t;
+  }
+  try {
+    sessionStorage.setItem(
+      ADMIN_RECORDS_FILTERS_PREFIX + type,
+      JSON.stringify({ from, to, search, datePreset })
+    );
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function loadTabFilters(type) {
+  if (!type) return { from: '', to: '', search: '', datePreset: 'today' };
+  try {
+    const raw = sessionStorage.getItem(ADMIN_RECORDS_FILTERS_PREFIX + type);
+    if (raw) {
+      const o = JSON.parse(raw);
+      const from = o.from != null ? String(o.from) : '';
+      const to = o.to != null ? String(o.to) : '';
+      const search = o.search != null ? String(o.search) : '';
+      let datePreset = o.datePreset;
+      if (datePreset !== 'today' && datePreset !== 'all' && datePreset !== 'custom') {
+        if (!from && !to) datePreset = 'all';
+        else if (from && to && from === to && from === getTodayYmd()) datePreset = 'today';
+        else datePreset = 'custom';
+      }
+      return { from, to, search, datePreset };
+    }
+  } catch (_) {
+    /* ignore */
+  }
+  return { from: '', to: '', search: '', datePreset: 'today' };
+}
+
+function applyTabFiltersToInputs(f) {
+  let preset = f.datePreset;
+  if (preset !== 'today' && preset !== 'all' && preset !== 'custom') {
+    if (!f.from && !f.to) preset = 'all';
+    else if (f.from && f.to && f.from === f.to && f.from === getTodayYmd()) preset = 'today';
+    else preset = 'custom';
+  }
+  const ff = qs('#filterFrom');
+  const ft = qs('#filterTo');
+  const fs = qs('#filterSearch');
+  if (preset === 'today') {
+    const t = getTodayYmd();
+    if (ff) ff.value = t;
+    if (ft) ft.value = t;
+  } else if (preset === 'all') {
+    if (ff) ff.value = '';
+    if (ft) ft.value = '';
+  } else {
+    if (ff) ff.value = f.from || '';
+    if (ft) ft.value = f.to || '';
+  }
+  if (fs) fs.value = f.search || '';
+  setDatePresetUi(preset === 'today' || preset === 'all' ? preset : 'custom');
+}
+
+function updateRecordsFilterHeading(type) {
+  const el = qs('#recordsFilterHeading');
+  if (!el) return;
+  const label = TYPE_LABEL[type] || 'This list';
+  el.textContent = `${label} — date range & search`;
+}
+
+/** Purchase & sales use amounts; inventory audit & EOD do not (hide column). */
+function recordsAmountColumnVisibleForType(type) {
+  return type === 'purchase_expenses' || type === 'sales_receipts';
+}
+
+function updateRecordsAmountColumnVisibility() {
+  const show = recordsAmountColumnVisibleForType(getActiveType());
+  const th = qs('#recordsAmountHeader');
+  if (th) th.classList.toggle('hidden', !show);
+  qsa('#recordsTableBody td.records-amount-cell').forEach(td => {
+    td.classList.toggle('hidden', !show);
+  });
+}
+
+/** Sum purchase amounts by record_date for rows currently shown (after date + search filters). */
+function renderPurchaseDailyTotals(rows, activeType) {
+  const wrap = qs('#purchaseDailyTotalsWrap');
+  const list = qs('#purchaseDailyTotalsList');
+  if (!wrap || !list) return;
+  if (activeType !== 'purchase_expenses') {
+    wrap.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+  const byDay = new Map();
+  for (const r of rows) {
+    const d = String(r.record_date || '').slice(0, 10);
+    if (!d) continue;
+    const amt = Number(r.amount);
+    const add = Number.isFinite(amt) ? amt : 0;
+    byDay.set(d, (byDay.get(d) || 0) + add);
+  }
+  const days = Array.from(byDay.keys()).sort((a, b) => b.localeCompare(a));
+  if (days.length === 0) {
+    wrap.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+  let periodTotal = 0;
+  const items = days.map(d => {
+    const total = byDay.get(d);
+    periodTotal += total;
+    return `<li class="flex flex-wrap justify-between gap-2 py-2 border-b border-[#D4AF37]/10 last:border-b-0"><span class="text-gray-700">${escapeHtml(formatDate(d))}</span><span class="font-semibold text-[#B8941E] tabular-nums">₱${formatMoney(total)}</span></li>`;
+  });
+  let html = items.join('');
+  if (days.length > 1) {
+    html += `<li class="flex flex-wrap justify-between gap-2 pt-3 mt-1 border-t-2 border-[#D4AF37]/30 font-semibold text-gray-800"><span>Total (this list)</span><span class="text-[#D4AF37] tabular-nums">₱${formatMoney(periodTotal)}</span></li>`;
+  }
+  list.innerHTML = html;
+  wrap.classList.remove('hidden');
+}
+
+/** Sum sales receipt amounts by record_date for rows currently shown (after date + search filters). */
+function renderSalesDailyTotals(rows, activeType) {
+  const wrap = qs('#salesDailyTotalsWrap');
+  const list = qs('#salesDailyTotalsList');
+  if (!wrap || !list) return;
+  if (activeType !== 'sales_receipts') {
+    wrap.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+  const byDay = new Map();
+  for (const r of rows) {
+    const d = String(r.record_date || '').slice(0, 10);
+    if (!d) continue;
+    const amt = Number(r.amount);
+    const add = Number.isFinite(amt) ? amt : 0;
+    byDay.set(d, (byDay.get(d) || 0) + add);
+  }
+  const days = Array.from(byDay.keys()).sort((a, b) => b.localeCompare(a));
+  if (days.length === 0) {
+    wrap.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+  let periodTotal = 0;
+  const items = days.map(d => {
+    const total = byDay.get(d);
+    periodTotal += total;
+    return `<li class="flex flex-wrap justify-between gap-2 py-2 border-b border-emerald-200 last:border-b-0"><span class="text-gray-700">${escapeHtml(formatDate(d))}</span><span class="font-semibold text-emerald-800 tabular-nums">₱${formatMoney(total)}</span></li>`;
+  });
+  let html = items.join('');
+  if (days.length > 1) {
+    html += `<li class="flex flex-wrap justify-between gap-2 pt-3 mt-1 border-t-2 border-emerald-300 font-semibold text-gray-800"><span>Total (this list)</span><span class="text-emerald-700 tabular-nums">₱${formatMoney(periodTotal)}</span></li>`;
+  }
+  list.innerHTML = html;
+  wrap.classList.remove('hidden');
+}
+
+function restoreRecordsTabFromSession() {
+  try {
+    const saved = sessionStorage.getItem(ADMIN_RECORDS_TAB_KEY);
+    const tab = saved === 'daily_expenses' ? 'purchase_expenses' : saved;
+    if (tab && TYPE_LABEL[tab]) {
+      setActiveTab(tab);
+      const rt = qs('#recordType');
+      if (rt) rt.value = tab;
+      applyTabFiltersToInputs(loadTabFilters(tab));
+      updateRecordsFilterHeading(tab);
+      toggleStockFilterForType(tab);
+      updateAddRecordButtonForType(tab);
+      updateActionsVisibility(tab);
+    }
+  } catch (_) {
+    /* ignore */
+  }
+}
 
 function qs(sel) {
   return document.querySelector(sel);
@@ -70,7 +289,7 @@ function setActiveTab(type) {
 
 function getActiveType() {
   const active = qsa('.records-tab').find(b => b.classList.contains('tab-active'));
-  return active?.getAttribute('data-type') || 'eod_inventory_audit';
+  return active?.getAttribute('data-type') || 'purchase_expenses';
 }
 
 function getStockFilter() {
@@ -181,8 +400,8 @@ function renderRows(rows) {
       const h3 = empty.querySelector('h3');
       const p = empty.querySelector('p');
       const btn = empty.querySelector('button');
-      if (h3) h3.textContent = 'No EOD Inventory Audit for today yet';
-      if (p) p.innerHTML = `The EOD snapshot is created when you open this tab (based on current inventory quantities).`;
+      if (h3) h3.textContent = 'No EOD inventory in this date range';
+      if (p) p.innerHTML = `Use <strong>From / To</strong> above and <strong>Apply</strong> to view another day. Past days stay saved. For each stock in/out line, open <strong>Inventory audit</strong>. Today’s on-hand counts update when you open Records.`;
       if (btn) btn.classList.add('hidden');
     }
     return;
@@ -286,7 +505,8 @@ function renderRows(rows) {
       if (r.type === 'inventory_audit') {
         notesCell = formatInventoryNotes(notes, true);
       } else if (r.type === 'eod_inventory_audit') {
-        notesCell = formatInventoryNotes(notes, true);
+        // EOD = on-hand qty for that date; show clean qty line (avoid confusing "Stock In = 0.00" from Δ math).
+        notesCell = formatInventoryNotes(notes, false);
       } else if (r.type === 'sales_receipts') {
         // Render "Cake: x • Qty: y • Delivery: z • Payment: m" as clean lines.
         const raw = notesShort || '';
@@ -305,7 +525,7 @@ function renderRows(rows) {
         <tr class="border-b border-gray-100 hover:bg-[#FFF8F0]/60">
           <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">${escapeHtml(formatDate(r.record_date))}</td>
           <td class="py-3 px-3 text-sm font-semibold text-gray-800">${escapeHtml(displayTitle || '')}${subLine ? `<div class="text-xs text-gray-400 mt-0.5">${escapeHtml(subLine)}</div>` : ''}</td>
-          <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">${escapeHtml(amount)}</td>
+          <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap records-amount-cell">${escapeHtml(amount)}</td>
           <td class="py-3 px-3 text-sm text-gray-600">${notesCell}</td>
           <td class="py-3 px-3 text-sm records-actions-cell">
             ${isLockedType ? '' : `
@@ -335,17 +555,10 @@ async function refresh() {
   const search = qs('#filterSearch')?.value || '';
 
   showLoadingOverlay('Loading records...');
-  // EOD Inventory Audit must show ONLY today's records (it refreshes at 12:00 AM Manila).
-  let effectiveFrom = from;
-  let effectiveTo = to;
-  if (activeType === 'eod_inventory_audit') {
-    effectiveFrom = getTodayYmd();
-    effectiveTo = effectiveFrom;
-    const fromEl = qs('#filterFrom');
-    const toEl = qs('#filterTo');
-    if (fromEl) fromEl.value = effectiveFrom;
-    if (toEl) toEl.value = effectiveTo;
-  }
+  // Use filter From/To for all types (including EOD inventory) so you can view yesterday and earlier days.
+  // Do NOT overwrite #filterFrom / #filterTo — that broke other tabs' date filters after EOD init.
+  const effectiveFrom = from;
+  const effectiveTo = to;
 
   const { rows, source } = await listAdminRecords({
     type: activeType,
@@ -359,6 +572,9 @@ async function refresh() {
   lastSource = source;
 
   renderRows(lastLoaded);
+  updateRecordsAmountColumnVisibility();
+  renderPurchaseDailyTotals(lastLoaded, activeType);
+  renderSalesDailyTotals(lastLoaded, activeType);
   updateActionsVisibility(activeType);
   const summary = qs('#recordsSummary');
   const src = qs('#recordsSource');
@@ -377,6 +593,22 @@ function getTodayYmd() {
   } catch {
     // Fallback: local/UTC best-effort (older browsers).
     return new Date().toISOString().slice(0, 10);
+  }
+}
+
+/** Run on every Records page load: all tabs show today's date range; keep saved search per tab. */
+function resetAllRecordsDateFiltersToToday() {
+  const today = getTodayYmd();
+  for (const type of Object.keys(TYPE_LABEL)) {
+    const prev = loadTabFilters(type);
+    try {
+      sessionStorage.setItem(
+        ADMIN_RECORDS_FILTERS_PREFIX + type,
+        JSON.stringify({ from: today, to: today, search: prev.search || '', datePreset: 'today' })
+      );
+    } catch (_) {
+      /* ignore */
+    }
   }
 }
 
@@ -521,7 +753,7 @@ async function ensureEodAutoSnapshotForToday() {
   }
   if (!items.length) items = loadLocalInventoryItemsForEod();
   if (!items.length) {
-    showToast('EOD snapshot: no inventory items found to snapshot.', 'error');
+    showToast('EOD inventory: no items found to record.', 'error');
     return;
   }
 
@@ -585,7 +817,7 @@ async function ensureEodAutoSnapshotForToday() {
     updated += 1;
   }
 
-  if (updated > 0) showToast('EOD Inventory Audit ensured for today.', 'success');
+  if (updated > 0) showToast('EOD inventory updated for today.', 'success');
 }
 
 function updateAddRecordButtonForType(type) {
@@ -608,16 +840,56 @@ async function init() {
   const session = await ensureAuthenticated('admin');
   if (!session) return;
 
+  resetAllRecordsDateFiltersToToday();
+
   // Wire logout to real Supabase logout when user confirms (reuse existing helper)
   window.confirmLogout = async function () {
     await handleLogoutRedirectToHome();
   };
 
+  qsa('.records-date-preset-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const preset = btn.getAttribute('data-date-preset') || 'today';
+      if (preset === 'today') {
+        const t = getTodayYmd();
+        const ff = qs('#filterFrom');
+        const ft = qs('#filterTo');
+        if (ff) ff.value = t;
+        if (ft) ft.value = t;
+        setDatePresetUi('today');
+      } else if (preset === 'all') {
+        const ff = qs('#filterFrom');
+        const ft = qs('#filterTo');
+        if (ff) ff.value = '';
+        if (ft) ft.value = '';
+        setDatePresetUi('all');
+      }
+      saveTabFilters(getActiveType());
+      await refresh();
+    });
+  });
+
+  qs('#filterFrom')?.addEventListener('change', () => {
+    setDatePresetUi('custom');
+  });
+  qs('#filterTo')?.addEventListener('change', () => {
+    setDatePresetUi('custom');
+  });
+
   qsa('.records-tab').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const type = btn.getAttribute('data-type') || 'eod_inventory_audit';
+      const prev = getActiveType();
+      const type = btn.getAttribute('data-type') || 'purchase_expenses';
+      saveTabFilters(prev);
+      try {
+        sessionStorage.setItem(ADMIN_RECORDS_TAB_KEY, type);
+      } catch (_) {
+        /* ignore */
+      }
       setActiveTab(type);
       qs('#recordType').value = type;
+      applyTabFiltersToInputs(loadTabFilters(type));
+      updateRecordsFilterHeading(type);
       toggleStockFilterForType(type);
       updateAddRecordButtonForType(type);
       updateActionsVisibility(type);
@@ -625,11 +897,20 @@ async function init() {
     });
   });
 
-  qs('#applyFiltersBtn')?.addEventListener('click', refresh);
+  qs('#applyFiltersBtn')?.addEventListener('click', async () => {
+    saveTabFilters(getActiveType());
+    await refresh();
+  });
   qs('#resetFiltersBtn')?.addEventListener('click', async () => {
-    qs('#filterFrom').value = '';
-    qs('#filterTo').value = '';
-    qs('#filterSearch').value = '';
+    const t = getTodayYmd();
+    const ff = qs('#filterFrom');
+    const ft = qs('#filterTo');
+    const fs = qs('#filterSearch');
+    if (ff) ff.value = t;
+    if (ft) ft.value = t;
+    if (fs) fs.value = '';
+    setDatePresetUi('today');
+    saveTabFilters(getActiveType());
     setStockFilter('all');
     await refresh();
   });
@@ -642,13 +923,14 @@ async function init() {
   qs('#filterSearch')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+      saveTabFilters(getActiveType());
       refresh();
     }
   });
 
   qs('#addRecordBtn')?.addEventListener('click', () => {
     if (getActiveType() === 'eod_inventory_audit') {
-      showToast('EOD Inventory Audit is auto-generated and not editable.', 'info');
+      showToast('EOD inventory is auto-generated — not editable here.', 'info');
       return;
     }
     if (getActiveType() === 'inventory_audit') {
@@ -670,7 +952,7 @@ async function init() {
     e.preventDefault();
     const payload = readForm();
     if (payload.type === 'eod_inventory_audit') {
-      showToast('EOD Inventory Audit is auto-generated and not editable.', 'info');
+      showToast('EOD inventory is auto-generated — not editable here.', 'info');
       return;
     }
     if (payload.type === 'inventory_audit') {
@@ -687,6 +969,17 @@ async function init() {
     showToast(source === 'supabase' ? 'Saved to Supabase.' : 'Saved locally (Supabase not ready).', 'success');
     closeModal();
     setActiveTab(payload.type);
+    qs('#recordType').value = payload.type;
+    applyTabFiltersToInputs(loadTabFilters(payload.type));
+    updateRecordsFilterHeading(payload.type);
+    toggleStockFilterForType(payload.type);
+    updateAddRecordButtonForType(payload.type);
+    updateActionsVisibility(payload.type);
+    try {
+      sessionStorage.setItem(ADMIN_RECORDS_TAB_KEY, payload.type);
+    } catch (_) {
+      /* ignore */
+    }
     await refresh();
   });
 
@@ -710,7 +1003,7 @@ async function init() {
 
     const row = findById(id);
     if (row?.type === 'eod_inventory_audit') {
-      showToast('EOD Inventory Audit is auto-generated and not editable.', 'info');
+      showToast('EOD inventory is auto-generated — not editable here.', 'info');
       return;
     }
     if (row?.type === 'inventory_audit') {
@@ -736,12 +1029,22 @@ async function init() {
     }
   });
 
-  // Default tab
+  // Restore last tab (reload) before slow EOD work; after EOD finishes, keep whatever tab the user chose
+  // (if they opened Sales receipts while EOD was running, do not force back to EOD).
+  restoreRecordsTabFromSession();
+
   await ensureEodAutoSnapshotForToday();
   scheduleMidnightEodRefresh();
-  setActiveTab('eod_inventory_audit');
-  toggleStockFilterForType('eod_inventory_audit');
-  updateAddRecordButtonForType('eod_inventory_audit');
+
+  const activeTab = getActiveType();
+  setActiveTab(activeTab);
+  const rt = qs('#recordType');
+  if (rt) rt.value = activeTab;
+  applyTabFiltersToInputs(loadTabFilters(activeTab));
+  updateRecordsFilterHeading(activeTab);
+  toggleStockFilterForType(activeTab);
+  updateAddRecordButtonForType(activeTab);
+  updateActionsVisibility(activeTab);
   await refresh();
 
   if (lastSource === 'local') {

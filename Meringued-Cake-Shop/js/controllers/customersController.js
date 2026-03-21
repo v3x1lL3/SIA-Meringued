@@ -174,9 +174,20 @@ function renderOrderCard(order, index) {
     (order.deliveryType === 'Deliver' && order.deliveryAddress
       ? '<div class="md:col-span-2"><span class="text-gray-500">Address:</span> <span class="font-medium text-gray-800">' + escapeHtml(order.deliveryAddress) + '</span></div>'
       : '') +
-    (order.customerPhone
-      ? '<div class="md:col-span-2"><span class="text-gray-500">Contact:</span> <a href="tel:' + escapeHtml(order.customerPhone).replace(/\s/g, '') + '" class="font-medium text-[#D4AF37] hover:underline">' + escapeHtml(order.customerPhone) + '</a></div>'
-      : '') +
+    (function () {
+      const del = String(order.deliveryType || '').toLowerCase().startsWith('deliver');
+      const p = del ? order.customerPhone : (order.ownerPhone || order.customerPhone);
+      const lab = del ? 'Customer contact' : 'Shop pickup contact';
+      return p
+        ? '<div class="md:col-span-2"><span class="text-gray-500">' +
+            lab +
+            ':</span> <a href="tel:' +
+            escapeHtml(p).replace(/\s/g, '') +
+            '" class="font-medium text-[#D4AF37] hover:underline">' +
+            escapeHtml(p) +
+            '</a></div>'
+        : '';
+    })() +
     '<div><span class="text-gray-500">Payment:</span> ' +
     payment +
     '</div>' +

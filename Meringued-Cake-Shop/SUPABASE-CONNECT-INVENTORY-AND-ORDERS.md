@@ -80,6 +80,7 @@ create table if not exists public.orders (
   total_amount numeric,
   delivery_address text,
   customer_phone text,
+  owner_phone text,
   payment_method text,
   delivery_type text,
   date_needed date,
@@ -87,6 +88,9 @@ create table if not exists public.orders (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- If `orders` already exists without owner_phone (shop pickup contact), run:
+-- alter table public.orders add column if not exists owner_phone text;
 
 create index if not exists idx_orders_customer_id on public.orders(customer_id);
 create index if not exists idx_orders_created_at on public.orders(created_at desc);
@@ -196,8 +200,9 @@ Use this as a checklist so you know what’s already wired and what might still 
 
 | Area | Status | Notes |
 |------|--------|------|
-| **Orders** | ✅ Connected | Client places order → insert to Supabase; admin status change → update. |
+| **Orders** | ✅ Connected | Checkout **waits** for Supabase insert (like Records). Admin Orders page shows **Source: Supabase** when cloud load succeeds. |
 | **Inventory** | ✅ Connected | Admin load/add/edit/delete/stock in/out sync to `inventory_items`. Expiry/Extended dates use `expiry_date` column. |
+| **Miscellaneous inventory** | ✅ Optional table | Admin **Inventory → Miscellaneous** syncs to `misc_inventory_items` when you run the SQL in `SUPABASE-MISC-INVENTORY.sql.md`. Separate from baking ingredients and POS deductions. |
 | **POS (stock on order)** | ✅ Connected | Confirm order → deduct ingredients in Supabase; cancel → restore. |
 | **Purchase orders** | ✅ Optional (Section 6) | Run the optional SQL in Section 6 to create `purchase_orders` and `purchase_order_items`; the app already uses them. |
 | **Customers** | ✅ Optional (Section 6) | Run the optional SQL in Section 6 to create `customers`; Admin → Customers and dashboard will use it when the table exists. |
@@ -213,6 +218,27 @@ Use this as a checklist so you know what’s already wired and what might still 
 ---
 
 ## 5. Troubleshooting
+
+- **Use profiles + roles only (recommended fix script)**  
+  The app’s admin checks use **`public.profiles.role = 'admin'`** (not JWT-only policies). If you tried JWT policies or **`profiles` has RLS enabled without a SELECT policy**, the `orders` policies can silently fail. Run **`SUPABASE-PROFILES-ORDERS-RLS-FIX.sql`** once in the SQL Editor: it syncs `profiles` from Auth, adds **“read own profile”** on `profiles`, drops the JWT order policy if present, and recreates **profiles-based** `orders` policies. Then set **`role = admin`** in **Table Editor → `profiles`** for each staff user (or set **User metadata** `role` in **Authentication → Users** and run the script’s sync block again).
+
+- **Orders show in the admin panel but `orders` in Supabase is empty (or badge “Local only · not in cloud”)**  
+  - The row was saved in **localStorage** only; **`insert` into Supabase failed** (often silent before). Check **browser console (F12)** for `[OrderModel] insertOrder failed`.  
+  - **Fix:** Customer must be **signed in** so `customer_id` matches `auth.uid()` (policy **“Users can insert own orders”**). Confirm **`js/core/supabaseClient.js`** URL/key match the project you open in the dashboard.  
+  - **Large receipt / design image:** the app retries **without** base64 blobs in `details` so a row can still be created; receipt may stay on the device only until you use **Supabase Storage** for files.
+
+- **Table Editor shows orders but Admin / dashboard list is empty (no error)**  
+  - This is **normal with RLS on**: the dashboard uses the **anon key + your logged-in user’s JWT**. Supabase only returns rows allowed by **policies**. The Table Editor uses elevated access and **ignores RLS**, so you can see 14 rows in the dashboard UI while `select('*')` from the app returns `[]` — **not a bug in the app**.  
+  - **Fix:**  
+    1. In the shop, **sign in** with the admin account (not “guest” / not a different browser profile).  
+    2. In Supabase go to **Authentication → Users**, copy your admin user’s **UUID**.  
+    3. In **SQL Editor** run (replace the UUID):  
+       ```sql
+       insert into public.profiles (id, role) values ('PASTE-YOUR-ADMIN-USER-UUID-HERE', 'admin')
+       on conflict (id) do update set role = 'admin';
+       ```  
+    4. If the **RLS policies** indicator on `orders` shows a warning, open **Authentication → Policies** for `public.orders` and ensure the policies from **section 1** exist — especially **`Admins can read all orders`** (`SELECT` for `authenticated` using `profiles.role = 'admin'`).  
+    5. Reload the admin page. Open DevTools → Console: if you still see 0 orders, look for `[OrderModel] listOrdersForAdmin` hints added by the app.
 
 - **Orders or inventory not appearing in Supabase**  
   - Check the browser console for errors (e.g. RLS or missing columns).  
@@ -318,3 +344,18 @@ create policy "Authenticated can read purchase_order_items"
 - **App behavior:**  
   - **Customers:** Admin → Customers already calls `listCustomers()`. With this table in place, that page can show rows from Supabase. If the table is empty, the app falls back to profiles or localStorage as it does now.  
   - **Purchase orders:** Any page that calls `loadPurchaseOrders()` will show rows from `purchase_orders` once you add data (via future UI or Supabase Table Editor). Creating POs from the app uses `createPurchaseOrder(payload, items)`; payload can include `status`, `total_amount`, and items can include `name`, `quantity`, `unit_price`.
+
+---
+
+## Admin orders: live updates (Realtime)
+
+The admin **Orders** page loads `js/admin-orders-realtime.js`, which subscribes to `postgres_changes` on `public.orders`. When a row is inserted, updated, or deleted, the list reloads from Supabase (merged with local).
+
+1. In Supabase Dashboard, open **`orders`** → **Enable Realtime** (or **Database → Publications** and include `orders` in `supabase_realtime`).
+2. Realtime **does not bypass RLS**: you still only receive events for rows your policies allow. Fix admin `SELECT` policies and `profiles.role = 'admin'` if counts don’t match Table Editor.
+
+---
+
+## Why Table Editor shows more rows than the website
+
+The Table Editor uses the **service role** / dashboard context and **does not apply RLS** the same way as the browser with the **anon key + user JWT**. If the site shows fewer orders, check **RLS policies** on `orders` and that the signed-in user’s **`profiles.role`** is **`admin`** where your policies expect it.

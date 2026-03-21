@@ -70,44 +70,12 @@
           <i class="fas fa-info-circle text-[#D4AF37]"></i> What is each record type for?
         </summary>
         <div class="px-5 pb-5 pt-1 border-t border-[#D4AF37]/10 space-y-3 text-sm text-gray-700">
-          <p><strong class="text-gray-800">EOD Inventory Audit</strong> — End-of-day stock count. Log what you actually have on hand at closing (e.g. “EOD count – Flour 5kg, Eggs 2 trays”).</p>
-          <p><strong class="text-gray-800">Daily expenses</strong> — Any cost you incur that day (utilities, packaging, small purchases). Use Amount (₱) and Notes to describe.</p>
-          <p><strong class="text-gray-800">Inventory audit (with date)</strong> — A dated snapshot or full inventory check on a specific date (different from EOD if you do both).</p>
+          <p><strong class="text-gray-800">EOD inventory</strong> — One row per ingredient with <strong>quantity on hand</strong> per day (today updates when you open Records). On the <strong>EOD inventory</strong> tab, use the <strong>date range</strong> under the tabs + <strong>Apply</strong> to view past days. Use <strong>Inventory audit</strong> for each stock in/out line.</p>
+          <p><strong class="text-gray-800">Inventory audit (with date)</strong> — Each stock in/out movement with a date (different from EOD inventory, which is totals on hand per day).</p>
           <p><strong class="text-gray-800">Sales receipts (with date)</strong> — Record of sales or proof of sale (e.g. “Receipt #001 – 2 cakes”, amount in ₱).</p>
-          <p><strong class="text-gray-800">Purchase expenses (with date)</strong> — What you bought for the business and when (ingredients, supplies). Use Amount and Reference for supplier or invoice.</p>
+          <p><strong class="text-gray-800">Purchase expenses (with date)</strong> — <strong>Auto-created</strong> when you <strong>Stock In</strong> on <strong>Inventory</strong> (qty × <strong>Price ₱/unit</strong>). Reference shows <code>Inventory stock-in</code>. Use <strong>Add record</strong> on this tab for any other purchases you want to track (supplier name, invoice, etc.).</p>
         </div>
       </details>
-
-      <!-- Filter section -->
-      <section class="mb-6" aria-label="Filter records">
-      <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <i class="fas fa-filter text-[#D4AF37]"></i> Filter by date & search
-        </h2>
-        <div class="bg-white/90 rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-5 md:p-6">
-          <div class="flex flex-wrap items-end gap-4">
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">From date</label>
-              <input id="filterFrom" type="date" class="px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" />
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">To date</label>
-              <input id="filterTo" type="date" class="px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" />
-            </div>
-            <div class="flex-1 min-w-[200px]">
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Search in title or notes</label>
-              <input id="filterSearch" type="text" placeholder="e.g. flour, receipt #12…" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none" />
-            </div>
-            <div class="flex gap-2">
-              <button id="applyFiltersBtn" class="px-5 py-3 rounded-xl font-semibold text-white btn-primary shadow-lg">
-                <i class="fas fa-check mr-2"></i>Apply
-              </button>
-              <button id="resetFiltersBtn" class="px-5 py-3 rounded-xl font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
-                Reset
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <!-- Record type tabs + table -->
       <section aria-label="Records list">
@@ -116,26 +84,86 @@
         </h2>
         <div class="bg-white/90 rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-5 md:p-6">
           <div class="overflow-x-auto pb-2 mb-4 border-b-2 border-[#D4AF37]/20">
-            <div class="flex gap-2 min-w-0">
-              <button class="records-tab flex-shrink-0 px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition tab-active rounded-t-lg" data-type="eod_inventory_audit" title="End-of-day stock count">EOD Inventory Audit</button>
-              <button class="records-tab flex-shrink-0 px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition rounded-t-lg" data-type="daily_expenses" title="Day’s costs (utilities, packaging, etc.)">Daily expenses</button>
-              <button class="records-tab flex-shrink-0 px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition rounded-t-lg" data-type="inventory_audit" title="Dated inventory snapshot">Inventory audit</button>
+            <div class="flex gap-2 min-w-0 flex-wrap">
+              <button class="records-tab flex-shrink-0 px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition tab-active rounded-t-lg" data-type="purchase_expenses" title="Purchases (Stock In + manual)">Purchase expenses</button>
               <button class="records-tab flex-shrink-0 px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition rounded-t-lg" data-type="sales_receipts" title="Sales / proof of sale">Sales receipts</button>
-              <button class="records-tab flex-shrink-0 px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition rounded-t-lg" data-type="purchase_expenses" title="Purchases (ingredients, supplies)">Purchase expenses</button>
+              <button class="records-tab flex-shrink-0 px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition rounded-t-lg" data-type="inventory_audit" title="Stock in/out log">Inventory audit</button>
+              <button class="records-tab flex-shrink-0 px-4 py-3 font-semibold text-gray-500 hover:text-[#D4AF37] transition rounded-t-lg" data-type="eod_inventory_audit" title="Quantities on hand per day — use date filter for past days">EOD inventory</button>
             </div>
           </div>
 
-          <div id="stockInOutFilter" class="hidden items-center justify-between gap-3 flex-wrap mb-3">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold text-gray-700">In/Out</span>
+          <!-- Date & search apply only to the active tab (each tab remembers its own filters) -->
+          <div class="mb-4 rounded-xl border-2 border-[#D4AF37]/15 bg-[#FFF8F0]/40 p-4 md:p-5" aria-label="Filters for selected record type">
+            <h3 class="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              <i class="fas fa-filter text-[#D4AF37]"></i>
+              <span id="recordsFilterHeading">Filters for this list</span>
+            </h3>
+            <div class="flex flex-wrap items-end gap-4">
+              <div class="w-full basis-full">
+                <span class="block text-xs font-semibold text-gray-600 mb-1.5">Show records</span>
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" class="records-date-preset-btn px-4 py-2 rounded-xl font-semibold text-sm transition date-preset-active bg-[#D4AF37] text-white shadow" data-date-preset="today" title="Only today (Philippine time)">
+                    Today
+                  </button>
+                  <button type="button" class="records-date-preset-btn px-4 py-2 rounded-xl font-semibold text-sm transition bg-white text-gray-700 border-2 border-[#D4AF37]/20 hover:bg-[#FFF8F0]" data-date-preset="all" title="Any date (no range filter)">
+                    All
+                  </button>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-1.5">Custom range: change the dates below, then Apply.</p>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">From date</label>
+                <input id="filterFrom" type="date" class="px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">To date</label>
+                <input id="filterTo" type="date" class="px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm" />
+              </div>
+              <div class="flex-1 min-w-[180px]">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Search in title or notes</label>
+                <input id="filterSearch" type="text" placeholder="e.g. flour, receipt #12…" class="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm" />
+              </div>
               <div class="flex gap-2">
-                <button type="button" data-stock="all" class="stock-filter-btn px-3 py-2 rounded-xl font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition">All</button>
-                <button type="button" data-stock="in" class="stock-filter-btn px-3 py-2 rounded-xl font-semibold bg-white text-gray-700 hover:bg-[#FFF8F0] hover:text-[#B8941E] transition border border-[#D4AF37]/20">In</button>
-                <button type="button" data-stock="out" class="stock-filter-btn px-3 py-2 rounded-xl font-semibold bg-white text-gray-700 hover:bg-[#FFF8F0] hover:text-[#B8941E] transition border border-[#D4AF37]/20">Out</button>
+                <button type="button" id="applyFiltersBtn" class="px-4 py-2.5 rounded-xl font-semibold text-white btn-primary shadow text-sm">
+                  <i class="fas fa-check mr-1"></i>Apply
+                </button>
+                <button type="button" id="resetFiltersBtn" class="px-4 py-2.5 rounded-xl font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition text-sm">
+                  Reset
+                </button>
               </div>
             </div>
-            <p id="recordsSummary" class="text-sm text-gray-600"></p>
+          </div>
+
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2 min-h-[1.5rem]">
+            <p id="recordsSummary" class="text-sm font-medium text-gray-700"></p>
             <p id="recordsSource" class="text-xs text-gray-400"></p>
+          </div>
+
+          <div id="stockInOutFilter" class="hidden items-center gap-3 flex-wrap mb-3">
+            <span class="text-sm font-semibold text-gray-700">In/Out</span>
+            <div class="flex gap-2">
+              <button type="button" data-stock="all" class="stock-filter-btn px-3 py-2 rounded-xl font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition">All</button>
+              <button type="button" data-stock="in" class="stock-filter-btn px-3 py-2 rounded-xl font-semibold bg-white text-gray-700 hover:bg-[#FFF8F0] hover:text-[#B8941E] transition border border-[#D4AF37]/20">In</button>
+              <button type="button" data-stock="out" class="stock-filter-btn px-3 py-2 rounded-xl font-semibold bg-white text-gray-700 hover:bg-[#FFF8F0] hover:text-[#B8941E] transition border border-[#D4AF37]/20">Out</button>
+            </div>
+          </div>
+
+          <div id="purchaseDailyTotalsWrap" class="hidden mb-4 rounded-xl border-2 border-[#D4AF37]/20 bg-[#FFF8F0]/50 p-4" aria-label="Purchase totals by day">
+            <p class="text-sm font-semibold text-gray-800 mb-2 flex flex-wrap items-center gap-2">
+              <i class="fas fa-coins text-[#D4AF37]"></i>
+              Total spent by day
+              <span class="text-xs font-normal text-gray-500">(uses the same date range, Apply, and search as the table below)</span>
+            </p>
+            <ul id="purchaseDailyTotalsList" class="text-sm"></ul>
+          </div>
+
+          <div id="salesDailyTotalsWrap" class="hidden mb-4 rounded-xl border-2 border-[#D4AF37]/20 bg-emerald-50/50 p-4" aria-label="Sales totals by day">
+            <p class="text-sm font-semibold text-gray-800 mb-2 flex flex-wrap items-center gap-2">
+              <i class="fas fa-receipt text-emerald-600"></i>
+              Total earned by day
+              <span class="text-xs font-normal text-gray-500">(uses the same date range, Apply, and search as the table below)</span>
+            </p>
+            <ul id="salesDailyTotalsList" class="text-sm"></ul>
           </div>
 
           <div class="overflow-x-auto">
@@ -144,7 +172,7 @@
                 <tr class="border-b-2 border-[#D4AF37]/20 text-left">
                   <th class="py-3 px-3 text-sm font-semibold text-gray-700">Date</th>
                   <th class="py-3 px-3 text-sm font-semibold text-gray-700">Title</th>
-                  <th class="py-3 px-3 text-sm font-semibold text-gray-700">Amount (₱)</th>
+                  <th id="recordsAmountHeader" class="py-3 px-3 text-sm font-semibold text-gray-700">Amount (₱)</th>
                   <th class="py-3 px-3 text-sm font-semibold text-gray-700">Notes</th>
                   <th class="py-3 px-3 text-sm font-semibold text-gray-700 records-actions-header hidden">Actions</th>
                 </tr>
@@ -178,11 +206,10 @@
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1">Type</label>
             <select id="recordType" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none">
-              <option value="eod_inventory_audit">EOD Inventory Audit</option>
-              <option value="daily_expenses">Daily expenses</option>
-              <option value="inventory_audit">Inventory audit (with date)</option>
-              <option value="sales_receipts">Sales receipts (with date)</option>
               <option value="purchase_expenses">Purchase expenses (with date)</option>
+              <option value="sales_receipts">Sales receipts (with date)</option>
+              <option value="inventory_audit">Inventory audit (with date)</option>
+              <option value="eod_inventory_audit">EOD inventory</option>
             </select>
           </div>
           <div>

@@ -76,7 +76,7 @@ export async function logPurchaseExpense({ itemName, quantity, unit, unitCost, t
     record_date: ymd(),
     title: `Purchase — ${itemName}`,
     amount: Number(totalCost),
-    ref: ref || '',
+    ref: ref != null && String(ref).trim() !== '' ? String(ref).trim() : 'Inventory stock-in',
     notes: [
       notes || null,
       `Qty: ${quantity != null ? Number(quantity).toFixed(2) : '—'} ${unit || 'units'}`,

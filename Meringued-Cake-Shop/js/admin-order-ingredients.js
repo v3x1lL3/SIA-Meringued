@@ -1,10 +1,11 @@
 /**
  * Connects cake orders to inventory: deduct ingredients when an order is confirmed,
- * restore when order is cancelled. Uses localStorage adminInventoryItems and customerOrders.
+ * restore when order is cancelled. Uses adminInventoryItems, adminMiscInventoryItems (baking extras), and customerOrders.
  * Cake types: Chocolate Moist, Mocha, Vanilla.
  */
 (function () {
     const INVENTORY_KEY = 'adminInventoryItems';
+    const MISC_INVENTORY_KEY = 'adminMiscInventoryItems';
     const ORDERS_KEY = 'customerOrders';
 
     // Ingredients needed per 1 "Medium" equivalent cake. Keys must match inventory ingredient names.
@@ -90,6 +91,55 @@
         localStorage.setItem(INVENTORY_KEY, JSON.stringify(items));
     }
 
+    function loadMiscInventory() {
+        const raw = localStorage.getItem(MISC_INVENTORY_KEY);
+        return raw ? JSON.parse(raw) : [];
+    }
+
+    function saveMiscInventory(items) {
+        localStorage.setItem(MISC_INVENTORY_KEY, JSON.stringify(items));
+    }
+
+    /**
+     * Apply delta to miscellaneous item quantity by name (adminMiscInventoryItems only).
+     * Baking "extra / misc" stock out must not deduct baking ingredients.
+     */
+    function applyStockDeltaByNameMisc(itemName, delta, meta) {
+        const items = loadMiscInventory();
+        const nameLower = (itemName || '').toLowerCase();
+        const item = items.find(function (x) {
+            return (x.name || '').toLowerCase() === nameLower;
+        });
+        if (!item) return { ok: false, message: 'Not found in miscellaneous inventory' };
+        const current = Number(item.quantity) || 0;
+        item.quantity = Math.max(0, current + delta);
+        item.lastStockMove = {
+            at: new Date().toISOString(),
+            delta: delta,
+            reason: (meta && meta.reason) ? String(meta.reason) : 'Misc stock change'
+        };
+        saveMiscInventory(items);
+        if (window.MiscOrderStockSupabase && typeof window.MiscOrderStockSupabase.applyDeltaByName === 'function') {
+            window.MiscOrderStockSupabase.applyDeltaByName(itemName, delta);
+        }
+        if (window.AdminRecords && typeof window.AdminRecords.logInventoryMovement === 'function') {
+            try {
+                window.AdminRecords.logInventoryMovement({
+                    itemId: item.id,
+                    itemName: item.name,
+                    delta: delta,
+                    newQty: item.quantity,
+                    unit: item.unit,
+                    reason: meta && meta.reason ? meta.reason : 'Miscellaneous stock movement'
+                });
+            } catch (err) { /* noop */ }
+        }
+        if (typeof window.renderInventory === 'function') {
+            window.renderInventory();
+        }
+        return { ok: true, item: item };
+    }
+
     /**
      * Apply delta to ingredient quantity by name (case-insensitive match).
      * Updates localStorage; also syncs to Supabase when OrderIngredientsSupabase is available (POS).
@@ -101,9 +151,14 @@
         const item = items.find(function (x) {
             return (x.name || '').toLowerCase() === nameLower;
         });
-        if (!item) return;
+        if (!item) return { ok: false, message: 'Not found in inventory' };
         const current = Number(item.quantity) || 0;
         item.quantity = Math.max(0, current + delta);
+        item.lastStockMove = {
+            at: new Date().toISOString(),
+            delta: delta,
+            reason: (meta && meta.reason) ? String(meta.reason) : 'Order stock change'
+        };
         saveInventory(items);
         if (window.OrderIngredientsSupabase && typeof window.OrderIngredientsSupabase.applyDeltaByName === 'function') {
             window.OrderIngredientsSupabase.applyDeltaByName(ingredientName, delta);
@@ -123,6 +178,25 @@
         if (typeof window.renderInventory === 'function') {
             window.renderInventory();
         }
+        return { ok: true, item: item };
+    }
+
+    function applyBakingMiscStockOut(order, lines) {
+        const ref = order && (order.orderGroupId || order.supabase_id || order.id)
+            ? String(order.orderGroupId || order.supabase_id || order.id)
+            : '';
+        const reason = 'Baking — additional misc stock out' + (ref ? (' (' + ref + ')') : '');
+        const applied = [];
+        const failed = [];
+        (Array.isArray(lines) ? lines : []).forEach(function (line) {
+            const name = line && line.name != null ? String(line.name).trim() : '';
+            const qty = Number(line && line.quantity);
+            if (!name || !(qty > 0)) return;
+            const r = applyStockDeltaByNameMisc(name, -Math.abs(qty), { reason: reason });
+            if (r && r.ok) applied.push({ name: name, quantity: qty });
+            else failed.push({ name: name, quantity: qty, message: (r && r.message) ? r.message : 'Skipped' });
+        });
+        return { applied: applied, failed: failed };
     }
 
     /**
@@ -187,6 +261,7 @@
         restoreIngredientsForOrder: restoreIngredientsForOrder,
         restoreCancelledOrdersIngredientStock: restoreCancelledOrdersIngredientStock,
         getRecipeForCake: getRecipeForCake,
-        getSizeMultiplier: getSizeMultiplier
+        getSizeMultiplier: getSizeMultiplier,
+        applyBakingMiscStockOut: applyBakingMiscStockOut
     };
 })();

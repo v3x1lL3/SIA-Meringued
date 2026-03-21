@@ -298,12 +298,31 @@
             loadOrders();
             showTab('completed');
             setupModalOutsideClose();
+            // Match Supabase + prune rows deleted in DB (otherwise localStorage keeps showing them).
+            import('./js/admin-orders-merge.js')
+                .then((m) => m.fetchMergedOrdersForAdmin())
+                .then((res) => {
+                    const list = res && res.orders ? res.orders : [];
+                    orders = Array.isArray(list) ? list : [];
+                    showTab(currentTab);
+                })
+                .catch(() => {
+                    /* keep initial localStorage load */
+                });
         });
 
         function loadOrders() {
             orders = typeof getAllOrdersForAdmin === 'function' ? getAllOrdersForAdmin() : (function() {
                 try { return JSON.parse(localStorage.getItem('customerOrders') || '[]'); } catch(e) { return []; }
             })();
+        }
+
+        /** Delivery → customer phone; pickup → shop/owner phone (legacy rows may only have customer_phone). */
+        function orderDisplayContact(order) {
+            const del = String(order.deliveryType || '').toLowerCase().startsWith('deliver');
+            const phone = del ? (order.customerPhone || '') : (order.ownerPhone || order.customerPhone || '');
+            const subtitle = del ? 'Customer' : 'Shop pickup';
+            return { phone, subtitle };
         }
 
         function renderCompletedOrders() {
@@ -339,6 +358,7 @@
         }
 
         function rowHtml(order) {
+            const oc = orderDisplayContact(order);
             const paymentHtml = (order.paymentMethod === 'Online Payment' && order.receipt)
                 ? `<button onclick="viewReceipt(${order.id})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">${escapeHtml(order.paymentMethod || 'Online Payment')}</button>`
                 : `${escapeHtml(order.paymentMethod || '')}`;
@@ -356,7 +376,7 @@
                         <div class="font-medium">${escapeHtml(order.deliveryType || 'Pick up')}</div>
                         ${(order.deliveryType === 'Deliver' && order.deliveryAddress) ? `<div class="text-xs text-gray-600 mt-1 max-w-[200px]" title="${escapeHtml(order.deliveryAddress).replace(/"/g, '&quot;')}"><i class="fas fa-map-marker-alt mr-1 text-[#D4AF37]"></i>${escapeHtml(order.deliveryAddress)}</div>` : ''}
                     </td>
-                    <td class="py-4 px-4 text-gray-700 text-sm">${order.customerPhone ? `<a href="tel:${escapeHtml(order.customerPhone).replace(/\s/g, '')}" class="text-[#D4AF37] hover:underline" title="Call">${escapeHtml(order.customerPhone)}</a>` : '—'}</td>
+                    <td class="py-4 px-4 text-gray-700 text-sm">${oc.phone ? `<div><a href="tel:${escapeHtml(oc.phone).replace(/\s/g, '')}" class="text-[#D4AF37] hover:underline" title="Call">${escapeHtml(oc.phone)}</a><div class="text-xs text-gray-500">${escapeHtml(oc.subtitle)}</div></div>` : '—'}</td>
                     <td class="py-4 px-4 text-gray-700">${paymentHtml}</td>
                     <td class="py-4 px-4 text-gray-700">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : '—'}</td>
                     <td class="py-4 px-4 font-bold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</td>
@@ -397,6 +417,7 @@
         function viewOrderDetails(orderId) {
             const order = orders.find(o => o.id === orderId);
             if (!order) return;
+            const oc = orderDisplayContact(order);
             const el = document.getElementById('orderDetailsContent');
             el.innerHTML = `
                 <div class="space-y-6">
@@ -409,7 +430,7 @@
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Frosting</p><p class="font-semibold text-gray-800">${escapeHtml(order.frosting || 'N/A')}</p></div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Delivery Type</p><p class="font-semibold text-gray-800">${escapeHtml(order.deliveryType || 'Pick up')}</p></div>
                         ${(order.deliveryType === 'Deliver' && order.deliveryAddress) ? `<div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1"><i class="fas fa-map-marker-alt mr-1 text-[#D4AF37]"></i>Delivery address</p><p class="font-semibold text-gray-800">${escapeHtml(order.deliveryAddress)}</p></div>` : ''}
-                        ${order.customerPhone ? `<div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1"><i class="fas fa-phone mr-1 text-[#D4AF37]"></i>Contact number</p><p class="font-semibold text-gray-800"><a href="tel:${escapeHtml(order.customerPhone).replace(/\s/g, '')}" class="text-[#D4AF37] hover:underline">${escapeHtml(order.customerPhone)}</a></p></div>` : ''}
+                        ${oc.phone ? `<div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1"><i class="fas fa-phone mr-1 text-[#D4AF37]"></i>${oc.subtitle === 'Customer' ? 'Customer mobile (delivery)' : 'Shop / owner (pickup)'}</p><p class="font-semibold text-gray-800"><a href="tel:${escapeHtml(oc.phone).replace(/\s/g, '')}" class="text-[#D4AF37] hover:underline">${escapeHtml(oc.phone)}</a></p></div>` : ''}
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Payment Method</p><p class="font-semibold text-gray-800">${escapeHtml(order.paymentMethod || 'Online Payment')}</p></div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Status</p><p class="font-semibold text-gray-800">${escapeHtml(order.status || 'Pending')}</p></div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Order Date</p><p class="font-semibold text-gray-800">${escapeHtml(order.date || '')}</p></div>

@@ -11,7 +11,16 @@ export async function listOrdersForAdmin() {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data ?? [];
+  const rows = data ?? [];
+  if (rows.length === 0) {
+    const { data: auth } = await supabase.auth.getUser();
+    if (auth && auth.user) {
+      console.warn(
+        '[OrderModel] listOrdersForAdmin returned 0 rows while signed in. If Table Editor shows orders, check RLS and profiles.role = admin (see SUPABASE-CONNECT-INVENTORY-AND-ORDERS.md).'
+      );
+    }
+  }
+  return rows;
 }
 
 export async function listOrdersForCustomer(customerId) {
@@ -37,21 +46,31 @@ export async function getOrderCountsForAdminToday() {
 /**
  * Map app order (localStorage shape) to Supabase orders row.
  * @param {Object} order - { customer, name, size, quantity, dateNeeded, flavor, frosting, deliveryType, paymentMethod, price, status, userId, deliveryAddress, customerPhone, receipt, receiptFileName, dedication, cakeDesign, designImage, designImageName, ... }
- * @returns {Object} - { customer_id, status, total_amount, delivery_address, customer_phone, payment_method, delivery_type, date_needed, details }
+ * @returns {Object} - row for `orders` including customer_phone (delivery only) and owner_phone (pickup only)
  */
+function isDeliverDeliveryType(order) {
+  const v = String(order.deliveryType || order.delivery_type || '').trim().toLowerCase();
+  return v === 'deliver' || v.startsWith('deliver');
+}
+
 function mapOrderToPayload(order) {
   const customerId = order.userId || null;
   const dateNeeded = order.dateNeeded ? (order.dateNeeded.split && order.dateNeeded.split('T')[0]) || order.dateNeeded : null;
+  const deliver = isDeliverDeliveryType(order);
+  const customerPhone = deliver ? (order.customerPhone || null) : null;
+  const ownerPhone = deliver ? null : (order.ownerPhone || null);
   return {
     customer_id: customerId || undefined,
     status: order.status || 'Pending',
     total_amount: order.price != null ? Number(order.price) : null,
     delivery_address: order.deliveryAddress || null,
-    customer_phone: order.customerPhone || null,
+    customer_phone: customerPhone,
+    owner_phone: ownerPhone,
     payment_method: order.paymentMethod || null,
     delivery_type: order.deliveryType || null,
     date_needed: dateNeeded || null,
     details: {
+      localId: order.id != null ? order.id : null,
       orderGroupId: order.orderGroupId,
       customer: order.customer,
       name: order.name,
@@ -65,10 +84,25 @@ function mapOrderToPayload(order) {
       receiptFileName: order.receiptFileName,
       designImageName: order.designImageName,
       date: order.date,
+      paymentPlan: order.paymentPlan || null,
+      downPaymentAmount: order.downPaymentAmount != null ? order.downPaymentAmount : null,
       receipt: order.receipt || null,
       designImage: order.designImage || null,
+      customerPhone: order.customerPhone || null,
+      ownerPhone: order.ownerPhone || null,
     },
   };
+}
+
+/** Same row shape without huge base64 fields (receipt / design image) for retry inserts. */
+function slimOrderPayloadForInsert(payload) {
+  if (!payload || typeof payload.details !== 'object' || payload.details === null) return null;
+  const d = { ...payload.details };
+  if (!d.receipt && !d.designImage) return null;
+  delete d.receipt;
+  delete d.designImage;
+  d.receiptStoredLocallyOnly = true;
+  return { ...payload, details: d };
 }
 
 /**
@@ -77,13 +111,37 @@ function mapOrderToPayload(order) {
  * @returns {Promise<{ id: string } | null>} - Created row with id, or null on error.
  */
 export async function insertOrder(order) {
-  const payload = mapOrderToPayload(order);
-  const { data, error } = await supabase.from(ORDERS_TABLE).insert(payload).select('id').single();
-  if (error) {
-    console.warn('[OrderModel] insertOrder failed:', error.message);
-    return null;
+  if (!order) return null;
+  let effective = order;
+  if (!effective.userId) {
+    const { data: auth } = await supabase.auth.getUser();
+    if (auth && auth.user && auth.user.id) {
+      effective = { ...order, userId: auth.user.id };
+    }
   }
-  return data;
+
+  const payload = mapOrderToPayload(effective);
+  const runInsert = async (body) =>
+    supabase.from(ORDERS_TABLE).insert(body).select('id').single();
+
+  let { data, error } = await runInsert(payload);
+  if (!error) return data;
+
+  console.warn('[OrderModel] insertOrder failed (full payload):', error.code || '', error.message, error.details || '');
+
+  const slim = slimOrderPayloadForInsert(payload);
+  if (slim) {
+    ({ data, error } = await runInsert(slim));
+    if (!error) {
+      console.info(
+        '[OrderModel] insertOrder: row created without receipt/design image in cloud. Receipt may still exist only in the browser; use Storage for large files.'
+      );
+      return data;
+    }
+    console.warn('[OrderModel] insertOrder failed (slim payload):', error.code || '', error.message);
+  }
+
+  return null;
 }
 
 /**

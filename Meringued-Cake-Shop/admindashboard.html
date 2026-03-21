@@ -45,8 +45,7 @@
         }
         
         .stat-card:hover {
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.12);
-            transform: translateY(-2px);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.08);
         }
         
         .sidebar-active {
@@ -110,6 +109,29 @@
             background-color: #FEF3C7;
             color: #92400E;
             border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+        .inv-category-tab {
+            padding: 0.5rem 1.1rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+            border: 2px solid transparent;
+        }
+        .inv-category-tab--active {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35);
+        }
+        .inv-category-tab--inactive {
+            background: #f3f4f6;
+            color: #374151;
+            border-color: #e5e7eb;
+        }
+        .inv-category-tab--inactive:hover {
+            background: #FFF8F0;
+            color: var(--gold-dark);
+            border-color: rgba(212, 175, 55, 0.35);
         }
     </style>
 </head>
@@ -193,118 +215,88 @@
         <!-- Main Content -->
         <div class="px-6 py-8 md:py-12">
             <!-- Header -->
-            <div class="mb-8">
-                <h1 class="font-display text-4xl md:text-5xl font-bold mb-2 text-[#D4AF37]">
-                    <i class="fas fa-chart-line mr-3"></i>Dashboard
-                </h1>
-                <p class="text-gray-600 text-lg">Overview of your cake shop</p>
+            <div class="mb-6 md:mb-8">
+                <h1 class="font-display text-2xl md:text-3xl font-semibold text-gray-900 tracking-tight">Dashboard</h1>
+                <p class="text-gray-500 text-sm mt-1">Orders and today’s numbers at a glance</p>
             </div>
 
-            <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <!-- Total Orders -->
-                <div class="stat-card p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-500 text-sm font-medium mb-2">Total Orders</p>
-                            <p class="font-display text-4xl font-bold text-[#D4AF37]" id="totalOrders">0</p>
-                        </div>
-                        <div class="w-16 h-16 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);">
-                            <i class="fas fa-shopping-bag text-white text-2xl"></i>
-                        </div>
+            <!-- Order pipeline -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="stat-card p-5">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Total</p>
+                    <p class="text-2xl font-semibold text-gray-900 tabular-nums" id="totalOrders">0</p>
+                </div>
+                <div class="stat-card p-5">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Pending</p>
+                    <p class="text-2xl font-semibold text-amber-700 tabular-nums" id="pendingOrders">0</p>
+                </div>
+                <div class="stat-card p-5">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Processing</p>
+                    <p class="text-2xl font-semibold text-blue-700 tabular-nums" id="processingOrders">0</p>
+                </div>
+                <div class="stat-card p-5">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Completed</p>
+                    <p class="text-2xl font-semibold text-emerald-700 tabular-nums" id="completedOrders">0</p>
+                </div>
+            </div>
+
+            <!-- Snapshot: today + revenue + records -->
+            <div class="stat-card p-5 md:p-6 mb-6" id="dashboardTodayFinanceCard">
+                <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Snapshot</h2>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div>
+                        <p class="text-xs text-gray-500 mb-0.5">Orders today</p>
+                        <p class="text-xl font-semibold text-gray-900 tabular-nums" id="todayOrders">0</p>
+                        <p class="text-[10px] text-gray-400 mt-1 leading-tight">Placed today (PH date only). Pending above counts every open order.</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 mb-0.5">Revenue (completed)</p>
+                        <p class="text-xl font-semibold text-[#B8941E] tabular-nums" id="totalRevenue">₱0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 mb-0.5">Purchases today</p>
+                        <p class="text-xl font-semibold text-gray-900 tabular-nums" id="dashTodayCostLabel">₱0.00</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 mb-0.5">Sales logged today</p>
+                        <p class="text-xl font-semibold text-gray-900 tabular-nums" id="dashTodayEarnedLabel">₱0.00</p>
                     </div>
                 </div>
-                
-                <!-- Pending Orders -->
-                <div class="stat-card p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-500 text-sm font-medium mb-2">Pending</p>
-                            <p class="font-display text-4xl font-bold text-yellow-600" id="pendingOrders">0</p>
+                <div class="mt-5 pt-5 border-t border-gray-100 space-y-3">
+                    <div>
+                        <p class="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1">Purchases vs sales (today)</p>
+                        <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden mb-2">
+                            <div id="dashBarCost" class="h-full rounded-full bg-rose-400/80 transition-all duration-500" style="width: 0%"></div>
                         </div>
-                        <div class="w-16 h-16 rounded-full flex items-center justify-center bg-yellow-100">
-                            <i class="fas fa-clock text-yellow-600 text-2xl"></i>
+                        <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                            <div id="dashBarEarned" class="h-full rounded-full bg-emerald-500/80 transition-all duration-500" style="width: 0%"></div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Processing Orders -->
-                <div class="stat-card p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-500 text-sm font-medium mb-2">Processing</p>
-                            <p class="font-display text-4xl font-bold text-blue-600" id="processingOrders">0</p>
-                        </div>
-                        <div class="w-16 h-16 rounded-full flex items-center justify-center bg-blue-100">
-                            <i class="fas fa-tasks text-blue-600 text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Completed Orders -->
-                <div class="stat-card p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-500 text-sm font-medium mb-2">Completed</p>
-                            <p class="font-display text-4xl font-bold text-green-600" id="completedOrders">0</p>
-                        </div>
-                        <div class="w-16 h-16 rounded-full flex items-center justify-center bg-green-100">
-                            <i class="fas fa-check-circle text-green-600 text-2xl"></i>
-                        </div>
-                    </div>
+                    <p id="dashFinanceSource" class="text-[11px] text-gray-400"></p>
                 </div>
             </div>
 
             <!-- Recent Orders -->
-            <div class="stat-card p-6 md:p-8 mb-8">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
-                        Recent Orders
-                    </h2>
-                    <a href="adminordering.html" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg text-sm">
-                        <i class="fas fa-list mr-2"></i>View All Orders
-                    </a>
+            <div class="stat-card p-5 md:p-6 mb-8">
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+                    <h2 class="font-display text-lg md:text-xl font-semibold text-gray-900">Recent orders</h2>
+                    <a href="adminordering.html" class="text-sm font-medium text-[#B8941E] hover:text-[#D4AF37] transition">View all →</a>
                 </div>
                 
                 <div id="recentOrdersList">
                     <!-- Recent orders will be populated here -->
-                    <div class="text-center py-12 text-gray-400">
-                        <i class="fas fa-shopping-bag text-6xl mb-4 opacity-30"></i>
-                        <h3 class="text-xl font-semibold mb-2">No Orders Yet</h3>
-                        <p>Orders from customers will appear here</p>
+                    <div class="text-center py-10 text-gray-400 text-sm">
+                        <p class="text-gray-500">No orders to show</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Quick Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Today's Orders -->
-                <div class="stat-card p-6">
-                    <h3 class="font-display text-xl font-bold text-gray-800 mb-4">
-                        <i class="fas fa-calendar-day mr-2 text-[#D4AF37]"></i>Today's Orders
-                    </h3>
-                    <p class="font-display text-5xl font-bold text-[#D4AF37]" id="todayOrders">0</p>
-                    <p class="text-sm text-gray-500 mt-2">Orders received today</p>
-                </div>
-                
-                <!-- Revenue Overview -->
-                <div class="stat-card p-6">
-                    <h3 class="font-display text-xl font-bold text-gray-800 mb-4">
-                        <i class="fas fa-peso-sign mr-2 text-[#D4AF37]"></i>Total Revenue
-                    </h3>
-                    <p class="font-display text-5xl font-bold text-[#D4AF37]" id="totalRevenue">₱0</p>
-                    <p class="text-sm text-gray-500 mt-2">From all completed orders</p>
-                </div>
-            </div>
-
                 <!-- Inventory -->
-                <div id="inventory" class="stat-card p-6 md:p-8 mt-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div id="inventory" class="stat-card p-5 md:p-6 mt-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                     <div>
-                        <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
-                            <i class="fas fa-boxes-stacked mr-2"></i>Inventory
-                        </h2>
-                        <p class="text-gray-600">Add ingredients, upload images, and track stock in/out.</p>
+                        <h2 class="font-display text-lg md:text-xl font-semibold text-gray-900">Inventory</h2>
+                        <p id="invBlockSubtitle" class="text-gray-500 text-sm mt-0.5">Ingredients and supplies</p>
                     </div>
                     <div class="flex gap-3">
                         <button id="resetInventoryBtn" class="px-4 py-3 rounded-xl font-semibold bg-gray-100 hover:bg-gray-200 transition text-gray-700">
@@ -313,14 +305,19 @@
                     </div>
                 </div>
 
+                <div class="flex flex-wrap gap-2 mb-6" role="tablist" aria-label="Inventory category">
+                    <button type="button" id="invTabIngredient" class="inv-category-tab inv-category-tab--active">Ingredients</button>
+                    <button type="button" id="invTabMisc" class="inv-category-tab inv-category-tab--inactive">Miscellaneous</button>
+                </div>
+
                 <!-- Add Ingredient Template -->
                 <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-4 md:p-5 mb-4">
-                    <h3 class="font-display text-lg font-bold text-gray-800 mb-3">
+                    <h3 id="invAddCardTitle" class="font-display text-lg font-bold text-gray-800 mb-3">
                         <i class="fas fa-plus-circle mr-2 text-[#D4AF37]"></i>Add Ingredient
                     </h3>
                     <form id="inventoryAddForm" class="grid grid-cols-1 md:grid-cols-6 gap-3">
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Ingredient name</label>
+                            <label id="invNameLabel" for="invName" class="block text-sm font-semibold text-gray-700 mb-1">Ingredient name</label>
                             <input id="invName" type="text" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g., Fondant" required />
                         </div>
                         <div>
@@ -342,7 +339,7 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Reorder</label>
                             <input id="invReorder" type="number" min="0" step="0.01" value="0" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" />
                         </div>
-                        <div>
+                        <div id="invExpiryFieldWrap">
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Expiry</label>
                             <input id="invExpiryDate" type="date" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" title="Pick expiry date" />
                         </div>
@@ -363,10 +360,11 @@
 
                 <!-- Inventory List -->
                 <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-5 md:p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-display text-xl font-bold text-gray-800">
-                            <i class="fas fa-clipboard-list mr-2 text-[#D4AF37]"></i>Ingredients
+                    <div class="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
+                        <h3 id="invListTitle" class="font-display text-xl font-bold text-gray-800">
+                            <i class="fas fa-clipboard-list mr-2 text-[#D4AF37]"></i>Ingredients list
                         </h3>
+                        <p class="text-xs text-gray-600 max-w-xl"><strong>Purchase expenses:</strong> each <strong>Stock In</strong> logs to <strong>Records → Purchase expenses</strong> using <strong>Price (₱/unit)</strong>. Add other purchases manually there if needed.</p>
                     </div>
                     <div id="inventoryLowStockBanner" class="hidden mb-4 rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
                         <p class="font-semibold text-amber-800 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> Low stock — please restock</p>
@@ -387,12 +385,12 @@
                             <thead>
                                 <tr class="border-b-2 border-[#D4AF37]/20 text-left">
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Image</th>
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Ingredient</th>
+                                    <th id="invTableNameHeader" class="py-3 px-3 text-sm font-semibold text-gray-700">Ingredient</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Qty</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Unit</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Price</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Reorder</th>
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Expiry / Extended</th>
+                                    <th id="invTableExpiryHeader" class="py-3 px-3 text-sm font-semibold text-gray-700">Expiry / Extended</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Stock In/Out</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Actions</th>
                                 </tr>
@@ -402,8 +400,8 @@
 
                         <div id="inventoryEmpty" class="text-center py-10 text-gray-400 hidden">
                             <i class="fas fa-box-open text-6xl mb-4 opacity-30"></i>
-                            <h3 class="text-xl font-semibold mb-2">No ingredients yet</h3>
-                            <p>Add your first ingredient above.</p>
+                            <h3 id="inventoryEmptyTitle" class="text-xl font-semibold mb-2">No ingredients yet</h3>
+                            <p id="inventoryEmptyHint">Add your first ingredient above, or use Reset template to load the default list.</p>
                         </div>
                     </div>
                 </div>
@@ -435,12 +433,50 @@
     <script>
         let orders = [];
 
+        function getTodayYmdManila() {
+            try {
+                return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date());
+            } catch (e) {
+                return new Date().toISOString().slice(0, 10);
+            }
+        }
+
+        function isOrderToday(order) {
+            const ymd = getTodayYmdManila();
+            if (order.created_at && String(order.created_at).slice(0, 10) === ymd) return true;
+            if (order.date) {
+                const s = String(order.date);
+                if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10) === ymd;
+            }
+            try {
+                if (String(order.date || '') === new Date().toLocaleDateString()) return true;
+            } catch (e) { /* ignore */ }
+            return false;
+        }
+
+        function orderLinePrice(order) {
+            const n = Number(order.total_amount != null ? order.total_amount : order.price);
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        function orderDisplayDate(order) {
+            if (order.date) return String(order.date);
+            if (order.created_at) return String(order.created_at).slice(0, 10);
+            return '—';
+        }
+
+        /** Called from js/admin-dashboard-connect.js after merging Supabase + local orders */
+        window.applyDashboardOrders = function (next) {
+            orders = Array.isArray(next) ? next : [];
+            updateStatistics();
+            renderRecentOrders();
+        };
+
         function toggleAdminSidebar() {
             document.body.classList.toggle('sidebar-hidden');
         }
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             loadOrders();
             if (window.OrderIngredients && window.OrderIngredients.restoreCancelledOrdersIngredientStock) {
                 window.OrderIngredients.restoreCancelledOrdersIngredientStock();
@@ -448,109 +484,103 @@
             }
             updateStatistics();
             renderRecentOrders();
+            import('./js/admin-dashboard-connect.js')
+                .then(function (m) {
+                    return m.hydrateAdminDashboard();
+                })
+                .catch(function (err) {
+                    console.warn('[Dashboard] Connect module failed, using local orders only:', err);
+                });
         });
 
-        // Load orders from all per-user keys (aggregated for admin)
         function loadOrders() {
-            orders = typeof getAllOrdersForAdmin === 'function' ? getAllOrdersForAdmin() : (function() {
-                try { return JSON.parse(localStorage.getItem('customerOrders') || '[]'); } catch(e) { return []; }
-            })();
+            orders =
+                typeof getAllOrdersForAdmin === 'function'
+                    ? getAllOrdersForAdmin()
+                    : (function () {
+                          try {
+                              return JSON.parse(localStorage.getItem('customerOrders') || '[]');
+                          } catch (e) {
+                              return [];
+                          }
+                      })();
         }
 
-        // Update dashboard statistics
         function updateStatistics() {
             const total = orders.length;
-            const pending = orders.filter(order => order.status === 'Pending').length;
-            const processing = orders.filter(order => 
+            const pending = orders.filter((order) => order.status === 'Pending').length;
+            const processing = orders.filter((order) =>
                 order.status === 'Acknowledge' || order.status === 'Baking'
             ).length;
-            const completed = orders.filter(order => 
-                order.status === 'Completed'
-            ).length;
-            
-            // Today's orders
-            const today = new Date().toLocaleDateString();
-            const todayOrders = orders.filter(order => order.date === today).length;
-            
-            // Total revenue from completed orders
+            const completed = orders.filter((order) => order.status === 'Completed').length;
+            const todayOrders = orders.filter(isOrderToday).length;
             const revenue = orders
-                .filter(order => order.status === 'Completed')
-                .reduce((sum, order) => sum + (order.price || 0), 0);
-            
+                .filter((order) => order.status === 'Completed')
+                .reduce((sum, order) => sum + orderLinePrice(order), 0);
+
             document.getElementById('totalOrders').textContent = total;
             document.getElementById('pendingOrders').textContent = pending;
             document.getElementById('processingOrders').textContent = processing;
             document.getElementById('completedOrders').textContent = completed;
             document.getElementById('todayOrders').textContent = todayOrders;
-            document.getElementById('totalRevenue').textContent = '₱' + revenue.toFixed(2);
+            document.getElementById('totalRevenue').textContent =
+                '₱' +
+                revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        // Render recent orders
         function renderRecentOrders() {
             const container = document.getElementById('recentOrdersList');
-            
-            // Filter out cancelled orders
-            const activeOrders = orders.filter(order => order.status !== 'Cancelled');
-            
+            const activeOrders = orders.filter((order) => order.status !== 'Cancelled');
+
             if (activeOrders.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-12 text-gray-400">
-                        <i class="fas fa-shopping-bag text-6xl mb-4 opacity-30"></i>
-                        <h3 class="text-xl font-semibold mb-2">No Orders Yet</h3>
-                        <p>Orders from customers will appear here</p>
-                    </div>
-                `;
+                container.innerHTML =
+                    '<div class="text-center py-10 text-gray-400 text-sm"><p class="text-gray-500">No orders to show</p></div>';
                 return;
             }
-            
-            const ordersHTML = activeOrders
-                .slice()
-                .reverse()
-                .slice(0, 5)
-                .map(order => {
-                    const statusColor = getStatusColor(order.status);
-                    return `
-                        <div class="border-2 border-gray-100 rounded-xl p-5 hover:border-[#D4AF37] hover:shadow-md transition-all duration-300">
-                            <div class="flex justify-between items-start mb-3">
-                                <div class="flex-1">
-                                    <h3 class="font-semibold text-gray-800 text-lg mb-1">${escapeHtml(order.name || order.cake || 'Custom Order')}</h3>
-                                    <p class="text-sm text-gray-500">
-                                        <i class="fas fa-tag mr-1"></i> ${escapeHtml(order.size || 'N/A')} | Qty: ${order.quantity || 1}
-                                    </p>
-                                    <p class="text-sm text-gray-500 mt-1">
-                                        ${escapeHtml(order.deliveryType || 'Pick up')} • ${escapeHtml(order.paymentMethod || 'Online Payment')}
-                                    </p>
+
+            const sorted = activeOrders.slice().sort(function (a, b) {
+                const ta = Date.parse(a.created_at) || 0;
+                const tb = Date.parse(b.created_at) || 0;
+                if (tb !== ta) return tb - ta;
+                return String(b.id || '').localeCompare(String(a.id || ''));
+            });
+
+            const ordersHTML = sorted.slice(0, 5).map(function (order) {
+                const statusColor = getStatusColor(order.status);
+                const price = orderLinePrice(order);
+                return `
+                        <div class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                            <div class="flex justify-between items-start gap-3 mb-2">
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-medium text-gray-900 truncate">${escapeHtml(order.name || order.cake || 'Order')}</h3>
+                                    <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(order.size || '—')} · Qty ${order.quantity || 1} · ${escapeHtml(order.deliveryType || 'Pick up')}</p>
                                 </div>
-                                <span class="px-4 py-1 rounded-full text-xs font-semibold ${statusColor}">
+                                <span class="shrink-0 px-2.5 py-0.5 rounded-md text-xs font-medium ${statusColor}">
                                     ${escapeHtml(order.status || 'Pending')}
                                 </span>
                             </div>
-                            <div class="flex justify-between items-center text-sm pt-3 border-t border-gray-100">
-                                <span class="text-gray-500">
-                                    <i class="far fa-calendar mr-1"></i> ${escapeHtml(order.date || new Date().toLocaleDateString())}
-                                </span>
-                                <span class="font-bold text-[#D4AF37] text-lg">
-                                    ₱${(order.price || 0).toFixed(2)}
-                                </span>
+                            <div class="flex justify-between items-center text-xs text-gray-500 pt-2 border-t border-gray-100">
+                                <span>${escapeHtml(orderDisplayDate(order))}</span>
+                                <span class="font-semibold text-[#B8941E] tabular-nums">₱${price.toFixed(2)}</span>
                             </div>
                         </div>
                     `;
-                }).join('');
-            
-            container.innerHTML = `<div class="space-y-4">${ordersHTML}</div>`;
+            }).join('');
+
+            container.innerHTML = `<div class="space-y-2">${ordersHTML}</div>`;
         }
 
         // Get status badge color
         function getStatusColor(status) {
             const statusColors = {
-                'Pending': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
-                'Acknowledge': 'bg-blue-100 text-blue-700 border border-blue-300',
-                'Baking': 'bg-purple-100 text-purple-700 border border-purple-300',
-                'Ready': 'bg-green-100 text-green-700 border border-green-300',
-                'Completed': 'bg-gray-100 text-gray-700 border border-gray-300',
-                'Cancelled': 'bg-red-100 text-red-700 border border-red-300'
+                Pending: 'bg-amber-50 text-amber-800',
+                Acknowledge: 'bg-blue-50 text-blue-800',
+                Baking: 'bg-violet-50 text-violet-800',
+                Ready: 'bg-emerald-50 text-emerald-800',
+                Completed: 'bg-gray-100 text-gray-700',
+                Cancelled: 'bg-red-50 text-red-800'
             };
-            return statusColors[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
+            return statusColors[status] || 'bg-gray-100 text-gray-600';
         }
 
         // Escape HTML to prevent XSS
@@ -612,6 +642,7 @@
 
     <script type="module" src="js/adminRecordsBridge.js"></script>
     <script type="module" src="js/admin-inventory-supabase.js"></script>
+    <script type="module" src="js/admin-misc-inventory-supabase.js"></script>
     <script src="js/admin-inventory.js"></script>
     <!-- Ensure only authenticated admin users can see this page and load Supabase-based stats -->
     <script type="module" src="js/controllers/adminBootstrap.js"></script>

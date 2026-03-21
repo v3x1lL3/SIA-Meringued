@@ -6,15 +6,32 @@
 
   function getAllOrdersForAdmin() {
     var orders = [];
+    var seen = {};
+    function pushUnique(list) {
+      if (!Array.isArray(list)) return;
+      for (var j = 0; j < list.length; j++) {
+        var o = list[j];
+        if (!o) continue;
+        var id = o.id != null ? String(o.id) : '';
+        if (id && seen['id:' + id]) continue;
+        if (id) seen['id:' + id] = true;
+        orders.push(o);
+      }
+    }
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
       if (k && k.indexOf(PREFIX) === 0) {
         try {
           var list = JSON.parse(localStorage.getItem(k) || '[]');
-          orders = orders.concat(list);
+          pushUnique(list);
         } catch (e) {}
       }
     }
+    // Legacy single-bucket key (older client flows)
+    try {
+      var legacy = JSON.parse(localStorage.getItem('customerOrders') || '[]');
+      pushUnique(legacy);
+    } catch (e) {}
     return orders;
   }
 
@@ -59,7 +76,51 @@
     localStorage.setItem(getOrdersKeyForUser(userId), JSON.stringify(orders || []));
   }
 
-  /** Remove all orders from all per-user keys. */
+  /**
+   * Remove one order from every customerOrders_* key and legacy customerOrders.
+   * Matches by numeric/string id and optionally supabase_id (for merged rows whose id is sb-uuid).
+   * @returns {boolean} true if at least one list was changed
+   */
+  function deleteOrderFromAdminStorage(orderId, supabaseId) {
+    var idStr = orderId != null ? String(orderId) : '';
+    var sbStr = supabaseId != null ? String(supabaseId) : '';
+    var removed = false;
+    var keys = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf(PREFIX) === 0) keys.push(k);
+    }
+    function shouldRemove(o) {
+      if (!o) return false;
+      if (idStr && String(o.id) === idStr) return true;
+      if (sbStr && o.supabase_id != null && String(o.supabase_id) === sbStr) return true;
+      return false;
+    }
+    keys.forEach(function (k) {
+      try {
+        var list = JSON.parse(localStorage.getItem(k) || '[]');
+        if (!Array.isArray(list)) return;
+        var nu = list.filter(function (o) { return !shouldRemove(o); });
+        if (nu.length < list.length) {
+          removed = true;
+          localStorage.setItem(k, JSON.stringify(nu));
+        }
+      } catch (e) {}
+    });
+    try {
+      var legacy = JSON.parse(localStorage.getItem('customerOrders') || '[]');
+      if (Array.isArray(legacy)) {
+        var nu2 = legacy.filter(function (o) { return !shouldRemove(o); });
+        if (nu2.length < legacy.length) {
+          removed = true;
+          localStorage.setItem('customerOrders', JSON.stringify(nu2));
+        }
+      }
+    } catch (e) {}
+    return removed;
+  }
+
+  /** Remove all orders from all per-user keys and legacy `customerOrders`. */
   function clearAllOrdersForAdmin() {
     var keys = [];
     for (var i = 0; i < localStorage.length; i++) {
@@ -67,6 +128,9 @@
       if (k && k.indexOf(PREFIX) === 0) keys.push(k);
     }
     keys.forEach(function (k) { localStorage.removeItem(k); });
+    try {
+      localStorage.removeItem('customerOrders');
+    } catch (e) {}
   }
 
   window.getAllOrdersForAdmin = getAllOrdersForAdmin;
@@ -75,4 +139,5 @@
   window.updateOrderInStorage = updateOrderInStorage;
   window.saveOrdersForUser = saveOrdersForUser;
   window.clearAllOrdersForAdmin = clearAllOrdersForAdmin;
+  window.deleteOrderFromAdminStorage = deleteOrderFromAdminStorage;
 })();

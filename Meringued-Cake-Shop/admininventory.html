@@ -77,6 +77,29 @@
             color: #92400E;
             border: 1px solid rgba(245, 158, 11, 0.4);
         }
+        .inv-category-tab {
+            padding: 0.5rem 1.1rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+            border: 2px solid transparent;
+        }
+        .inv-category-tab--active {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35);
+        }
+        .inv-category-tab--inactive {
+            background: #f3f4f6;
+            color: #374151;
+            border-color: #e5e7eb;
+        }
+        .inv-category-tab--inactive:hover {
+            background: #FFF8F0;
+            color: var(--gold-dark);
+            border-color: rgba(212, 175, 55, 0.35);
+        }
     </style>
 </head>
 <body>
@@ -145,17 +168,17 @@
                 <h1 class="font-display text-4xl md:text-5xl font-bold mb-2 text-[#D4AF37]">
                     <i class="fas fa-boxes-stacked mr-3"></i>Inventory
                 </h1>
-                <p class="text-gray-600">Add ingredients, set units, and track stock in/out. Same data as on the Dashboard.</p>
+                <p id="invPageSubtitle" class="text-gray-600">Add ingredients, set units, and track stock in/out. Same data as on the Dashboard.</p>
             </div>
 
             <!-- Inventory (same block as Dashboard) -->
             <div id="inventory" class="bg-white rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-6 md:p-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                     <div>
-                        <h2 class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
+                        <h2 id="invBlockTitle" class="font-display text-2xl md:text-3xl font-bold text-[#D4AF37]">
                             <i class="fas fa-boxes-stacked mr-2"></i>Ingredients
                         </h2>
-                        <p class="text-gray-600">Add ingredients, upload images, and track stock in/out.</p>
+                        <p id="invBlockSubtitle" class="text-gray-600">Add ingredients, upload images, and track stock in/out.</p>
                     </div>
                     <div class="flex gap-3">
                         <button id="resetInventoryBtn" class="px-4 py-3 rounded-xl font-semibold bg-gray-100 hover:bg-gray-200 transition text-gray-700">
@@ -164,14 +187,19 @@
                     </div>
                 </div>
 
+                <div class="flex flex-wrap gap-2 mb-6" role="tablist" aria-label="Inventory category">
+                    <button type="button" id="invTabIngredient" class="inv-category-tab inv-category-tab--active">Ingredients</button>
+                    <button type="button" id="invTabMisc" class="inv-category-tab inv-category-tab--inactive">Miscellaneous</button>
+                </div>
+
                 <!-- Add Ingredient Template -->
                 <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-4 md:p-5 mb-4">
-                    <h3 class="font-display text-lg font-bold text-gray-800 mb-3">
+                    <h3 id="invAddCardTitle" class="font-display text-lg font-bold text-gray-800 mb-3">
                         <i class="fas fa-plus-circle mr-2 text-[#D4AF37]"></i>Add Ingredient
                     </h3>
                     <form id="inventoryAddForm" class="grid grid-cols-1 md:grid-cols-6 gap-3">
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Ingredient name</label>
+                            <label id="invNameLabel" for="invName" class="block text-sm font-semibold text-gray-700 mb-1">Ingredient name</label>
                             <input id="invName" type="text" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g., Fondant" required />
                         </div>
                         <div>
@@ -193,7 +221,7 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Reorder</label>
                             <input id="invReorder" type="number" min="0" step="0.01" value="0" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" />
                         </div>
-                        <div>
+                        <div id="invExpiryFieldWrap">
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Expiry</label>
                             <input id="invExpiryDate" type="date" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" title="Pick expiry date" />
                         </div>
@@ -214,10 +242,11 @@
 
                 <!-- Inventory List -->
                 <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-5 md:p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-display text-xl font-bold text-gray-800">
+                    <div class="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
+                        <h3 id="invListTitle" class="font-display text-xl font-bold text-gray-800">
                             <i class="fas fa-clipboard-list mr-2 text-[#D4AF37]"></i>Ingredients list
                         </h3>
+                        <p class="text-xs text-gray-600 max-w-xl"><strong>Purchase expenses:</strong> each <strong>Stock In</strong> logs to <strong>Records → Purchase expenses</strong> using <strong>Price (₱/unit)</strong>. Add other purchases manually there if needed.</p>
                     </div>
                     <div id="inventoryLowStockBanner" class="hidden mb-4 rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
                         <p class="font-semibold text-amber-800 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> Low stock — please restock</p>
@@ -238,12 +267,12 @@
                             <thead>
                                 <tr class="border-b-2 border-[#D4AF37]/20 text-left">
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Image</th>
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Ingredient</th>
+                                    <th id="invTableNameHeader" class="py-3 px-3 text-sm font-semibold text-gray-700">Ingredient</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Qty</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Unit</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Price</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Reorder</th>
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Expiry / Extended</th>
+                                    <th id="invTableExpiryHeader" class="py-3 px-3 text-sm font-semibold text-gray-700">Expiry / Extended</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Stock In/Out</th>
                                     <th class="py-3 px-3 text-sm font-semibold text-gray-700">Actions</th>
                                 </tr>
@@ -253,8 +282,8 @@
 
                         <div id="inventoryEmpty" class="text-center py-10 text-gray-400 hidden">
                             <i class="fas fa-box-open text-6xl mb-4 opacity-30"></i>
-                            <h3 class="text-xl font-semibold mb-2">No ingredients yet</h3>
-                            <p>Add your first ingredient above, or use Reset template to load the default list.</p>
+                            <h3 id="inventoryEmptyTitle" class="text-xl font-semibold mb-2">No ingredients yet</h3>
+                            <p id="inventoryEmptyHint">Add your first ingredient above, or use Reset template to load the default list.</p>
                         </div>
                     </div>
                 </div>
@@ -266,6 +295,7 @@
     <script src="js/admin-order-ingredients.js"></script>
     <script type="module" src="js/adminRecordsBridge.js"></script>
     <script type="module" src="js/admin-inventory-supabase.js"></script>
+    <script type="module" src="js/admin-misc-inventory-supabase.js"></script>
     <script src="js/admin-inventory.js"></script>
 
     <!-- Logout Modal -->
