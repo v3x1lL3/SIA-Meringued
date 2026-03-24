@@ -4,6 +4,13 @@
 (function () {
     'use strict';
 
+    function fmtAdminCakeSize(sz) {
+        if (typeof window !== 'undefined' && typeof window.formatCakeSizeForDisplay === 'function') {
+            return window.formatCakeSizeForDisplay(sz);
+        }
+        return sz != null && sz !== '' ? String(sz) : 'N/A';
+    }
+
     var orders = [];
     var currentOrderId = null;
     var ordersLoadGen = 0;
@@ -570,27 +577,37 @@
         }
         var detailsContent = document.getElementById('orderDetailsContent');
         var designBlock = '';
-        if (order.cakeDesign || order.designImage) {
-            var dImg = order.designImage;
-            var imgSrc =
-                typeof dImg === 'string' &&
-                (dImg.indexOf('data:image/') === 0 || dImg.indexOf('http://') === 0 || dImg.indexOf('https://') === 0)
-                    ? dImg.replace(/"/g, '&quot;')
-                    : '';
+        if (order.cakeDesign || order.designImage || (Array.isArray(order.designImages) && order.designImages.length)) {
+            var imgs = [];
+            if (Array.isArray(order.designImages) && order.designImages.length) {
+                order.designImages.forEach(function (x) {
+                    if (x && x.dataUrl) imgs.push({ dataUrl: x.dataUrl, name: x.name || 'image.jpg' });
+                });
+            } else if (order.designImage) {
+                imgs.push({ dataUrl: order.designImage, name: order.designImageName || 'design.jpg' });
+            }
+            var imgsHtml = imgs
+                .map(function (im, i) {
+                    var dImg = im.dataUrl;
+                    var imgSrc =
+                        typeof dImg === 'string' &&
+                        (dImg.indexOf('data:image/') === 0 || dImg.indexOf('http://') === 0 || dImg.indexOf('https://') === 0)
+                            ? dImg.replace(/"/g, '&quot;')
+                            : '';
+                    if (!imgSrc) return '';
+                    var nm = escapeHtml(im.name);
+                    var label =
+                        imgs.length > 1
+                            ? '<p class="text-xs text-gray-500 mb-1"><i class="fas fa-image mr-1"></i>Reference ' + (i + 1) + ': ' + nm + '</p>'
+                            : '<p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference: ' + nm + '</p>';
+                    return '<div class="mt-2">' + label + '<img src="' + imgSrc + '" alt="Design Reference" class="max-w-full h-auto rounded-lg shadow-md border-2 border-gray-200"></div>';
+                })
+                .join('');
             designBlock =
                 '<div class="bg-[#FFF8F0] rounded-lg p-4">' +
                 '<p class="text-xs text-gray-500 mb-2"><i class="fas fa-palette mr-1 text-[#D4AF37]"></i>Cake Design</p>' +
                 (order.cakeDesign ? '<p class="text-gray-800 mb-2">' + escapeHtml(order.cakeDesign) + '</p>' : '') +
-                (imgSrc
-                    ? '<div class="mt-2">' +
-                      '<p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference Image: ' +
-                      escapeHtml(order.designImageName || 'design.jpg') +
-                      '</p>' +
-                      '<img src="' +
-                      imgSrc +
-                      '" alt="Design Reference" class="max-w-full h-auto rounded-lg shadow-md border-2 border-gray-200">' +
-                      '</div>'
-                    : '') +
+                imgsHtml +
                 '</div>';
         }
         var dedicationBlock = '';
@@ -634,7 +651,7 @@
             escapeHtml(order.name || order.cake || 'Custom Order') +
             '</p></div>' +
             '<div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Size</p><p class="font-semibold text-gray-800">' +
-            escapeHtml(order.size || 'N/A') +
+            escapeHtml(fmtAdminCakeSize(order.size)) +
             '</p></div>' +
             '<div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Quantity</p><p class="font-semibold text-gray-800">' +
             (order.quantity || 1) +

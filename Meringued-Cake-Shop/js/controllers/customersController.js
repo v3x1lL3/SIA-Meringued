@@ -19,6 +19,9 @@ const RECEIPT_VIEW_MODAL_ID = 'receiptViewModal';
 const RECEIPT_VIEW_CONTENT_ID = 'receiptViewContent';
 const ORDERS_KEY = 'customerOrders';
 
+/** Last merged POS list (Supabase + local); used for customer list + "View orders" modal. */
+let lastMergedOrdersCache = [];
+
 /** Orders currently shown in the customer orders modal (for receipt lookup by index). */
 let currentCustomerOrders = [];
 
@@ -51,48 +54,147 @@ function getAllOrders() {
   }
 }
 
-/** Get orders that belong to this customer (match by name and optionally email). */
-export function getOrdersForCustomer(customerName, customerEmail) {
-  const orders = getAllOrders();
+/** Orders for modal: same source as customer list (merged cache when available). */
+function getOrdersSourceList() {
+  return lastMergedOrdersCache.length > 0 ? lastMergedOrdersCache : getAllOrders();
+}
+
+/**
+ * Match orders to a customer row. Prefer auth userId; never treat cake `name` as person name.
+ * @param {string} [customerUserId] - orders.userId / Supabase customer_id
+ */
+export function getOrdersForCustomer(customerName, customerEmail, customerUserId) {
+  const orders = getOrdersSourceList();
   const name = (customerName || '').trim();
-  const email = (customerEmail || '').trim();
+  const email = (customerEmail || '').trim().toLowerCase();
+  const uid = customerUserId != null ? String(customerUserId).trim() : '';
+
   return orders.filter((order) => {
-    const oName = (order.customer || order.customerName || order.name || '').trim();
-    const oEmail = (order.customerEmail || order.email || '').trim();
-    const nameMatch = oName === name || (!name && !oName);
-    const emailMatch = !email || !oEmail || oEmail === email;
+    const oUid = order.userId != null ? String(order.userId).trim() : '';
+    const oName = (order.customer || order.customerName || '').trim();
+    const oEmail = (order.customerEmail || order.email || '').trim().toLowerCase();
+
+    if (uid) {
+      if (oUid && oUid === uid) return true;
+      if (oUid && oUid !== uid) return false;
+    }
+
+    const emailMatch =
+      !email ||
+      email === '—' ||
+      !oEmail ||
+      oEmail === email ||
+      oEmail === email.replace(/\s/g, '');
+    const nameMatch =
+      !name ||
+      name === '—' ||
+      oName === name ||
+      (name === 'Guest' && !oName) ||
+      (!oName && !name);
+
     return nameMatch && emailMatch;
   });
 }
 
 /**
- * Build list of unique customers from localStorage customerOrders.
- * Each order may have .customer (name) and we can count orders per customer.
+ * Person display name from order (POS). Do not use order.name — that is the cake/product.
  */
-function getCustomersFromOrders() {
-  const orders = getAllOrders();
+function getPersonNameFromOrder(order) {
+  const person = (order.customer || order.customerName || '').trim();
+  if (person) return person;
+  const emailRaw = (order.customerEmail || order.email || '').trim();
+  if (emailRaw && emailRaw.includes('@')) return emailRaw.split('@')[0];
+  const uid = order.userId != null ? String(order.userId).trim() : '';
+  if (uid) return `Customer (${uid.slice(0, 8)}…)`;
+  return 'Guest';
+}
+
+/**
+ * Aggregate unique customers from an order list (merged Supabase + local).
+ */
+function aggregateCustomersFromOrders(orders) {
   const byKey = new Map();
-  orders.forEach((order) => {
-    const name = order.customer || order.customerName || order.name || 'Guest';
-    const email = order.customerEmail || order.email || '';
-    const key = email ? `${name}|${email}` : name;
+  (orders || []).forEach((order) => {
+    if (!order) return;
+    const uid = order.userId != null ? String(order.userId).trim() : '';
+    const emailRaw = (order.customerEmail || order.email || '').trim();
+    const emailLower = emailRaw.toLowerCase();
+    const personFromOrder = (order.customer || order.customerName || '').trim();
+    const displayName = getPersonNameFromOrder(order);
+    const key = uid || (emailLower && emailLower !== '' ? `email:${emailLower}` : `name:${displayName.toLowerCase()}`);
+
+    const orderDate =
+      order.created_at ||
+      order.date ||
+      order.dateOrdered ||
+      '';
+    const sortKey = order.created_at || orderDate || '';
+
     const existing = byKey.get(key);
-    const orderDate = order.date || order.created_at || order.dateOrdered || '';
     if (!existing) {
       byKey.set(key, {
-        name,
-        email,
+        name: displayName,
+        email: emailRaw || '—',
+        userId: uid || null,
+        role: 'customer',
         orderCount: 1,
-        lastOrderDate: orderDate,
+        lastOrderDate: sortKey || orderDate,
       });
     } else {
       existing.orderCount += 1;
-      if (orderDate && (!existing.lastOrderDate || orderDate > existing.lastOrderDate)) {
-        existing.lastOrderDate = orderDate;
+      if (personFromOrder && (existing.name.startsWith('Customer (') || existing.name === 'Guest')) {
+        existing.name = personFromOrder;
+      }
+      if ((!existing.email || existing.email === '—') && emailRaw) existing.email = emailRaw;
+      const newTs = sortKey || orderDate || '';
+      if (newTs && String(newTs).localeCompare(String(existing.lastOrderDate || '')) > 0) {
+        existing.lastOrderDate = newTs;
       }
     }
   });
-  return Array.from(byKey.values()).sort((a, b) => (b.lastOrderDate || '').localeCompare(a.lastOrderDate || ''));
+  return Array.from(byKey.values()).sort((a, b) =>
+    String(b.lastOrderDate || '').localeCompare(String(a.lastOrderDate || ''))
+  );
+}
+
+/** Legacy: local-only orders (browser). */
+function getCustomersFromOrders() {
+  return aggregateCustomersFromOrders(getAllOrders());
+}
+
+/** Add DB-only customers (e.g. signed up but no order row yet). */
+function mergeOrderCustomersWithDb(fromOrders, dbRows) {
+  if (!dbRows || dbRows.length === 0) return fromOrders;
+  const seenEmail = new Set();
+  const seenUid = new Set();
+  fromOrders.forEach((o) => {
+    const e = (o.email || '').toLowerCase();
+    if (e && e !== '—') seenEmail.add(e);
+    if (o.userId) seenUid.add(String(o.userId));
+  });
+  const extra = [];
+  dbRows.forEach((row) => {
+    const email = (row.email || '').trim();
+    const emailL = email.toLowerCase();
+    const rowUid = row.auth_user_id || row.user_id || row.userId || null;
+    if (rowUid && seenUid.has(String(rowUid))) return;
+    if (emailL && seenEmail.has(emailL)) return;
+    extra.push({
+      name:
+        row.full_name ||
+        row.name ||
+        (email && email.includes('@') ? email.split('@')[0] : null) ||
+        '—',
+      email: email || '—',
+      userId: rowUid ? String(rowUid) : null,
+      role: row.role || 'customer',
+      orderCount: row.orders_count != null ? row.orders_count : 0,
+      lastOrderDate: row.updated_at || row.created_at || '',
+    });
+  });
+  return [...fromOrders, ...extra].sort((a, b) =>
+    String(b.lastOrderDate || '').localeCompare(String(a.lastOrderDate || ''))
+  );
 }
 
 /**
@@ -100,7 +202,11 @@ function getCustomersFromOrders() {
  */
 function renderOrderCard(order, index) {
   const cake = escapeHtml(order.name || order.cake || 'Custom Order');
-  const size = escapeHtml(order.size || 'N/A');
+  const sizeRaw =
+    typeof window !== 'undefined' && typeof window.formatCakeSizeForDisplay === 'function'
+      ? window.formatCakeSizeForDisplay(order.size)
+      : order.size || 'N/A';
+  const size = escapeHtml(sizeRaw);
   const qty = order.quantity != null ? order.quantity : 1;
   const flavor = escapeHtml(order.flavor || 'N/A');
   const frosting = escapeHtml(order.frosting || 'N/A');
@@ -111,10 +217,22 @@ function renderOrderCard(order, index) {
   const status = order.status || 'Pending';
   const statusClass = getStatusColor(status);
   const designText = order.cakeDesign ? escapeHtml(order.cakeDesign) : '';
-  const hasDesignImage = order.designImage && (order.designImage.startsWith('data:') || order.designImage.startsWith('http'));
-  const designImageName = escapeHtml(order.designImageName || 'design.jpg');
+  const designImgList = [];
+  if (Array.isArray(order.designImages) && order.designImages.length) {
+    order.designImages.forEach(function (x) {
+      if (x && x.dataUrl && (String(x.dataUrl).startsWith('data:') || String(x.dataUrl).startsWith('http')))
+        designImgList.push({ dataUrl: x.dataUrl, name: x.name || 'image.jpg' });
+    });
+  } else if (order.designImage && (order.designImage.startsWith('data:') || order.designImage.startsWith('http'))) {
+    designImgList.push({ dataUrl: order.designImage, name: order.designImageName || 'design.jpg' });
+  }
+  const hasDesignImage = designImgList.length > 0;
   const dedication = order.dedication ? escapeHtml(order.dedication) : '';
-  const orderDate = order.date || order.orderGroupId || `#${index + 1}`;
+  const orderDate =
+    order.date ||
+    (order.created_at ? String(order.created_at).slice(0, 10) : '') ||
+    order.orderGroupId ||
+    `#${index + 1}`;
   const hasReceipt = order.receipt && (order.paymentMethod === 'Online Payment' || order.receipt);
 
   let designBlock = '';
@@ -124,11 +242,16 @@ function renderOrderCard(order, index) {
       '<p class="text-xs text-gray-500 mb-1"><i class="fas fa-palette mr-1 text-[#D4AF37]"></i>Cake design</p>' +
       (designText ? '<p class="text-gray-800 mb-2">' + designText + '</p>' : '') +
       (hasDesignImage
-        ? '<p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference image: ' +
-          designImageName +
-          '</p><img src="' +
-          order.designImage.replace(/"/g, '&quot;') +
-          '" alt="Reference" class="max-w-full h-auto max-h-64 rounded-lg shadow border border-gray-200"/>'
+        ? designImgList
+            .map(function (im, i) {
+              var nm = escapeHtml(im.name);
+              var cap =
+                designImgList.length > 1
+                  ? '<p class="text-xs text-gray-500 mb-1"><i class="fas fa-image mr-1"></i>Reference ' + (i + 1) + ': ' + nm + '</p>'
+                  : '<p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference: ' + nm + '</p>';
+              return cap + '<img src="' + im.dataUrl.replace(/"/g, '&quot;') + '" alt="Reference" class="max-w-full h-auto max-h-64 rounded-lg shadow border border-gray-200 mb-2"/>';
+            })
+            .join('')
         : '') +
       '</div>';
   }
@@ -206,8 +329,8 @@ function renderOrderCard(order, index) {
 }
 
 /** Open modal showing all orders for this customer with full details and reference images. */
-export function showCustomerOrders(customerName, customerEmail) {
-  const orders = getOrdersForCustomer(customerName, customerEmail);
+export function showCustomerOrders(customerName, customerEmail, customerUserId) {
+  const orders = getOrdersForCustomer(customerName, customerEmail, customerUserId);
   currentCustomerOrders = orders;
   const titleEl = document.getElementById(CUSTOMER_ORDERS_TITLE_ID);
   const contentEl = document.getElementById(CUSTOMER_ORDERS_CONTENT_ID);
@@ -216,7 +339,15 @@ export function showCustomerOrders(customerName, customerEmail) {
 
   const name = (customerName || 'Customer').trim();
   const email = (customerEmail || '').trim();
-  titleEl.textContent = 'Orders for ' + name + (email ? ' (' + email + ')' : '');
+  const uidShort =
+    customerUserId && String(customerUserId).length > 8
+      ? String(customerUserId).slice(0, 8) + '…'
+      : customerUserId || '';
+  titleEl.textContent =
+    'Orders for ' +
+    name +
+    (email && email !== '—' ? ' · ' + email : '') +
+    (uidShort ? ' · ID ' + uidShort : '');
 
   if (orders.length === 0) {
     contentEl.innerHTML =
@@ -311,10 +442,17 @@ function renderCustomers(customers, source) {
       const role = c.role ?? 'customer';
       const nameSafe = String(name).replace(/"/g, '&quot;');
       const emailSafe = String(email).replace(/"/g, '&quot;');
+      const uid = c.userId != null ? String(c.userId) : '';
+      const uidSafe = uid.replace(/"/g, '&quot;');
       return (
         '<tr class="border-b border-gray-100 hover:bg-[#FFF8F0]/40 transition">' +
         '<td class="py-3 px-3 font-semibold text-gray-800">' +
         escapeHtml(name) +
+        (uid
+          ? '<div class="text-xs font-normal text-gray-500 mt-0.5">Account ID: ' +
+            escapeHtml(uid.slice(0, 12) + (uid.length > 12 ? '…' : '')) +
+            '</div>'
+          : '') +
         '</td>' +
         '<td class="py-3 px-3 text-gray-700">' +
         escapeHtml(email) +
@@ -333,6 +471,8 @@ function renderCustomers(customers, source) {
         nameSafe +
         '" data-customer-email="' +
         emailSafe +
+        '" data-customer-userid="' +
+        uidSafe +
         '" class="px-3 py-2 rounded-lg bg-[#D4AF37]/20 text-[#B8941E] hover:bg-[#D4AF37] hover:text-white text-sm font-semibold transition"><i class="fas fa-shopping-bag mr-1"></i>View orders</button>' +
         '</td>' +
         '</tr>'
@@ -351,25 +491,47 @@ function attachCustomersTableListeners() {
     if (!btn) return;
     const n = btn.getAttribute('data-customer-name') || '';
     const em = btn.getAttribute('data-customer-email') || '';
-    showCustomerOrders(n, em);
+    const uid = btn.getAttribute('data-customer-userid') || '';
+    showCustomerOrders(n, em, uid || undefined);
   });
 }
 
 export async function loadCustomers() {
-  // 1) Try Supabase customers table
+  let mergedOrders = [];
   try {
-    const customers = await listCustomers();
-    if (customers && customers.length > 0) {
-      renderCustomers(customers, 'Supabase (customers table)');
-      attachCustomersTableListeners();
-      exposeCustomerWindowHandlers();
-      return;
+    const m = await import('../admin-orders-merge.js');
+    const res = await Promise.race([
+      m.fetchMergedOrdersForAdmin(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 25000)),
+    ]);
+    mergedOrders = Array.isArray(res.orders) ? res.orders : [];
+  } catch (err) {
+    console.warn('[CustomersController] Merged orders unavailable, using local only:', err?.message || err);
+    mergedOrders = getAllOrders();
+  }
+  lastMergedOrdersCache = mergedOrders;
+
+  let fromOrders = aggregateCustomersFromOrders(mergedOrders);
+
+  try {
+    const dbRows = await listCustomers();
+    if (dbRows && dbRows.length > 0) {
+      fromOrders = mergeOrderCustomersWithDb(fromOrders, dbRows);
     }
   } catch (err) {
     console.warn('[CustomersController] listCustomers failed:', err.message);
   }
 
-  // 2) Try Supabase profiles (users who have signed up / logged in)
+  if (fromOrders.length > 0) {
+    renderCustomers(
+      fromOrders,
+      'From POS orders (Supabase + this browser), merged with customers table when present'
+    );
+    attachCustomersTableListeners();
+    exposeCustomerWindowHandlers();
+    return;
+  }
+
   try {
     const profiles = await listProfiles();
     if (profiles && profiles.length > 0) {
@@ -377,6 +539,7 @@ export async function loadCustomers() {
         name: p.name ?? p.full_name ?? '—',
         email: p.email ?? '—',
         role: p.role ?? 'customer',
+        userId: p.id ?? null,
         created_at: p.created_at,
       }));
       renderCustomers(asCustomers, 'Supabase (profiles – users who signed up)');
@@ -388,9 +551,8 @@ export async function loadCustomers() {
     console.warn('[CustomersController] listProfiles failed:', err.message);
   }
 
-  // 3) Fallback: from orders in localStorage (users who placed orders / logged-in names)
-  const fromOrders = getCustomersFromOrders();
-  renderCustomers(fromOrders, '');
+  const localOnly = getCustomersFromOrders();
+  renderCustomers(localOnly, 'Local orders only (no cloud merge)');
   attachCustomersTableListeners();
   exposeCustomerWindowHandlers();
 }

@@ -90,7 +90,7 @@
                 <h1 class="font-display text-4xl md:text-5xl font-bold mb-2 text-[#D4AF37]">
                     <i class="fas fa-users mr-3"></i>Customers
                 </h1>
-                <p class="text-gray-600">View who signed up or placed orders. Click &quot;View orders&quot; to see exactly what each customer ordered, quantities, reference images, and payment receipts.</p>
+                <p class="text-gray-600">Customers are built from <strong>POS orders</strong> (Supabase + this browser): the <strong>name is the shopper name saved on the order</strong> (aligned with Orders), grouped by account ID when available. Use <strong>View orders</strong> for line items, reference images, and receipts. Anyone in the customers table with no orders yet is still listed.</p>
             </div>
 
             <div class="bg-white/90 rounded-2xl shadow-lg border-2 border-[#D4AF37]/20 p-5 md:p-6">
@@ -200,6 +200,7 @@
         });
     </script>
     <script src="js/core/adminOrderStorage.js"></script>
+    <script src="js/cakeSizeHelpers.js"></script>
     <script type="module">
         import { loadCustomers } from './js/controllers/customersController.js';
         document.addEventListener('DOMContentLoaded', loadCustomers);

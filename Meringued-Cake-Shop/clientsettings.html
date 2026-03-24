@@ -33,7 +33,7 @@
         <div class="p-6 border-b-2 border-[#D4AF37]/20">
             <div class="flex items-center space-x-3 px-4 py-3 rounded-lg bg-[#FFF8F0]">
                 <div class="w-10 h-10 rounded-full flex items-center justify-center text-white" style="background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);"><i class="fas fa-user"></i></div>
-                <div><p class="text-xs text-gray-500">Welcome</p><p id="sidebarCustomerName" class="font-semibold text-gray-800">Guest</p></div>
+                <div><p class="text-xs text-gray-500">Welcome</p><p id="sidebarCustomerName" class="font-semibold text-gray-800 min-h-[1.25rem]"></p></div>
             </div>
         </div>
         <nav class="flex-1 p-6">
@@ -103,6 +103,7 @@
     </div>
 
     <script src="js/core/clientStorageKeys.js"></script>
+    <script src="js/applyStoredCustomerName.js"></script>
     <script>
         function toggleClientSidebar() { document.body.classList.toggle('sidebar-hidden'); }
         function getStorageKey() { return typeof getSettingsKey === 'function' ? getSettingsKey() : 'clientSettings'; }
@@ -119,7 +120,7 @@
                 document.getElementById('notifyOrderUpdates').checked = s.notifyOrderUpdates !== false;
             } catch (e) { document.getElementById('clientName').value = name; document.getElementById('clientEmail').value = email; }
             var sidebarName = document.getElementById('sidebarCustomerName');
-            if (sidebarName) sidebarName.textContent = name || 'Guest';
+            if (sidebarName) sidebarName.textContent = (name && name.trim()) ? name.trim() : '\u00A0';
         }
         function saveSettings(e) {
             e.preventDefault();
@@ -152,5 +153,7 @@
             overlay.classList.add('hidden');
         });
     </script>
+    <script type="module" src="js/supabaseOrdersBridge.js"></script>
+    <script type="module" src="js/controllers/clientBootstrap.js"></script>
 </body>
 </html>

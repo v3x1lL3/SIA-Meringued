@@ -125,7 +125,7 @@
         </div>
                 <div>
                     <p class="text-xs text-gray-500">Welcome</p>
-                    <p id="sidebarCustomerName" class="font-semibold text-gray-800">Guest</p>
+                    <p id="sidebarCustomerName" class="font-semibold text-gray-800 min-h-[1.25rem]"></p>
                 </div>
             </div>
         </div>
@@ -202,9 +202,16 @@
 
             <!-- Orders Table -->
             <div class="bg-white/90 rounded-2xl shadow-lg p-6 md:p-8 border-2 border-[#D4AF37]/20">
-                <h2 class="font-display text-2xl md:text-3xl font-bold mb-6 text-[#D4AF37]">
+                <h2 class="font-display text-2xl md:text-3xl font-bold mb-4 text-[#D4AF37]">
                     <i class="fas fa-list-alt mr-2"></i> Placed Orders
                 </h2>
+                <div id="ordersLogsHint" class="mb-6 rounded-xl border-2 border-[#D4AF37]/35 bg-gradient-to-r from-[#FFF8F0] to-[#FFEDE6] px-4 py-3 text-sm text-gray-800 shadow-sm">
+                    <p class="font-medium leading-relaxed">
+                        <i class="fas fa-info-circle text-[#B8941E] mr-2" aria-hidden="true"></i>
+                        This list shows orders that are still <strong>in progress</strong>. When the shop marks an order <strong class="text-[#B8941E]">Completed</strong> or <strong class="text-[#B8941E]">Cancelled</strong>, it leaves this section and is stored in your <strong>Logs</strong>.
+                        <a href="clienthistory.html" class="inline-flex items-center gap-1 ml-1 font-semibold text-[#B8941E] underline decoration-[#D4AF37]/60 hover:text-[#D4AF37]">Open Logs <i class="fas fa-arrow-right text-xs" aria-hidden="true"></i></a>
+                    </p>
+                </div>
                 <div class="overflow-x-auto">
                     <table id="ordersTable" class="w-full">
                         <thead>
@@ -226,9 +233,12 @@
                     </table>
                     <div id="emptyOrders" class="text-center py-12 text-gray-400 hidden">
                         <i class="fas fa-box-open text-6xl mb-4 opacity-30"></i>
-                        <h3 class="text-xl font-semibold mb-2">No Orders Yet</h3>
-                        <p class="mb-6">Start by placing your first order!</p>
-                        <button onclick="openOrderModal()" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg">
+                        <h3 id="emptyOrdersHeading" class="text-xl font-semibold mb-2 text-gray-700">No Orders Yet</h3>
+                        <p id="emptyOrdersSub" class="mb-4 text-gray-600 max-w-md mx-auto">Start by placing your first order!</p>
+                        <p id="emptyOrdersLogsNote" class="hidden mb-6 text-sm text-gray-600 max-w-md mx-auto rounded-lg border border-[#D4AF37]/25 bg-[#FFF8F0]/80 px-4 py-3">
+                            Completed and cancelled orders are in <a href="clienthistory.html" class="font-semibold text-[#B8941E] underline">Logs</a> — check the <strong>Completed</strong> and <strong>Cancelled</strong> tabs.
+                        </p>
+                        <button id="emptyOrdersCta" onclick="openOrderModal()" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg">
                             Place Your First Order
                         </button>
                     </div>
@@ -269,11 +279,19 @@
                 <!-- Order Form -->
                 <div class="lg:col-span-2">
                         <form id="orderForm" class="space-y-4">
+                            <div class="rounded-xl border-2 border-[#D4AF37]/35 bg-gradient-to-r from-[#FFF8F0] to-[#FFEDE6] px-4 py-3 text-sm text-gray-800 shadow-sm" role="note">
+                                <p class="font-semibold text-[#B8941E] mb-1">
+                                    <i class="fas fa-layer-group mr-2" aria-hidden="true"></i>Multiple different orders?
+                                </p>
+                                <p class="leading-relaxed text-gray-700">
+                                    This form is for <strong>one cake setup</strong> at a time (flavor, size, frosting, design). If you need <strong>different cakes, sizes, or designs</strong> that don’t fit here in one go, please submit <strong>another separate order</strong>: add this one to your cart or finish checkout, then tap <strong class="text-[#B8941E]">New Order</strong> to fill the form again.
+                                </p>
+                            </div>
                             <!-- Select Cake -->
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
                                     <i class="fas fa-birthday-cake mr-2" style="color: #D4AF37;"></i>
-                                    Select Cake
+                                    Select Cake (Base Flavor)
                                 </label>
                                 <select id="cakeProduct" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
                                     <option value="">Choose a cake...</option>
@@ -305,35 +323,35 @@
                                 </p>
                             </div>
 
-                            <!-- Size -->
+                            <!-- Size (diameter × height in inches; prices used internally only) -->
                             <div>
-                                <label class="block text-gray-700 font-semibold mb-2">
+                                <label class="block text-gray-700 font-semibold mb-1">
                                     <i class="fas fa-ruler mr-2" style="color: #D4AF37;"></i>
                                     Size
                                 </label>
+                                <p class="text-xs text-gray-500 mb-3">
+                                    <span class="font-medium text-gray-600">Diameter × height</span> (inches). Unit price depends on <strong>cake flavor</strong>, <strong>frosting</strong>, and <strong>size</strong> (see frosting dropdown for S / M / L rates).
+                                </p>
                                 <div class="grid grid-cols-3 gap-4">
                                     <label class="relative cursor-pointer">
-                                        <input type="radio" name="size" value="Small" data-price="450" class="peer sr-only" checked>
+                                        <input type="radio" name="size" value="Small" class="peer sr-only" checked>
                                         <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
                                             <p class="font-semibold">Small</p>
-                                            <p class="text-sm text-gray-500">6-8 servings</p>
-                                            <p class="text-sm font-bold text-[#D4AF37] mt-1">₱450</p>
+                                            <p class="text-sm text-gray-600 mt-1 leading-snug">6&quot; × 4&quot;</p>
                                         </div>
                                     </label>
                                     <label class="relative cursor-pointer">
-                                        <input type="radio" name="size" value="Medium" data-price="810" class="peer sr-only">
+                                        <input type="radio" name="size" value="Medium" class="peer sr-only">
                                         <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
                                             <p class="font-semibold">Medium</p>
-                                            <p class="text-sm text-gray-500">12-15 servings</p>
-                                            <p class="text-sm font-bold text-[#D4AF37] mt-1">₱810</p>
+                                            <p class="text-sm text-gray-600 mt-1 leading-snug">8&quot; × 4&quot;</p>
                                         </div>
                                     </label>
                                     <label class="relative cursor-pointer">
-                                        <input type="radio" name="size" value="Large" data-price="1125" class="peer sr-only">
+                                        <input type="radio" name="size" value="Large" class="peer sr-only">
                                         <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
                                             <p class="font-semibold">Large</p>
-                                            <p class="text-sm text-gray-500">20-25 servings</p>
-                                            <p class="text-sm font-bold text-[#D4AF37] mt-1">₱1,125</p>
+                                            <p class="text-sm text-gray-600 mt-1 leading-snug">8&quot; × 6&quot;</p>
                                         </div>
                                     </label>
                                 </div>
@@ -341,16 +359,15 @@
 
                             <!-- Frosting -->
                             <div>
-                                <label class="block text-gray-700 font-semibold mb-2">
+                                <label class="block text-gray-700 font-semibold mb-1">
                                     <i class="fas fa-ice-cream mr-2" style="color: #D4AF37;"></i>
                                     Frosting
                                 </label>
-                                <select id="frosting" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
-                                    <option>Buttercream</option>
-                                    <option>Fondant</option>
-                                    <option>Cream Cheese</option>
-                                    <option>Whipped Cream</option>
-                                    <option>Ganache</option>
+                                <p class="text-xs text-gray-500 mb-2">Each option shows <strong>Small / Medium / Large</strong> prices for the <strong>cake flavor</strong> you selected above. Change flavor to refresh amounts.</p>
+                                <p class="text-xs text-amber-800/90 bg-amber-50 border border-amber-100 rounded-md px-2.5 py-2 mb-2"><i class="fas fa-info-circle mr-1" style="color: #D4AF37;"></i><strong>Note:</strong> Final price may still <strong>increase or vary</strong> depending on your <strong>cake design</strong> and <strong>materials used</strong>.</p>
+                                <select id="frosting" class="w-full px-3 py-2.5 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition text-sm">
+                                    <!-- Options rebuilt by js/clientordering-page.js (POS pricing matrix) -->
+                                    <option value="Buttercream">Buttercream</option>
                                 </select>
                             </div>
 
@@ -358,7 +375,7 @@
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
                                     <i class="fas fa-palette mr-2" style="color: #D4AF37;"></i>
-                                    Cake Design <span class="text-xs text-gray-500 font-normal">(Required for Fondant - Description and/or Image)</span>
+                                    Cake Design <span class="text-xs text-gray-500 font-normal">(Required for Buttercream &amp; Fondant, Ganache &amp; Fondant — description and/or image)</span>
                                 </label>
                                 <textarea 
                                     id="cakeDesign" 
@@ -368,37 +385,31 @@
                                 ></textarea>
                                 <p class="text-xs text-gray-500 mt-2 mb-3">
                                     <i class="fas fa-info-circle mr-1"></i>
-                                    Provide a description and/or upload a reference image
+                                    Provide a description and/or upload reference image(s)
                                 </p>
                                 
-                                <!-- Design Image Upload -->
+                                <!-- Design Image Upload (multiple, 100 MB total) -->
                                 <div class="mt-3">
                                     <label class="block text-gray-700 font-medium mb-2 text-sm">
-                                        <i class="fas fa-image mr-1" style="color: #D4AF37;"></i>
-                                        Reference Image <span class="text-xs text-gray-500 font-normal">(Optional)</span>
+                                        <i class="fas fa-images mr-1" style="color: #D4AF37;"></i>
+                                        Reference images <span class="text-xs text-gray-500 font-normal">(Optional — multiple)</span>
                                     </label>
                                     <div class="relative">
-                                        <input type="file" id="designImage" accept="image/*" class="hidden">
+                                        <input type="file" id="designImage" accept="image/*" multiple class="hidden">
                                         <label for="designImage" class="flex items-center justify-center w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#D4AF37] transition">
                                             <div class="text-center">
                                                 <i class="fas fa-cloud-upload-alt text-xl text-gray-400 mb-1"></i>
                                                 <p class="text-sm text-gray-600">
                                                     <span class="text-[#D4AF37] font-semibold">Click to upload</span> or drag and drop
                                                 </p>
-                                                <p class="text-xs text-gray-500 mt-1">PNG, JPG (Max 5MB)</p>
+                                                <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF, WebP — add several files; <strong>100 MB total</strong> max across all images</p>
                                             </div>
                                         </label>
                                     </div>
-                                    <div id="designImageFileName" class="mt-2 text-sm text-gray-600 hidden">
-                                        <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-2">
-                                            <div class="flex items-center">
-                                                <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                                <span id="designImageName" class="font-medium"></span>
-                                            </div>
-                                            <button type="button" onclick="removeDesignImage()" class="text-red-500 hover:text-red-700 transition">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        </div>
+                                    <div id="designImageListWrap" class="mt-2 space-y-2 hidden">
+                                        <p id="designImageTotalHint" class="text-xs text-gray-500"></p>
+                                        <div id="designImageList" class="space-y-2"></div>
+                                        <button type="button" id="designImageClearAll" class="text-sm text-red-600 hover:text-red-800 font-medium">Remove all images</button>
                                     </div>
                                 </div>
                             </div>
@@ -507,9 +518,9 @@
                                 <span class="text-gray-600">Cake:</span>
                                 <span id="summaryProduct" class="font-semibold">-</span>
                             </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-600">Size:</span>
-                                <span id="summarySize" class="font-semibold">Small</span>
+                            <div class="flex justify-between text-sm gap-2">
+                                <span class="text-gray-600 shrink-0">Size <span class="text-xs font-normal text-gray-500">(Ø×H)</span>:</span>
+                                <span id="summarySize" class="font-semibold text-right">Small — 6&quot;×4&quot;</span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Quantity:</span>
@@ -517,7 +528,11 @@
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Frosting:</span>
-                                <span id="summaryFrosting" class="font-semibold">Buttercream</span>
+                                <span id="summaryFrosting" class="font-semibold text-right max-w-[58%]">Buttercream</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Price per cake:</span>
+                                <span id="summaryUnitPrice" class="font-semibold text-[#B8941E]">—</span>
                             </div>
                             <div id="summaryDesignContainer" class="hidden">
                                 <div class="flex flex-col text-sm pt-2 border-t border-gray-200">
@@ -550,6 +565,10 @@
                                 <p class="font-semibold text-gray-700">Order rules</p>
                                 <p id="summaryOrderRulesLines"></p>
                                 <p class="text-[11px] text-red-600 mt-1 font-medium">All orders are final — no refunds.</p>
+                                <p class="mt-2 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs leading-snug font-semibold text-gray-900 bg-gradient-to-r from-[#FFF8F0] to-[#FFEDE6] border-2 border-[#D4AF37]/50 shadow-sm ring-1 ring-[#D4AF37]/20">
+                                    <i class="fas fa-info-circle mr-1.5 text-[#B8941E]" aria-hidden="true"></i>
+                                    If <span class="text-[#B8941E]">Meringued cancels</span> your order due to unforseen events, any eligible payment will be <span class="text-[#B8941E]">refunded manually</span>. We’ll reach out to you with next steps.
+                                </p>
                             </div>
                         </div>
 
@@ -593,6 +612,10 @@
             
             <!-- Modal Body -->
             <div class="p-6 overflow-y-auto max-h-[60vh]">
+                <p class="text-xs text-gray-600 mb-4 rounded-lg border border-[#D4AF37]/25 bg-[#FFF8F0]/90 px-3 py-2 leading-relaxed" role="note">
+                    <i class="fas fa-info-circle text-[#B8941E] mr-1" aria-hidden="true"></i>
+                    <strong>Different cake, size, or design?</strong> Each line should match one setup. Place this order, then use <strong class="text-[#B8941E]">New Order</strong> on the ordering page for anything else.
+                </p>
                 <div id="cartItems">
                     <!-- Cart items will be populated here -->
                     <div class="text-center py-12 text-gray-400">
@@ -765,25 +788,6 @@
         </div>
     </div>
 
-    <!-- Cancel Order Confirmation Modal -->
-    <div id="cancelOrderModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
-        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
-            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);">
-                <i class="fas fa-times text-white text-3xl"></i>
-            </div>
-            <h3 class="font-display text-2xl font-bold mb-2" style="color: #DC2626;">Cancel this order?</h3>
-            <p class="text-gray-600 mb-6">This action cannot be undone.</p>
-            <div class="flex space-x-4 justify-center">
-                <button onclick="closeCancelOrderModal()" class="px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
-                    Keep Order
-                </button>
-                <button onclick="confirmCancelOrder()" class="px-6 py-3 rounded-lg text-white font-semibold bg-red-600 hover:bg-red-700 transition">
-                    Cancel Order
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Alert Modal -->
     <div id="alertModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center transform transition-all">
@@ -829,6 +833,9 @@
     </footer>
 
     <script src="js/core/clientStorageKeys.js"></script>
+    <script src="js/applyStoredCustomerName.js"></script>
+    <script src="js/cakeSizeHelpers.js"></script>
+    <script type="module" src="js/shopSettingsBoot.js"></script>
     <script type="module" src="js/supabaseOrdersBridge.js"></script>
     <script src="js/clientordering-page.js"></script>
 

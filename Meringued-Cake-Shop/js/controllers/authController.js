@@ -11,6 +11,28 @@ function redirectByRole(profile) {
   window.location.href = role === 'admin' ? 'admindashboard.html' : 'clientdashboard.html';
 }
 
+/**
+ * Keep userName / userEmail / userId in localStorage for customer pages (early script + per-user keys).
+ * Works for new signups, existing accounts, and profiles where full_name was never set (email prefix fallback).
+ * @param {object} user - { id }
+ * @param {object} profile - { name, email } from auth metadata
+ * @param {string} [signupFullName] - raw name from signup form (strongest when metadata lags)
+ */
+export function persistCustomerIdentityLocal(user, profile, signupFullName) {
+  if (!user || !user.id) return '';
+  const trimmedSignup = signupFullName && String(signupFullName).trim();
+  const fromProfile = profile?.name && String(profile.name).trim();
+  const fromEmail =
+    profile?.email && String(profile.email).includes('@')
+      ? String(profile.email).split('@')[0].trim()
+      : '';
+  const displayName = fromProfile || trimmedSignup || fromEmail || '';
+  if (displayName) localStorage.setItem('userName', displayName);
+  if (profile?.email) localStorage.setItem('userEmail', profile.email);
+  localStorage.setItem('userId', user.id);
+  return displayName;
+}
+
 /** Returns true if login intent matches account role; false if mismatch (caller should block and reset). */
 function checkLoginIntentMatch(intent, profile) {
   if (!intent || !profile) return true;
@@ -31,6 +53,9 @@ async function handleMismatchAndReset(isCustomerIntent, profile) {
   localStorage.removeItem('userId');
   localStorage.removeItem('userName');
   localStorage.removeItem('userEmail');
+  try {
+    window._pendingUserAfter2FA = null;
+  } catch (e) { /* noop */ }
   if (typeof window.resetAuthModalToStep1 === 'function') window.resetAuthModalToStep1();
 }
 
@@ -54,16 +79,15 @@ async function handleLoginClick() {
         await handleMismatchAndReset(intent === 'customer', profile);
         return;
       }
-      // Sync displayed identity and user id so Order/Logs/Settings are unique per user.
-      if (profile?.name) localStorage.setItem('userName', profile.name);
-      if (profile?.email) localStorage.setItem('userEmail', profile.email);
-      if (user.id) localStorage.setItem('userId', user.id);
+      persistCustomerIdentityLocal(user, profile);
       showToast('Enter your 6-digit code', 'info');
       // Show 2FA step (demo: any 6 digits accepted; not wired to Supabase).
       window._pendingProfileAfter2FA = profile;
+      window._pendingUserAfter2FA = user;
       if (typeof window.show2FAStep === 'function') {
         window.show2FAStep();
       } else {
+        window._pendingUserAfter2FA = null;
         redirectByRole(profile);
       }
     }
@@ -76,13 +100,19 @@ async function handleLoginClick() {
 /** Called from index.html after user enters 6-digit 2FA code. Completes login redirect (demo: no server validation). */
 async function complete2FAAndRedirect() {
   const profile = window._pendingProfileAfter2FA;
+  const pendingUser = window._pendingUserAfter2FA;
   const intent = window._authLoginIntent;
   window._pendingProfileAfter2FA = null;
+  window._pendingUserAfter2FA = null;
   if (!profile) return;
   if (!checkLoginIntentMatch(intent, profile)) {
     await handleMismatchAndReset(intent === 'customer', profile);
     return;
   }
+  const user =
+    pendingUser ||
+    (localStorage.getItem('userId') ? { id: localStorage.getItem('userId') } : null);
+  if (user) persistCustomerIdentityLocal(user, profile);
   showToast('Welcome back!', 'success');
   redirectByRole(profile);
 }
@@ -115,9 +145,7 @@ async function handleSignupClick() {
         await handleMismatchAndReset(intent === 'customer', profile);
         return;
       }
-      localStorage.setItem('userName', fullName);
-      if (profile?.email) localStorage.setItem('userEmail', profile.email);
-      if (user.id) localStorage.setItem('userId', user.id);
+      persistCustomerIdentityLocal(user, profile, fullName);
       showToast('Account created!', 'success');
       redirectByRole(profile);
     }
@@ -130,12 +158,32 @@ async function handleSignupClick() {
 window.handleLogin = handleLoginClick;
 window.handleSignup = handleSignupClick;
 
-/** For protected pages: ensure user is logged in (and optionally has required role). */
+/**
+ * For protected pages: ensure user is logged in (and optionally has required role).
+ * - 'admin' → must be admin (else → index)
+ * - 'customer' → customer area only: admins are sent to admin dashboard (avoids wrong name / order bucket)
+ * - other string → profile.role must match
+ * - omitted → any signed-in user
+ */
 export async function ensureAuthenticated(requiredRole) {
   const { user, profile } = await getSessionWithProfile();
   if (!user) {
     window.location.href = 'index.html';
     return null;
+  }
+  if (requiredRole === 'admin') {
+    if (profile?.role !== 'admin') {
+      window.location.href = 'index.html';
+      return null;
+    }
+    return { user, profile };
+  }
+  if (requiredRole === 'customer') {
+    if (profile?.role === 'admin') {
+      window.location.replace('admindashboard.html');
+      return null;
+    }
+    return { user, profile };
   }
   if (requiredRole && profile?.role !== requiredRole) {
     window.location.href = 'index.html';

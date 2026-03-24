@@ -45,7 +45,7 @@ export async function getOrderCountsForAdminToday() {
 
 /**
  * Map app order (localStorage shape) to Supabase orders row.
- * @param {Object} order - { customer, name, size, quantity, dateNeeded, flavor, frosting, deliveryType, paymentMethod, price, status, userId, deliveryAddress, customerPhone, receipt, receiptFileName, dedication, cakeDesign, designImage, designImageName, ... }
+ * @param {Object} order - { ... cakeDesign, designImage?, designImageName?, designImages?: { dataUrl, name }[], ... }
  * @returns {Object} - row for `orders` including customer_phone (delivery only) and owner_phone (pickup only)
  */
 function isDeliverDeliveryType(order) {
@@ -88,19 +88,31 @@ function mapOrderToPayload(order) {
       downPaymentAmount: order.downPaymentAmount != null ? order.downPaymentAmount : null,
       receipt: order.receipt || null,
       designImage: order.designImage || null,
+      designImages:
+        Array.isArray(order.designImages) && order.designImages.length > 0 ? order.designImages : null,
       customerPhone: order.customerPhone || null,
       ownerPhone: order.ownerPhone || null,
     },
   };
 }
 
-/** Same row shape without huge base64 fields (receipt / design image) for retry inserts. */
+function detailsHasHeavyAttachments(d) {
+  if (!d || typeof d !== 'object') return false;
+  if (typeof d.receipt === 'string' && d.receipt.trim().length > 0) return true;
+  if (typeof d.designImage === 'string' && d.designImage.trim().length > 0) return true;
+  if (Array.isArray(d.designImages) && d.designImages.some((x) => x && typeof x.dataUrl === 'string' && x.dataUrl.trim().length > 0))
+    return true;
+  return false;
+}
+
+/** Same row shape without huge base64 fields (receipt / design image(s)) for retry inserts. */
 function slimOrderPayloadForInsert(payload) {
   if (!payload || typeof payload.details !== 'object' || payload.details === null) return null;
   const d = { ...payload.details };
-  if (!d.receipt && !d.designImage) return null;
+  if (!detailsHasHeavyAttachments(d)) return null;
   delete d.receipt;
   delete d.designImage;
+  delete d.designImages;
   d.receiptStoredLocallyOnly = true;
   return { ...payload, details: d };
 }

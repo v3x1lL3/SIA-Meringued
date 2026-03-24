@@ -39,7 +39,7 @@ function resolvePhonesFromRow(row, det) {
   };
 }
 
-function mapSupabaseRowToAppOrder(row) {
+export function mapSupabaseRowToAppOrder(row) {
   const det = parseDetails(row);
   const localId = det.localId != null ? det.localId : null;
   const phones = resolvePhonesFromRow(row, det);
@@ -60,6 +60,7 @@ function mapSupabaseRowToAppOrder(row) {
     dedication: det.dedication,
     designImage: det.designImage,
     designImageName: det.designImageName,
+    designImages: Array.isArray(det.designImages) ? det.designImages : null,
     deliveryType: row.delivery_type || det.deliveryType || 'Pick up',
     deliveryAddress: row.delivery_address || det.deliveryAddress,
     customerPhone: phones.customerPhone,

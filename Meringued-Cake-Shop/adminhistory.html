@@ -290,6 +290,7 @@
     </div>
 
     <script src="js/core/adminOrderStorage.js"></script>
+    <script src="js/cakeSizeHelpers.js"></script>
     <script>
         let orders = [];
 
@@ -413,6 +414,32 @@
             renderCancelledOrders();
         }
 
+        function orderHasDesignImages(order) {
+            if (!order) return false;
+            if (order.designImage) return true;
+            if (Array.isArray(order.designImages) && order.designImages.some(function (x) { return x && x.dataUrl; })) return true;
+            return false;
+        }
+        function buildAdminOrderDesignImagesHtml(order) {
+            var imgs = [];
+            if (Array.isArray(order.designImages) && order.designImages.length) {
+                order.designImages.forEach(function (x) {
+                    if (x && x.dataUrl) imgs.push({ dataUrl: x.dataUrl, name: x.name || 'image.jpg' });
+                });
+            } else if (order.designImage) {
+                imgs.push({ dataUrl: order.designImage, name: order.designImageName || 'design.jpg' });
+            }
+            if (!imgs.length) return '';
+            return imgs.map(function (im, i) {
+                var src = String(im.dataUrl).replace(/"/g, '&quot;');
+                var nm = escapeHtml(im.name);
+                var label = imgs.length > 1
+                    ? '<p class="text-xs text-gray-500 mb-1"><i class="fas fa-image mr-1"></i>Reference ' + (i + 1) + ': ' + nm + '</p>'
+                    : '<p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference: ' + nm + '</p>';
+                return '<div class="mt-2">' + label + '<img src="' + src + '" alt="Design reference" class="max-w-full h-auto rounded-lg shadow-md border-2 border-gray-200"></div>';
+            }).join('');
+        }
+
         // Order details modal
         function viewOrderDetails(orderId) {
             const order = orders.find(o => o.id === orderId);
@@ -423,7 +450,7 @@
                 <div class="space-y-6">
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Cake</p><p class="font-semibold text-gray-800">${escapeHtml(order.name || order.cake || 'Custom Order')}</p></div>
-                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Size</p><p class="font-semibold text-gray-800">${escapeHtml(order.size || 'N/A')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Size</p><p class="font-semibold text-gray-800">${escapeHtml(typeof window.formatCakeSizeForDisplay === 'function' ? window.formatCakeSizeForDisplay(order.size) : (order.size || 'N/A'))}</p></div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Quantity</p><p class="font-semibold text-gray-800">${order.quantity || 1}</p></div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Date Needed</p><p class="font-semibold text-gray-800">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : 'N/A'}</p></div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Flavor</p><p class="font-semibold text-gray-800">${escapeHtml(order.flavor || 'N/A')}</p></div>
@@ -436,16 +463,11 @@
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Order Date</p><p class="font-semibold text-gray-800">${escapeHtml(order.date || '')}</p></div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Price</p><p class="font-semibold text-[#D4AF37]">₱${(order.price || 0).toFixed(2)}</p></div>
                     </div>
-                    ${order.cakeDesign || order.designImage ? `
+                    ${order.cakeDesign || orderHasDesignImages(order) ? `
                         <div class="bg-[#FFF8F0] rounded-lg p-4">
                             <p class="text-xs text-gray-500 mb-2"><i class="fas fa-palette mr-1 text-[#D4AF37]"></i>Cake Design</p>
                             ${order.cakeDesign ? `<p class="text-gray-800 mb-2">${escapeHtml(order.cakeDesign)}</p>` : ''}
-                            ${order.designImage ? `
-                                <div class="mt-2">
-                                    <p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference Image: ${escapeHtml(order.designImageName || 'design.jpg')}</p>
-                                    <img src="${order.designImage}" alt="Design Reference" class="max-w-full h-auto rounded-lg shadow-md border-2 border-gray-200">
-                                </div>
-                            ` : ''}
+                            ${buildAdminOrderDesignImagesHtml(order)}
                         </div>
                     ` : ''}
                     ${order.dedication ? `

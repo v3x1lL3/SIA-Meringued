@@ -124,6 +124,54 @@
         if (expWrap) expWrap.classList.toggle('hidden', !isIng);
         var expTh = document.getElementById('invTableExpiryHeader');
         if (expTh) expTh.classList.toggle('hidden', !isIng);
+
+        var imgUrlInp = document.getElementById('invImageUrl');
+        if (imgUrlInp) {
+            imgUrlInp.placeholder = isIng
+                ? 'e.g., images/ingredients/fondant.png'
+                : 'e.g., images/miscellaneous/cake-boxes.png';
+        }
+
+        var wIng = document.getElementById('invSearchWrapIngredient');
+        var wMisc = document.getElementById('invSearchWrapMisc');
+        if (wIng) wIng.classList.toggle('hidden', !isIng);
+        if (wMisc) wMisc.classList.toggle('hidden', isIng);
+        var unitSel = document.getElementById('invUnit');
+        if (unitSel && !unitSel.value) unitSel.value = isIng ? 'units' : 'N/A';
+    }
+
+    /** Normalize for case-insensitive substring match (trim + collapse whitespace). */
+    function normalizeInventorySearchText(s) {
+        if (s == null || s === undefined) return '';
+        return String(s).trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    /** Active tab's search query (ingredient vs misc inputs are separate). */
+    function getInventorySearchQuery() {
+        var id = currentCategory === 'misc' ? 'inventorySearchInputMisc' : 'inventorySearchInputIngredient';
+        var el = document.getElementById(id);
+        if (!el || el.value == null) return '';
+        return normalizeInventorySearchText(el.value);
+    }
+
+    function applyDefaultInventoryEmptyCopy() {
+        var et = document.getElementById('inventoryEmptyTitle');
+        var eh = document.getElementById('inventoryEmptyHint');
+        if (!et || !eh) return;
+        var isIng = currentCategory === 'ingredient';
+        et.textContent = isIng ? 'No ingredients yet' : 'No miscellaneous items yet';
+        eh.textContent = isIng
+            ? 'Add your first ingredient above, or use Reset template to load the default list.'
+            : 'Add packaging or supply items above. This list is kept separately from baking ingredients.';
+    }
+
+    function applySearchNoMatchEmptyCopy() {
+        var et = document.getElementById('inventoryEmptyTitle');
+        var eh = document.getElementById('inventoryEmptyHint');
+        if (!et || !eh) return;
+        var isIng = currentCategory === 'ingredient';
+        et.textContent = isIng ? 'No ingredients match your search' : 'No miscellaneous items match your search';
+        eh.textContent = 'Try a different search term.';
     }
 
     function setInventoryCategory(cat) {
@@ -236,7 +284,10 @@
             { value: 'g', label: 'g' },
             { value: 'L', label: 'L' },
             { value: 'ml', label: 'ml' },
-            { value: 'pcs', label: 'pcs' }
+            { value: 'pcs', label: 'pcs' },
+            { value: 'roll', label: 'roll' },
+            { value: 'in', label: 'in' },
+            { value: 'N/A', label: 'N/A' }
         ];
         return units.map(function (u) {
             return '<option value="' + u.value + '"' + (u.value === selected ? ' selected' : '') + '>' + u.label + '</option>';
@@ -254,10 +305,37 @@
         if (!inventoryItems || inventoryItems.length === 0) {
             tbody.innerHTML = '';
             if (cardsGrid) cardsGrid.innerHTML = '';
-            if (emptyEl) emptyEl.classList.remove('hidden');
+            if (emptyEl) {
+                emptyEl.classList.remove('hidden');
+                applyDefaultInventoryEmptyCopy();
+            }
             return;
         }
-        if (emptyEl) emptyEl.classList.add('hidden');
+
+        var searchQ = getInventorySearchQuery();
+        var visibleItems = !searchQ
+            ? inventoryItems
+            : inventoryItems.filter(function (item) {
+                var hay = normalizeInventorySearchText(item.name);
+                return hay.indexOf(searchQ) !== -1;
+            });
+
+        if (visibleItems.length === 0) {
+            tbody.innerHTML = '';
+            if (cardsGrid) cardsGrid.innerHTML = '';
+            if (emptyEl) {
+                emptyEl.classList.remove('hidden');
+                applySearchNoMatchEmptyCopy();
+            }
+            updateLowStockBanner();
+            updateExpiryBanner();
+            return;
+        }
+
+        if (emptyEl) {
+            emptyEl.classList.add('hidden');
+            applyDefaultInventoryEmptyCopy();
+        }
 
         function setRowEditable(rowEl, editable) {
             if (!rowEl) return;
@@ -280,7 +358,7 @@
             }
         }
 
-        tbody.innerHTML = inventoryItems.map(function (item) {
+        tbody.innerHTML = visibleItems.map(function (item) {
             var qty = Number(item.quantity) || 0;
             var reorder = Number(item.reorderLevel) || 0;
             var low = reorder > 0 && qty <= reorder;
@@ -359,7 +437,7 @@
         }
 
         if (cardsGrid) {
-            cardsGrid.innerHTML = inventoryItems.map(function (item) {
+            cardsGrid.innerHTML = visibleItems.map(function (item) {
                 var qty = Number(item.quantity) || 0;
                 var reorder = Number(item.reorderLevel) || 0;
                 var low = reorder > 0 && qty <= reorder;
@@ -579,7 +657,7 @@
             var invExpiryDateEl = document.getElementById('invExpiryDate');
             if (qtyEl) qtyEl.value = 0;
             if (reorderEl) reorderEl.value = 0;
-            if (unitEl) unitEl.value = 'units';
+            if (unitEl) unitEl.value = currentCategory === 'misc' ? 'N/A' : 'units';
             if (invExpiryDateEl) invExpiryDateEl.value = '';
             var createBridge = currentCategory === 'misc' ? window.MiscInventorySupabase : window.InventorySupabase;
             if (createBridge && createBridge.create) {
@@ -642,6 +720,21 @@
             tabMisc.addEventListener('click', function () { setInventoryCategory('misc'); });
             tabIng.dataset.invTabBound = '1';
         }
+
+        function bindInventorySearchInput(inputId) {
+            var el = document.getElementById(inputId);
+            if (el && !el.dataset.invSearchBound) {
+                var rerender = function () { renderInventory(); };
+                el.addEventListener('input', rerender);
+                el.addEventListener('search', rerender);
+                el.addEventListener('paste', function () {
+                    setTimeout(rerender, 0);
+                });
+                el.dataset.invSearchBound = '1';
+            }
+        }
+        bindInventorySearchInput('inventorySearchInputIngredient');
+        bindInventorySearchInput('inventorySearchInputMisc');
 
         var tbody = document.getElementById('inventoryTableBody');
         if (!tbody) return;

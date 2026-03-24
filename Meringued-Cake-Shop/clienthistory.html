@@ -112,7 +112,7 @@
                 </div>
                 <div>
                     <p class="text-xs text-gray-500">Welcome</p>
-                    <p id="sidebarCustomerName" class="font-semibold text-gray-800">Guest</p>
+                    <p id="sidebarCustomerName" class="font-semibold text-gray-800 min-h-[1.25rem]"></p>
                 </div>
             </div>
         </div>
@@ -427,6 +427,9 @@
     </div>
 
     <script src="js/core/clientStorageKeys.js"></script>
+    <script src="js/applyStoredCustomerName.js"></script>
+    <script src="js/cakeSizeHelpers.js"></script>
+    <script type="module" src="js/shopSettingsBoot.js"></script>
     <script type="module" src="js/supabaseOrdersBridge.js"></script>
     <script>
         let cart = JSON.parse(localStorage.getItem(typeof getCartKey === 'function' ? getCartKey() : 'cart')) || [];
@@ -491,7 +494,10 @@
         }
 
         // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (window.__meringuedShopSettingsReady) {
+                try { await window.__meringuedShopSettingsReady; } catch (e) { /* noop */ }
+            }
             loadCustomerName();
             updateCartBadge();
             loadOrders();
@@ -519,11 +525,12 @@
         
         // Load customer name from localStorage
         function loadCustomerName() {
-            const customerName = localStorage.getItem('userName') || 'Guest';
+            const customerName = localStorage.getItem('userName');
             const sidebarName = document.getElementById('sidebarCustomerName');
-            if (sidebarName) {
-                sidebarName.textContent = customerName;
-            }
+            const mainName = document.getElementById('customerName');
+            const label = customerName && customerName.trim() ? customerName.trim() : '\u00A0';
+            if (sidebarName) sidebarName.textContent = label;
+            if (mainName) mainName.textContent = label;
         }
         
         // Initialize receipt upload file handling
@@ -843,7 +850,7 @@
                         <div class="flex-1">
                             <h3 class="font-bold text-lg text-gray-800 mb-2">${escapeHtml(item.name)}</h3>
                             <div class="text-sm text-gray-600 space-y-1">
-                                <p><i class="fas fa-ruler-combined w-4"></i> Size: ${escapeHtml(item.size)}</p>
+                                <p><i class="fas fa-ruler-combined w-4"></i> Size: ${escapeHtml(typeof window.formatCakeSizeForDisplay === 'function' ? window.formatCakeSizeForDisplay(item.size) : (item.size || '—'))}</p>
                                 <p><i class="fas fa-shopping-cart w-4"></i> Quantity: ${item.quantity}</p>
                                 <p><i class="fas fa-cookie-bite w-4"></i> Flavor: ${escapeHtml(item.flavor)}</p>
                                 <p><i class="fas fa-ice-cream w-4"></i> Frosting: ${escapeHtml(item.frosting)}</p>

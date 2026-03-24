@@ -123,10 +123,17 @@
 
     <script>
         const STORAGE_KEY = 'adminSettings';
-        function loadSettings() {
+        async function loadSettings() {
             try {
                 const raw = localStorage.getItem(STORAGE_KEY);
-                const s = raw ? JSON.parse(raw) : {};
+                let s = raw ? JSON.parse(raw) : {};
+                try {
+                    const mod = await import('./js/models/shopSettingsModel.js');
+                    const cloud = await mod.fetchPublicBusinessSettingsFromSupabase();
+                    if (cloud && typeof cloud === 'object') {
+                        s = { ...cloud, ...s };
+                    }
+                } catch (e2) { /* cloud optional */ }
                 document.getElementById('shopPhone').value = s.shopPhone || '09951016971';
                 document.getElementById('shopAddress').value = s.shopAddress || '';
                 document.getElementById('shopLat').value = s.shopLat != null ? s.shopLat : 7.079683;
@@ -136,9 +143,10 @@
                 document.getElementById('minAdvanceDays').value = s.minAdvanceDays != null ? s.minAdvanceDays : 2;
                 document.getElementById('minRushDays').value = s.minRushDays != null ? s.minRushDays : 0;
                 document.getElementById('notifyLowStock').checked = s.notifyLowStock !== false;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
             } catch (e) { console.warn('Load settings error', e); }
         }
-        function saveSettings(e) {
+        async function saveSettings(e) {
             e.preventDefault();
                 const s = {
                     shopPhone: document.getElementById('shopPhone').value.trim() || '09951016971',
@@ -152,13 +160,23 @@
                     notifyLowStock: document.getElementById('notifyLowStock').checked
                 };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-            alert('Settings saved. They are stored in this browser.');
+            let msg = 'Saved in this browser.';
+            try {
+                const { upsertPublicBusinessSettingsToSupabase } = await import('./js/models/shopSettingsModel.js');
+                const r = await upsertPublicBusinessSettingsToSupabase(s);
+                if (r && r.ok) msg += ' Customers (including other devices / incognito) will see pickup phone and business info after refresh.';
+                else msg += ' Cloud sync failed — run SUPABASE-BUSINESS-PUBLIC-SETTINGS.sql and ensure you are logged in as admin.';
+            } catch (err) {
+                console.warn('Shop settings cloud sync', err);
+                msg += ' Cloud sync unavailable (check console).';
+            }
+            alert(msg);
         }
         function openLogoutModal() { document.getElementById('logoutModal').classList.remove('hidden'); document.getElementById('logoutModal').classList.add('flex'); document.body.style.overflow = 'hidden'; }
         function closeLogoutModal() { document.getElementById('logoutModal').classList.add('hidden'); document.getElementById('logoutModal').classList.remove('flex'); document.body.style.overflow = 'auto'; }
         function confirmLogout() { window.location.href = 'index.html'; }
         document.getElementById('adminSettingsForm').addEventListener('submit', saveSettings);
-        document.addEventListener('DOMContentLoaded', loadSettings);
+        document.addEventListener('DOMContentLoaded', function () { loadSettings(); });
     </script>
 </body>
 </html>

@@ -7,10 +7,17 @@
         function toggleClientSidebar() { document.body.classList.toggle('sidebar-hidden'); }
         
         // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (window.__meringuedShopSettingsReady) {
+                try { await window.__meringuedShopSettingsReady; } catch (e) { /* noop */ }
+            }
+            // Per-user cart key is correct only after clientBootstrap sets userId (modules run before this event).
+            var cartKeyEarly = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+            cart = JSON.parse(localStorage.getItem(cartKeyEarly)) || [];
             loadCustomerName();
             updateCartBadge();
             syncPaymentPlanHints();
+            refreshPosFrostingDropdownLabels();
             calculatePrice();
             loadOrders();
             renderOrdersTable();
@@ -63,6 +70,7 @@
                 var cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
                 cart = JSON.parse(localStorage.getItem(cartKey)) || [];
                 updateCartBadge();
+                if (typeof refreshCustomerOrdersFromCloud === 'function') void refreshCustomerOrdersFromCloud();
             }
         });
         
@@ -70,6 +78,16 @@
         window.addEventListener('focus', function() {
             var cartKey = typeof getCartKey === 'function' ? getCartKey() : 'cart';
             cart = JSON.parse(localStorage.getItem(cartKey)) || [];
+            updateCartBadge();
+            if (typeof refreshCustomerOrdersFromCloud === 'function') void refreshCustomerOrdersFromCloud();
+        });
+
+        document.addEventListener('meringuedClientSessionReady', function () {
+            var cartKeyLate = typeof getCartKey === 'function' ? getCartKey() : 'cart';
+            cart = JSON.parse(localStorage.getItem(cartKeyLate)) || [];
+            loadCustomerName();
+            loadOrders();
+            if (typeof renderOrdersTable === 'function') renderOrdersTable();
             updateCartBadge();
         });
         
@@ -81,6 +99,7 @@
             document.getElementById('orderModal').classList.add('flex');
             document.body.style.overflow = 'hidden';
             syncPaymentPlanHints();
+            refreshPosFrostingDropdownLabels();
             calculatePrice();
             toggleDeliveryAddressSection();
         }
@@ -94,6 +113,7 @@
             document.getElementById('orderForm').reset();
             removeDesignImage();
             syncPaymentPlanHints();
+            refreshPosFrostingDropdownLabels();
             calculatePrice();
             toggleDeliveryAddressSection();
             setMinDate(); // Reset date to minimum
@@ -114,11 +134,12 @@
         
         // Load customer name from localStorage
         function loadCustomerName() {
-            const customerName = localStorage.getItem('userName') || 'Guest';
+            const customerName = localStorage.getItem('userName');
             const sidebarName = document.getElementById('sidebarCustomerName');
-            if (sidebarName) {
-                sidebarName.textContent = customerName;
-            }
+            const mainName = document.getElementById('customerName');
+            const label = customerName && customerName.trim() ? customerName.trim() : '\u00A0';
+            if (sidebarName) sidebarName.textContent = label;
+            if (mainName) mainName.textContent = label;
         }
         
         // Load orders from localStorage (per-user key)
@@ -129,22 +150,82 @@
                 orders = JSON.parse(storedOrders);
             }
         }
+
+        /** Normalize status from admin / Supabase (Completed, Cancelled, etc.). */
+        function normalizeClientOrderStatus(status) {
+            return String(status == null || status === '' ? 'Pending' : status).trim();
+        }
+
+        /** In-progress orders only: hide Completed & Cancelled (they live under Logs). */
+        function isPlacedOrderActive(order) {
+            const s = normalizeClientOrderStatus(order && order.status);
+            return s !== 'Completed' && s !== 'Cancelled';
+        }
+
+        var lastCloudOrdersRefreshMs = 0;
+        var CLOUD_ORDERS_REFRESH_MS = 4000;
+
+        async function refreshCustomerOrdersFromCloud() {
+            try {
+                var now = Date.now();
+                if (now - lastCloudOrdersRefreshMs < CLOUD_ORDERS_REFRESH_MS) return;
+                var uid = localStorage.getItem('userId');
+                if (!uid || uid === 'guest') return;
+                if (typeof window.hydrateCustomerOrdersFromSupabase !== 'function') return;
+                lastCloudOrdersRefreshMs = now;
+                await window.hydrateCustomerOrdersFromSupabase(uid);
+                loadOrders();
+                renderOrdersTable();
+            } catch (e) {
+                console.warn('[clientordering] refreshCustomerOrdersFromCloud', e);
+            }
+        }
+
+        /** Small/Medium/Large → display with diameter × height (see js/cakeSizeHelpers.js). */
+        function fmtCakeSizeForUi(sizeLabel) {
+            if (typeof window.formatCakeSizeForDisplay === 'function') {
+                return window.formatCakeSizeForDisplay(sizeLabel);
+            }
+            return sizeLabel != null && sizeLabel !== '' ? String(sizeLabel) : '—';
+        }
         
         // Render orders table
         function renderOrdersTable() {
             const tbody = document.getElementById('ordersTableBody');
             const emptyDiv = document.getElementById('emptyOrders');
             const table = document.getElementById('ordersTable');
+            const emptyHeading = document.getElementById('emptyOrdersHeading');
+            const emptySub = document.getElementById('emptyOrdersSub');
+            const emptyLogsNote = document.getElementById('emptyOrdersLogsNote');
+            const emptyCta = document.getElementById('emptyOrdersCta');
             
-            // Filter out cancelled orders - they should only appear in logs
-            const activeOrders = orders.filter(order => order.status !== 'Cancelled');
+            const activeOrders = orders.filter(isPlacedOrderActive);
+            const hasAnyOrders = Array.isArray(orders) && orders.length > 0;
             
             if (activeOrders.length === 0) {
                 tbody.innerHTML = '';
                 table.classList.add('hidden');
                 emptyDiv.classList.remove('hidden');
-                var logSectionEmpty = document.getElementById('orderLogSection');
-                if (logSectionEmpty) logSectionEmpty.classList.add('hidden');
+                if (emptyHeading && emptySub && emptyLogsNote && emptyCta) {
+                    if (!hasAnyOrders) {
+                        emptyHeading.textContent = 'No Orders Yet';
+                        emptySub.textContent = 'Start by placing your first order!';
+                        emptySub.classList.remove('hidden');
+                        emptyLogsNote.classList.add('hidden');
+                        emptyCta.classList.remove('hidden');
+                    } else {
+                        emptyHeading.textContent = 'No orders in progress';
+                        emptySub.textContent = 'When the shop marks your order Completed or Cancelled, it moves out of this list.';
+                        emptySub.classList.remove('hidden');
+                        emptyLogsNote.classList.remove('hidden');
+                        emptyCta.classList.remove('hidden');
+                    }
+                }
+                var logSectionWhenArchived = document.getElementById('orderLogSection');
+                if (logSectionWhenArchived) {
+                    if (hasAnyOrders) logSectionWhenArchived.classList.remove('hidden');
+                    else logSectionWhenArchived.classList.add('hidden');
+                }
                 return;
             }
             
@@ -188,14 +269,9 @@
                                 </span>
                             </td>
                             <td class="py-4 px-4 text-gray-700">
-                                <button onclick="downloadSingleOrderPdf(${order.id})" class="px-3 py-1 rounded-lg text-gray-700 bg-white hover:bg-[#FFF8F0] hover:text-[#B8941E] transition-all font-medium text-sm mr-1" title="Download this order as a PDF">
+                                <button onclick="downloadSingleOrderPdf(${order.id})" class="px-3 py-1 rounded-lg text-gray-700 bg-white hover:bg-[#FFF8F0] hover:text-[#B8941E] transition-all font-medium text-sm" title="Download this order as a PDF">
                                     <i class="fas fa-file-pdf mr-1 text-red-600"></i>PDF
                                 </button>
-                                ${
-                                    order.status === 'Pending'
-                                        ? `<button onclick="openCancelOrderModal(${order.id})" class="px-3 py-1 rounded-lg text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all font-medium text-sm">Cancel</button>`
-                                        : ''
-                                }
                             </td>
                         </tr>
                     `;
@@ -248,26 +324,99 @@
         const DELIVERY_CONFIG = getDeliveryConfig();
         const MIN_DELIVERY_FEE = DELIVERY_CONFIG.deliveryFee;
 
-        /** Current order form total (base + delivery fee) for receipt messaging. */
+        // ===== POS pricing: edit amounts below (flavor + frosting + size). Quantity multiplies per-cake unit. =====
+        var POS_FROSTING_ORDER = [
+            'Buttercream',
+            'Buttercream & Fondant',
+            'Cream Cheese',
+            'Whipped Cream',
+            'Ganache',
+            'Ganache & Fondant'
+        ];
+        /** Default S/M/L per frosting when no flavor-specific override exists. */
+        var POS_FROSTING_SIZE_BASE = {
+            'Buttercream': { Small: 1800, Medium: 3500, Large: 4200 },
+            'Buttercream & Fondant': { Small: 2000, Medium: 4000, Large: 5000 },
+            'Cream Cheese': { Small: 1800, Medium: 3500, Large: 4200 },
+            'Whipped Cream': { Small: 1500, Medium: 3200, Large: 3900 },
+            'Ganache': { Small: 2200, Medium: 3900, Large: 4500 },
+            'Ganache & Fondant': { Small: 2500, Medium: 4200, Large: 5100 }
+        };
+        /** Per flavor: optional partial overrides per frosting key (merge over POS_FROSTING_SIZE_BASE). */
+        var POS_FLAVOR_FROSTING_OVERRIDES = {
+            'Chocolate Moist': {
+                // Example: 'Ganache': { Small: 2300, Medium: 4000, Large: 4600 }
+            },
+            'Mocha': {},
+            'Vanilla': {}
+        };
+
+        function posMergeTier(base, over) {
+            return {
+                Small: over.Small != null ? over.Small : base.Small,
+                Medium: over.Medium != null ? over.Medium : base.Medium,
+                Large: over.Large != null ? over.Large : base.Large
+            };
+        }
+
+        function posGetTierPrices(flavor, frostingKey) {
+            var base = POS_FROSTING_SIZE_BASE[frostingKey] || { Small: 0, Medium: 0, Large: 0 };
+            var flavorMap = POS_FLAVOR_FROSTING_OVERRIDES[flavor];
+            if (!flavorMap || !flavorMap[frostingKey]) return base;
+            return posMergeTier(base, flavorMap[frostingKey]);
+        }
+
+        function posFormatPeso(n) {
+            return '₱' + Number(n).toFixed(0);
+        }
+
+        function refreshPosFrostingDropdownLabels() {
+            var sel = document.getElementById('frosting');
+            if (!sel) return;
+            var flavor = (document.getElementById('cakeProduct') && document.getElementById('cakeProduct').value) || '';
+            var prev = sel.value;
+            sel.innerHTML = '';
+            POS_FROSTING_ORDER.forEach(function (key) {
+                var tiers = posGetTierPrices(flavor, key);
+                var label = key + ' — S ' + posFormatPeso(tiers.Small) + ' · M ' + posFormatPeso(tiers.Medium) + ' · L ' + posFormatPeso(tiers.Large);
+                var opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = label;
+                sel.appendChild(opt);
+            });
+            if (prev && POS_FROSTING_ORDER.indexOf(prev) >= 0) sel.value = prev;
+        }
+
+        function getPosUnitPriceFromForm() {
+            var flavor = (document.getElementById('cakeProduct') && document.getElementById('cakeProduct').value) || '';
+            var frostingKey = (document.getElementById('frosting') && document.getElementById('frosting').value) || '';
+            var sizeRadio = document.querySelector('input[name="size"]:checked');
+            var size = sizeRadio ? sizeRadio.value : 'Small';
+            if (!flavor || !frostingKey) return 0;
+            var tiers = posGetTierPrices(flavor, frostingKey);
+            var unit = tiers[size];
+            return Number.isFinite(unit) ? unit : 0;
+        }
+
+        /** Current order form total (per-cake unit × qty + delivery fee) for receipt messaging. */
         function getFormTotalForReceipt() {
-            const sizeRadio = document.querySelector('input[name="size"]:checked');
-            const sizePrice = parseFloat(sizeRadio?.dataset.price) || 450;
+            const unitPrice = getPosUnitPriceFromForm();
             const quantity = parseInt(document.getElementById('quantity')?.value) || 1;
             const deliveryRadio = document.querySelector('input[name="deliveryType"]:checked');
             const isDeliver = deliveryRadio && deliveryRadio.value === 'Deliver';
             const deliveryFee = isDeliver ? MIN_DELIVERY_FEE : 0;
-            return sizePrice * quantity + deliveryFee;
+            return unitPrice * quantity + deliveryFee;
         }
 
-        // Calculate price (size × quantity + delivery fee when Deliver)
+        // Calculate price (unit × quantity + delivery fee when Deliver)
         function calculatePrice() {
             const sizeRadio = document.querySelector('input[name="size"]:checked');
-            const sizePrice = parseFloat(sizeRadio?.dataset.price) || 450;
+            const unitPrice = getPosUnitPriceFromForm();
             const quantity = parseInt(document.getElementById('quantity').value) || 1;
             const deliveryRadio = document.querySelector('input[name="deliveryType"]:checked');
             const isDeliver = deliveryRadio && deliveryRadio.value === 'Deliver';
             const deliveryFee = isDeliver ? MIN_DELIVERY_FEE : 0;
-            const baseTotal = sizePrice * quantity;
+            const baseTotal = unitPrice * quantity;
             const total = baseTotal + deliveryFee;
 
             document.getElementById('totalPrice').textContent = '₱' + total.toFixed(0);
@@ -276,9 +425,14 @@
             const productSelect = document.getElementById('cakeProduct');
             const selectedOption = productSelect.options[productSelect.selectedIndex];
             document.getElementById('summaryProduct').textContent = selectedOption ? selectedOption.value || '-' : '-';
-            document.getElementById('summarySize').textContent = sizeRadio ? sizeRadio.value : 'Small';
+            document.getElementById('summarySize').textContent = fmtCakeSizeForUi(sizeRadio ? sizeRadio.value : 'Small');
             document.getElementById('summaryQty').textContent = quantity;
-            document.getElementById('summaryFrosting').textContent = document.getElementById('frosting').value;
+            var frostSel = document.getElementById('frosting');
+            document.getElementById('summaryFrosting').textContent = (frostSel && frostSel.value) ? frostSel.value : '—';
+            var unitEl = document.getElementById('summaryUnitPrice');
+            if (unitEl) {
+                unitEl.textContent = unitPrice > 0 ? ('₱' + unitPrice.toFixed(0)) : '—';
+            }
             document.getElementById('summaryDelivery').textContent = deliveryRadio ? deliveryRadio.value : 'Pick up';
 
             // Delivery fee row (show only when Deliver)
@@ -354,7 +508,10 @@
         }
 
         // Event listeners for price calculation
-        document.getElementById('cakeProduct').addEventListener('change', calculatePrice);
+        document.getElementById('cakeProduct').addEventListener('change', function () {
+            refreshPosFrostingDropdownLabels();
+            calculatePrice();
+        });
         document.getElementById('quantity').addEventListener('input', calculatePrice);
         document.querySelectorAll('input[name="size"]').forEach(radio => {
             radio.addEventListener('change', calculatePrice);
@@ -492,47 +649,145 @@
         syncPaymentPlanHints();
         document.getElementById('cakeDesign').addEventListener('input', calculatePrice);
         
-        // Design image handling
-        let designImageData = null;
-        let designImageFileName = null;
-        
-        document.getElementById('designImage').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            
-            if (file) {
-                // Validate file size (5MB max)
-                if (file.size > 5 * 1024 * 1024) {
-                    showAlertModal('File size must be less than 5MB', 'error');
-                    e.target.value = '';
-                    document.getElementById('designImageFileName').classList.add('hidden');
-                    designImageData = null;
-                    designImageFileName = null;
-                    return;
-                }
-                
-                // Convert to base64
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    designImageData = e.target.result;
-                    designImageFileName = file.name;
+        // Reference images: multiple files, 100 MB total (stored as base64 in order / localStorage)
+        var MAX_REFERENCE_IMAGES_TOTAL_BYTES = 100 * 1024 * 1024;
+        /** @type {{ dataUrl: string, name: string, size: number }[]} */
+        var designImageItems = [];
+
+        function designImagesTotalBytes() {
+            return designImageItems.reduce(function (s, it) {
+                return s + (it.size || 0);
+            }, 0);
+        }
+
+        function getDesignImagesForOrderPayload() {
+            return designImageItems.map(function (it) {
+                return { dataUrl: it.dataUrl, name: it.name };
+            });
+        }
+
+        function hasDesignReferenceUpload() {
+            return designImageItems.length > 0;
+        }
+
+        function renderDesignImageList() {
+            var wrap = document.getElementById('designImageListWrap');
+            var list = document.getElementById('designImageList');
+            var hint = document.getElementById('designImageTotalHint');
+            if (!wrap || !list) return;
+            if (designImageItems.length === 0) {
+                wrap.classList.add('hidden');
+                list.innerHTML = '';
+                return;
+            }
+            wrap.classList.remove('hidden');
+            var total = designImagesTotalBytes();
+            hint.textContent =
+                'Total: ' +
+                (total / (1024 * 1024)).toFixed(2) +
+                ' MB / 100 MB · ' +
+                designImageItems.length +
+                ' image(s). Add more files until you reach the limit.';
+            list.innerHTML = designImageItems
+                .map(function (it, idx) {
+                    var safeSrc = String(it.dataUrl).replace(/"/g, '&quot;');
+                    return (
+                        '<div class="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-2">' +
+                        '<img src="' +
+                        safeSrc +
+                        '" alt="" class="w-14 h-14 object-cover rounded border border-gray-200 shrink-0"/>' +
+                        '<div class="flex-1 min-w-0">' +
+                        '<p class="text-sm font-medium truncate">' +
+                        escapeHtml(it.name) +
+                        '</p>' +
+                        '<p class="text-xs text-gray-500">' +
+                        (it.size / (1024 * 1024)).toFixed(2) +
+                        ' MB</p>' +
+                        '</div>' +
+                        '<button type="button" class="text-red-500 hover:text-red-700 shrink-0 p-2" onclick="removeDesignImageAt(' +
+                        idx +
+                        ')" aria-label="Remove image"><i class="fas fa-times"></i></button>' +
+                        '</div>'
+                    );
+                })
+                .join('');
+        }
+
+        window.removeDesignImageAt = function (index) {
+            if (index < 0 || index >= designImageItems.length) return;
+            designImageItems.splice(index, 1);
+            renderDesignImageList();
+        };
+
+        document.getElementById('designImage').addEventListener('change', function (e) {
+            var files = e.target.files;
+            if (!files || files.length === 0) {
+                e.target.value = '';
+                return;
+            }
+            var arr = Array.from(files).filter(function (f) {
+                return f.type && f.type.indexOf('image/') === 0;
+            });
+            if (arr.length !== files.length) {
+                showAlertModal('Only image files are allowed.', 'warning');
+            }
+            if (arr.length === 0) {
+                e.target.value = '';
+                return;
+            }
+            var existing = designImagesTotalBytes();
+            var newSum = arr.reduce(function (s, f) {
+                return s + f.size;
+            }, 0);
+            if (existing + newSum > MAX_REFERENCE_IMAGES_TOTAL_BYTES) {
+                showAlertModal(
+                    'Total size of reference images cannot exceed 100 MB. Remove some images or choose smaller files.',
+                    'error'
+                );
+                e.target.value = '';
+                return;
+            }
+            var pending = arr.length;
+            var errCount = 0;
+            arr.forEach(function (file) {
+                var reader = new FileReader();
+                reader.onload = function (ev) {
+                    designImageItems.push({
+                        dataUrl: ev.target.result,
+                        name: file.name,
+                        size: file.size
+                    });
+                    pending--;
+                    if (pending === 0) {
+                        if (errCount) showAlertModal('Could not read one or more images.', 'error');
+                        renderDesignImageList();
+                    }
+                };
+                reader.onerror = function () {
+                    errCount++;
+                    pending--;
+                    if (pending === 0) {
+                        if (errCount) showAlertModal('Could not read one or more images.', 'error');
+                        renderDesignImageList();
+                    }
                 };
                 reader.readAsDataURL(file);
-                
-                document.getElementById('designImageName').textContent = file.name;
-                document.getElementById('designImageFileName').classList.remove('hidden');
-            } else {
-                document.getElementById('designImageFileName').classList.add('hidden');
-                designImageData = null;
-                designImageFileName = null;
-            }
+            });
+            e.target.value = '';
         });
-        
-        // Remove design image
+
+        var designClearAllBtn = document.getElementById('designImageClearAll');
+        if (designClearAllBtn) {
+            designClearAllBtn.addEventListener('click', function () {
+                removeDesignImage();
+            });
+        }
+
         function removeDesignImage() {
-            document.getElementById('designImage').value = '';
-            document.getElementById('designImageFileName').classList.add('hidden');
-            designImageData = null;
-            designImageFileName = null;
+            var inp = document.getElementById('designImage');
+            if (inp) inp.value = '';
+            designImageItems = [];
+            renderDesignImageList();
         }
         
         // Receipt upload modal handling
@@ -640,9 +895,9 @@
             const frosting = document.getElementById('frosting').value;
             const cakeDesign = document.getElementById('cakeDesign').value.trim();
             
-            // Validate: Cake design (description or image) is required if Fondant is selected
-            if (frosting.includes('Fondant') && !cakeDesign && !designImageData) {
-                showAlertModal('Please provide a cake design description and/or upload a reference image for Fondant cakes. This helps us create your custom design!', 'warning');
+            // Validate: design required when frosting includes Fondant (e.g. Buttercream & Fondant, Ganache & Fondant)
+            if (frosting.includes('Fondant') && !cakeDesign && !hasDesignReferenceUpload()) {
+                showAlertModal('Please provide a cake design description and/or upload a reference image for frostings that include fondant. This helps us create your custom design!', 'warning');
                 document.getElementById('cakeDesign').focus();
                 return;
             }
@@ -672,8 +927,14 @@
                 flavor: cake,
                 frosting: frosting,
                 cakeDesign: cakeDesign,
-                designImage: designImageData,
-                designImageName: designImageFileName,
+                designImages: getDesignImagesForOrderPayload(),
+                designImage: designImageItems[0] ? designImageItems[0].dataUrl : null,
+                designImageName:
+                    designImageItems.length === 0
+                        ? null
+                        : designImageItems.length === 1
+                          ? designImageItems[0].name
+                          : designImageItems.length + ' images',
                 dedication: document.getElementById('dedication').value,
                 deliveryType: document.querySelector('input[name="deliveryType"]:checked')?.value || 'Pick up',
                 paymentMethod: (function () {
@@ -705,6 +966,7 @@
             // Reset form
             document.getElementById('orderForm').reset();
             removeDesignImage();
+            refreshPosFrostingDropdownLabels();
             calculatePrice();
             toggleDeliveryAddressSection();
             setMinDate(); // Reset date to minimum
@@ -736,9 +998,9 @@
             const frosting = document.getElementById('frosting').value;
             const cakeDesign = document.getElementById('cakeDesign').value.trim();
             
-            // Validate: Cake design (description or image) is required if Fondant is selected
-            if (frosting.includes('Fondant') && !cakeDesign && !designImageData) {
-                showAlertModal('Please provide a cake design description and/or upload a reference image for Fondant cakes. This helps us create your custom design!', 'warning');
+            // Validate: design required when frosting includes Fondant (e.g. Buttercream & Fondant, Ganache & Fondant)
+            if (frosting.includes('Fondant') && !cakeDesign && !hasDesignReferenceUpload()) {
+                showAlertModal('Please provide a cake design description and/or upload a reference image for frostings that include fondant. This helps us create your custom design!', 'warning');
                 document.getElementById('cakeDesign').focus();
                 return;
             }
@@ -783,8 +1045,14 @@
                 flavor: cake,
                 frosting: frosting,
                 cakeDesign: cakeDesign,
-                designImage: designImageData,
-                designImageName: designImageFileName,
+                designImages: getDesignImagesForOrderPayload(),
+                designImage: designImageItems[0] ? designImageItems[0].dataUrl : null,
+                designImageName:
+                    designImageItems.length === 0
+                        ? null
+                        : designImageItems.length === 1
+                          ? designImageItems[0].name
+                          : designImageItems.length + ' images',
                 dedication: document.getElementById('dedication').value,
                 deliveryType: document.querySelector('input[name="deliveryType"]:checked')?.value || 'Pick up',
                 paymentMethod: paymentMethod,
@@ -836,6 +1104,7 @@
             renderOrdersTable();
             document.getElementById('orderForm').reset();
             removeDesignImage();
+            refreshPosFrostingDropdownLabels();
             calculatePrice();
             toggleDeliveryAddressSection();
             setMinDate();
@@ -918,13 +1187,13 @@
                                 <span class="font-bold text-lg text-gray-800 mb-2">${escapeHtml(item.name)}</span>
                             </label>
                             <div class="text-sm text-gray-600 space-y-1">
-                                <p><i class="fas fa-ruler-combined w-4"></i> Size: ${escapeHtml(item.size)}</p>
+                                <p><i class="fas fa-ruler-combined w-4"></i> Size: ${escapeHtml(fmtCakeSizeForUi(item.size))}</p>
                                 <p><i class="fas fa-shopping-cart w-4"></i> Quantity: ${item.quantity}</p>
                                 <p><i class="fas fa-calendar-alt w-4"></i> Date Needed: ${item.dateNeeded ? new Date(item.dateNeeded).toLocaleDateString() : 'N/A'}</p>
                                 <p><i class="fas fa-cookie-bite w-4"></i> Cake: ${escapeHtml(item.flavor)}</p>
                                 <p><i class="fas fa-ice-cream w-4"></i> Frosting: ${escapeHtml(item.frosting)}</p>
                                 ${item.cakeDesign ? `<p class="mt-2 pt-2 border-t border-gray-200"><i class="fas fa-palette w-4"></i> <strong>Design:</strong> ${escapeHtml(item.cakeDesign)}</p>` : ''}
-                                ${item.designImage ? `<p class="text-xs text-gray-500 mt-1"><i class="fas fa-image mr-1"></i>Has design image</p>` : ''}
+                                ${item.designImages && item.designImages.length ? `<p class="text-xs text-gray-500 mt-1"><i class="fas fa-images mr-1"></i>${item.designImages.length} reference image(s)</p>` : item.designImage ? `<p class="text-xs text-gray-500 mt-1"><i class="fas fa-image mr-1"></i>Has design image</p>` : ''}
                                 <p>Delivery: ${escapeHtml(item.deliveryType || 'Pick up')}</p>
                                 <p>Payment: ${item.paymentPlan === '50% Down Payment' || item.paymentMethod === '50% Down Payment' ? '50% online now + balance at pickup/delivery' + (item.downPaymentAmount != null ? ' (₱' + item.downPaymentAmount + ' due now)' : '') : item.paymentMethod === 'Cash on Delivery' ? 'Pay in full (legacy COD)' : 'Pay in full (online)'}</p>
                                 ${item.dedication ? `<p><i class="fas fa-pen-fancy w-4"></i> "${escapeHtml(item.dedication)}"</p>` : ''}
@@ -1001,7 +1270,6 @@
         
         // Process cart orders — each row must insert to Supabase before it counts as placed (like Records).
         async function processCartOrders(receiptData, receiptFileName, items = null) {
-            var ordersKey = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
             const orderGroupId = generateOrderGroupId();
             const defaultPhone = (function(){ try { var k = typeof getSettingsKey === 'function' ? getSettingsKey() : 'clientSettings'; var s = JSON.parse(localStorage.getItem(k) || '{}'); return (s.clientPhone || '').trim(); } catch(e){ return ''; } })();
             const currentPhone = document.getElementById('customerPhone')?.value?.trim() || defaultPhone;
@@ -1011,6 +1279,11 @@
                 return;
             }
             const uid = localStorage.getItem('userId') || null;
+            if (!uid || uid === 'guest') {
+                showAlertModal('Your session is not ready. Please refresh the page, then try checkout again.', 'warning');
+                return;
+            }
+            var ordersKey = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders_' + uid;
 
             if (typeof window.syncOrderToSupabase !== 'function') {
                 notifyCloudSyncFailed();
@@ -1138,6 +1411,53 @@
         }
 
         // ===== ORDER DETAILS MODAL FUNCTIONS =====
+
+        function orderHasDesignImages(order) {
+            if (!order) return false;
+            if (order.designImage) return true;
+            if (
+                Array.isArray(order.designImages) &&
+                order.designImages.some(function (x) {
+                    return x && x.dataUrl;
+                })
+            )
+                return true;
+            return false;
+        }
+
+        function buildOrderDesignImagesHtml(order) {
+            var imgs = [];
+            if (Array.isArray(order.designImages) && order.designImages.length) {
+                order.designImages.forEach(function (x) {
+                    if (x && x.dataUrl) imgs.push({ dataUrl: x.dataUrl, name: x.name || 'image.jpg' });
+                });
+            } else if (order.designImage) {
+                imgs.push({ dataUrl: order.designImage, name: order.designImageName || 'design.jpg' });
+            }
+            if (!imgs.length) return '';
+            return imgs
+                .map(function (im, i) {
+                    var src = String(im.dataUrl).replace(/"/g, '&quot;');
+                    var nm = escapeHtml(im.name);
+                    var label =
+                        imgs.length > 1
+                            ? '<p class="text-xs text-gray-500 mb-1"><i class="fas fa-image mr-1"></i>Reference ' +
+                              (i + 1) +
+                              ': ' +
+                              nm +
+                              '</p>'
+                            : '<p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference: ' + nm + '</p>';
+                    return (
+                        '<div class="mt-2">' +
+                        label +
+                        '<img src="' +
+                        src +
+                        '" alt="Design reference" class="max-w-full h-auto rounded-lg shadow-md border-2 border-gray-200">' +
+                        '</div>'
+                    );
+                })
+                .join('');
+        }
         
         // View order details
         function viewOrderDetails(orderId) {
@@ -1160,7 +1480,7 @@
                         </div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4">
                             <p class="text-xs text-gray-500 mb-1">Size</p>
-                            <p class="font-semibold text-gray-800">${escapeHtml(order.size || 'N/A')}</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(fmtCakeSizeForUi(order.size))}</p>
                         </div>
                         <div class="bg-[#FFF8F0] rounded-lg p-4">
                             <p class="text-xs text-gray-500 mb-1">Quantity</p>
@@ -1185,16 +1505,11 @@
                         </div>
                     </div>
                     
-                    ${order.cakeDesign || order.designImage ? `
+                    ${order.cakeDesign || orderHasDesignImages(order) ? `
                     <div class="bg-[#FFF8F0] rounded-lg p-4">
                         <p class="text-xs text-gray-500 mb-2"><i class="fas fa-palette mr-1 text-[#D4AF37]"></i>Cake Design</p>
                         ${order.cakeDesign ? `<p class="text-gray-800 mb-2">${escapeHtml(order.cakeDesign)}</p>` : ''}
-                        ${order.designImage ? `
-                            <div class="mt-2">
-                                <p class="text-xs text-gray-500 mb-2"><i class="fas fa-image mr-1"></i>Reference Image: ${escapeHtml(order.designImageName || 'design.jpg')}</p>
-                                <img src="${order.designImage}" alt="Design Reference" class="max-w-full h-auto rounded-lg shadow-md border-2 border-gray-200">
-                            </div>
-                        ` : ''}
+                        ${buildOrderDesignImagesHtml(order)}
                     </div>
                     ` : ''}
                     
@@ -1251,7 +1566,7 @@
             lines.push('Order ID: ' + (order.orderGroupId || order.id || '—'));
             lines.push('Date ordered: ' + (order.date || '—'));
             lines.push('Cake: ' + (order.name || order.cake || 'Custom Order'));
-            lines.push('Size: ' + (order.size || '—'));
+            lines.push('Size: ' + fmtCakeSizeForUi(order.size));
             lines.push('Quantity: ' + (order.quantity != null ? order.quantity : '—'));
             lines.push('Flavor: ' + (order.flavor || '—'));
             lines.push('Frosting: ' + (order.frosting || '—'));
@@ -1268,6 +1583,16 @@
                 lines.push('');
                 lines.push('Design:');
                 lines.push(order.cakeDesign);
+            }
+            if (orderHasDesignImages(order)) {
+                lines.push('');
+                var refN =
+                    Array.isArray(order.designImages) && order.designImages.length
+                        ? order.designImages.filter(function (x) {
+                              return x && x.dataUrl;
+                          }).length
+                        : 1;
+                lines.push('Reference image(s): ' + refN + ' (view photos in order details in the app)');
             }
             if (order.dedication) {
                 lines.push('');
@@ -1329,6 +1654,7 @@
                 ? ('<div class="sub">50% due now: ' + formatMoneyPhp(order.downPaymentAmount) + '</div>')
                 : '';
             const status = (order.status || '—');
+            const sizeLine = fmtCakeSizeForUi(order.size);
 
             const html = `
 <!doctype html>
@@ -1366,6 +1692,10 @@
       <tr>
         <th>Cake</th>
         <td>${escapeHtml(cake)}</td>
+      </tr>
+      <tr>
+        <th>Size</th>
+        <td>${escapeHtml(sizeLine)}</td>
       </tr>
       <tr>
         <th>Qty</th>
@@ -1408,12 +1738,12 @@
         }
 
         function downloadAllOrdersTxt() {
-            const activeOrders = orders.filter(function (o) { return o.status !== 'Cancelled'; });
-            if (!activeOrders.length) {
+            const allForLog = Array.isArray(orders) ? orders.slice() : [];
+            if (!allForLog.length) {
                 showAlertModal('No orders to download.', 'info');
                 return;
             }
-            const sorted = activeOrders.slice().reverse();
+            const sorted = allForLog.slice().reverse();
             const parts = [];
             sorted.forEach(function (o, idx) {
                 if (idx > 0) {
@@ -1436,13 +1766,13 @@
         }
 
         function downloadAllOrdersPdf() {
-            const activeOrders = orders.filter(function (o) { return o.status !== 'Cancelled'; });
-            if (!activeOrders.length) {
+            const allForLog = Array.isArray(orders) ? orders.slice() : [];
+            if (!allForLog.length) {
                 showAlertModal('No orders to download.', 'info');
                 return;
             }
 
-            const sorted = activeOrders.slice().reverse();
+            const sorted = allForLog.slice().reverse();
             const title = 'Meringued — Orders Log';
             const generatedAt = new Date().toLocaleString();
 
@@ -1599,42 +1929,8 @@
             document.getElementById('receiptViewContent').innerHTML = '';
         }
 
-        // ===== CANCEL ORDER FUNCTIONS =====
-        let pendingCancelOrderId = null;
-
-        function openCancelOrderModal(orderId) {
-            pendingCancelOrderId = orderId;
-            document.getElementById('cancelOrderModal').classList.remove('hidden');
-            document.getElementById('cancelOrderModal').classList.add('flex');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeCancelOrderModal() {
-            document.getElementById('cancelOrderModal').classList.add('hidden');
-            document.getElementById('cancelOrderModal').classList.remove('flex');
-            document.body.style.overflow = 'auto';
-            pendingCancelOrderId = null;
-        }
-
-        function confirmCancelOrder() {
-            if (!pendingCancelOrderId) return;
-            var ordersKey = typeof getOrdersKey === 'function' ? getOrdersKey() : 'customerOrders';
-            const storedOrders = localStorage.getItem(ordersKey);
-            orders = storedOrders ? JSON.parse(storedOrders) : [];
-            const idx = orders.findIndex(o => o.id === pendingCancelOrderId);
-            if (idx !== -1 && (orders[idx].status === 'Pending' || !orders[idx].status)) {
-                orders[idx].status = 'Cancelled';
-                localStorage.setItem(ordersKey, JSON.stringify(orders));
-                renderOrdersTable();
-                showToast('Order cancelled', 'info');
-            } else {
-                showAlertModal('Only pending orders can be cancelled.', 'warning');
-            }
-
-            closeCancelOrderModal();
-        }
-
         // ===== LOGOUT FUNCTIONS =====
+        // (Customer self-cancel removed: online / 50% down payments are non-refundable; contact the shop if you need help.)
         
         // Open logout confirmation modal
         function openLogoutModal() {
@@ -1755,11 +2051,6 @@
                 const receiptViewModal = document.getElementById('receiptViewModal');
                 if (receiptViewModal && !receiptViewModal.classList.contains('hidden')) {
                     closeReceiptViewModal();
-                    return;
-                }
-                const cancelOrderModal = document.getElementById('cancelOrderModal');
-                if (cancelOrderModal && !cancelOrderModal.classList.contains('hidden')) {
-                    closeCancelOrderModal();
                     return;
                 }
                 const receiptModal = document.getElementById('receiptUploadModal');

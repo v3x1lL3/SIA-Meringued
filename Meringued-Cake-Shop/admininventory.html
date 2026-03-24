@@ -215,6 +215,9 @@
                                 <option value="L">L</option>
                                 <option value="ml">ml</option>
                                 <option value="pcs">pcs</option>
+                                <option value="roll">roll</option>
+                                <option value="in">in</option>
+                                <option value="N/A">N/A</option>
                             </select>
                         </div>
                         <div>
@@ -247,6 +250,14 @@
                             <i class="fas fa-clipboard-list mr-2 text-[#D4AF37]"></i>Ingredients list
                         </h3>
                         <p class="text-xs text-gray-600 max-w-xl"><strong>Purchase expenses:</strong> each <strong>Stock In</strong> logs to <strong>Records → Purchase expenses</strong> using <strong>Price (₱/unit)</strong>. Add other purchases manually there if needed.</p>
+                    </div>
+                    <div id="invSearchWrapIngredient" class="mb-4">
+                        <label for="inventorySearchInputIngredient" class="sr-only">Search ingredients</label>
+                        <input id="inventorySearchInputIngredient" type="search" autocomplete="off" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm text-gray-800 placeholder:text-gray-400" placeholder="Search ingredients..." />
+                    </div>
+                    <div id="invSearchWrapMisc" class="mb-4 hidden">
+                        <label for="inventorySearchInputMisc" class="sr-only">Search miscellaneous items</label>
+                        <input id="inventorySearchInputMisc" type="search" autocomplete="off" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm text-gray-800 placeholder:text-gray-400" placeholder="Search miscellaneous..." />
                     </div>
                     <div id="inventoryLowStockBanner" class="hidden mb-4 rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
                         <p class="font-semibold text-amber-800 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> Low stock — please restock</p>

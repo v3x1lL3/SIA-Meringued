@@ -333,6 +333,8 @@
                                 <option value="L">L</option>
                                 <option value="ml">ml</option>
                                 <option value="pcs">pcs</option>
+                                <option value="roll">roll</option>
+                                <option value="in">in</option>
                             </select>
                         </div>
                         <div>
@@ -365,6 +367,14 @@
                             <i class="fas fa-clipboard-list mr-2 text-[#D4AF37]"></i>Ingredients list
                         </h3>
                         <p class="text-xs text-gray-600 max-w-xl"><strong>Purchase expenses:</strong> each <strong>Stock In</strong> logs to <strong>Records → Purchase expenses</strong> using <strong>Price (₱/unit)</strong>. Add other purchases manually there if needed.</p>
+                    </div>
+                    <div id="invSearchWrapIngredient" class="mb-4">
+                        <label for="inventorySearchInputIngredient" class="sr-only">Search ingredients</label>
+                        <input id="inventorySearchInputIngredient" type="search" autocomplete="off" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm text-gray-800 placeholder:text-gray-400" placeholder="Search ingredients..." />
+                    </div>
+                    <div id="invSearchWrapMisc" class="mb-4 hidden">
+                        <label for="inventorySearchInputMisc" class="sr-only">Search miscellaneous items</label>
+                        <input id="inventorySearchInputMisc" type="search" autocomplete="off" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm text-gray-800 placeholder:text-gray-400" placeholder="Search miscellaneous..." />
                     </div>
                     <div id="inventoryLowStockBanner" class="hidden mb-4 rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
                         <p class="font-semibold text-amber-800 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> Low stock — please restock</p>
@@ -430,6 +440,7 @@
     </div>
     
     <script src="js/core/adminOrderStorage.js"></script>
+    <script src="js/cakeSizeHelpers.js"></script>
     <script>
         let orders = [];
 
@@ -553,7 +564,7 @@
                             <div class="flex justify-between items-start gap-3 mb-2">
                                 <div class="flex-1 min-w-0">
                                     <h3 class="font-medium text-gray-900 truncate">${escapeHtml(order.name || order.cake || 'Order')}</h3>
-                                    <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(order.size || '—')} · Qty ${order.quantity || 1} · ${escapeHtml(order.deliveryType || 'Pick up')}</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(typeof window.formatCakeSizeForDisplay === 'function' ? window.formatCakeSizeForDisplay(order.size) : (order.size || '—'))} · Qty ${order.quantity || 1} · ${escapeHtml(order.deliveryType || 'Pick up')}</p>
                                 </div>
                                 <span class="shrink-0 px-2.5 py-0.5 rounded-md text-xs font-medium ${statusColor}">
                                     ${escapeHtml(order.status || 'Pending')}

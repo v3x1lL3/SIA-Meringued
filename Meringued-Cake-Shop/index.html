@@ -991,20 +991,20 @@
         });
     </script>
 
-    <!-- Footer location from admin settings (same as Contact Us / pickup location) -->
-    <script>
-        (function() {
-            try {
-                var raw = localStorage.getItem('adminSettings');
-                var s = raw ? JSON.parse(raw) : {};
-                var lat = s.shopLat != null ? Number(s.shopLat) : 7.079683;
-                var lng = s.shopLng != null ? Number(s.shopLng) : 125.539021;
-                var mapLink = document.getElementById('footerMapLink');
-                var addressText = document.getElementById('footerAddressText');
-                if (mapLink) mapLink.href = 'https://www.google.com/maps?q=' + lat + ',' + lng;
-                if (addressText && s.shopAddress) addressText.textContent = s.shopAddress;
-            } catch (e) {}
-        })();
+    <!-- Footer location from admin settings (synced from Supabase when table exists) -->
+    <script type="module">
+        import { hydrateShopSettingsToLocalStorage } from './js/models/shopSettingsModel.js';
+        await hydrateShopSettingsToLocalStorage();
+        try {
+            var raw = localStorage.getItem('adminSettings');
+            var s = raw ? JSON.parse(raw) : {};
+            var lat = s.shopLat != null ? Number(s.shopLat) : 7.079683;
+            var lng = s.shopLng != null ? Number(s.shopLng) : 125.539021;
+            var mapLink = document.getElementById('footerMapLink');
+            var addressText = document.getElementById('footerAddressText');
+            if (mapLink) mapLink.href = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+            if (addressText && s.shopAddress) addressText.textContent = s.shopAddress;
+        } catch (e) {}
     </script>
 
     <!-- Fallback so onclick never throws if the auth module fails to load (e.g. file:// or CORS) -->
