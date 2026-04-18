@@ -262,6 +262,69 @@ function formatDate(yyyyMmDd) {
   }
 }
 
+function exportCurrentRecordsPdf() {
+  const type = getActiveType();
+  const label = TYPE_LABEL[type] || type;
+  const rows = Array.isArray(lastLoaded) ? lastLoaded.slice() : [];
+  if (!rows.length) {
+    showToast('No records to export for this type.', 'info');
+    return;
+  }
+  const generated = new Date().toLocaleString();
+  const rowsHtml = rows
+    .map((r) => {
+      const amount = r.amount == null ? '—' : ('₱' + formatMoney(r.amount));
+      return (
+        '<tr>' +
+        '<td>' + escapeHtml(formatDate(r.record_date)) + '</td>' +
+        '<td>' + escapeHtml(r.title || '') + '</td>' +
+        '<td class="right">' + escapeHtml(amount) + '</td>' +
+        '<td>' + escapeHtml(r.ref || '—') + '</td>' +
+        '<td>' + escapeHtml((r.notes || '').trim() || '—') + '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+  const html = `
+<!doctype html>
+<html><head><meta charset="utf-8"/>
+<title>Meringued Records - ${escapeHtml(label)}</title>
+<style>
+@page { margin: 14mm; }
+body{font-family:Arial,sans-serif;color:#111827;}
+.letterhead{border:2px solid #d4af37;border-radius:12px;padding:12px 14px;margin-bottom:12px;background:#fff8f0;}
+.brand{font-size:22px;font-weight:700;color:#b8941e;margin:0;}
+.tagline{margin:2px 0 0 0;color:#6b7280;font-size:12px;}
+.contacts{margin-top:6px;color:#4b5563;font-size:11px;}
+h1{margin:0 0 4px 0;font-size:18px;}
+.meta{color:#6b7280;font-size:12px;margin-bottom:10px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th,td{border:1px solid #e5e7eb;padding:8px;vertical-align:top;}
+th{background:#fff7ed;text-align:left;}
+.right{text-align:right;}
+.no-print{margin-bottom:10px;}
+@media print{.no-print{display:none !important;}}
+</style></head>
+<body>
+<div class="no-print"><button onclick="window.print()" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-weight:600;">Print / Save as PDF</button></div>
+<div class="letterhead"><p class="brand">Meringued</p><p class="tagline">Artisanal Visual Artistry | Custom Cakes</p><p class="contacts">Davao City • 0945 812 5225 / 0938 597 0991 • avadueyg@gmail.com</p></div>
+<h1>Records Export — ${escapeHtml(label)}</h1>
+<div class="meta">Generated: ${escapeHtml(generated)} · Total records: ${rows.length}</div>
+<table><thead><tr><th style="width:13%">Date</th><th style="width:23%">Title</th><th style="width:12%">Amount</th><th style="width:16%">Ref</th><th>Notes</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+</body></html>`;
+  const win = window.open('', '_blank');
+  if (!win) {
+    showToast('Popup blocked. Please allow popups to export PDF.', 'error');
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => {
+    try { win.print(); } catch (_) { /* noop */ }
+  }, 250);
+}
+
 function openModal() {
   const modal = qs('#recordModal');
   if (!modal) return;
@@ -547,6 +610,37 @@ function renderRows(rows) {
 
 let lastLoaded = [];
 let lastSource = 'local';
+let recordsPage = 1;
+let recordsPageSize = 10;
+
+function paginateRows(rows) {
+  const total = Array.isArray(rows) ? rows.length : 0;
+  const pageSize = recordsPageSize;
+  const pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(total / pageSize));
+  if (recordsPage > pageCount) recordsPage = pageCount;
+  if (recordsPage < 1) recordsPage = 1;
+  const start = pageSize === 'all' ? 0 : (recordsPage - 1) * pageSize;
+  const end = pageSize === 'all' ? total : start + pageSize;
+  return {
+    rows: (rows || []).slice(start, end),
+    total,
+    pageCount,
+    start: total === 0 ? 0 : start + 1,
+    end: Math.min(end, total),
+  };
+}
+
+function updateRecordsPager(total, pageCount, start, end) {
+  const info = qs('#recordsPageInfo');
+  const prev = qs('#recordsPrevPage');
+  const next = qs('#recordsNextPage');
+  if (info) {
+    if (!total) info.textContent = 'Page 1 of 1';
+    else info.textContent = `Page ${recordsPage} of ${pageCount} · ${start}-${end} of ${total}`;
+  }
+  if (prev) prev.disabled = recordsPage <= 1;
+  if (next) next.disabled = recordsPage >= pageCount;
+}
 
 async function refresh() {
   const activeType = getActiveType();
@@ -570,15 +664,19 @@ async function refresh() {
   const searched = applySearch(rows, search);
   lastLoaded = applyStockInOutFilter(searched, activeType);
   lastSource = source;
-
-  renderRows(lastLoaded);
+  const paged = paginateRows(lastLoaded);
+  renderRows(paged.rows);
+  updateRecordsPager(paged.total, paged.pageCount, paged.start, paged.end);
   updateRecordsAmountColumnVisibility();
   renderPurchaseDailyTotals(lastLoaded, activeType);
   renderSalesDailyTotals(lastLoaded, activeType);
   updateActionsVisibility(activeType);
   const summary = qs('#recordsSummary');
   const src = qs('#recordsSource');
-  if (summary) summary.textContent = `${TYPE_LABEL[activeType] || activeType}: ${lastLoaded.length} record${lastLoaded.length === 1 ? '' : 's'}`;
+  if (summary) {
+    const shown = paged.rows.length;
+    summary.textContent = `${TYPE_LABEL[activeType] || activeType}: ${paged.total} record${paged.total === 1 ? '' : 's'} (showing ${shown})`;
+  }
   if (src) src.textContent = source === 'supabase' ? 'Source: Supabase' : 'Source: localStorage (Supabase table not configured yet)';
 }
 
@@ -865,6 +963,7 @@ async function init() {
         setDatePresetUi('all');
       }
       saveTabFilters(getActiveType());
+      recordsPage = 1;
       await refresh();
     });
   });
@@ -887,6 +986,7 @@ async function init() {
         /* ignore */
       }
       setActiveTab(type);
+      recordsPage = 1;
       qs('#recordType').value = type;
       applyTabFiltersToInputs(loadTabFilters(type));
       updateRecordsFilterHeading(type);
@@ -899,6 +999,7 @@ async function init() {
 
   qs('#applyFiltersBtn')?.addEventListener('click', async () => {
     saveTabFilters(getActiveType());
+    recordsPage = 1;
     await refresh();
   });
   qs('#resetFiltersBtn')?.addEventListener('click', async () => {
@@ -912,11 +1013,13 @@ async function init() {
     setDatePresetUi('today');
     saveTabFilters(getActiveType());
     setStockFilter('all');
+    recordsPage = 1;
     await refresh();
   });
   qs('#stockInOutFilter')?.querySelectorAll('.stock-filter-btn')?.forEach(btn => {
     btn.addEventListener('click', async () => {
       setStockFilter(btn.getAttribute('data-stock') || 'all');
+      recordsPage = 1;
       await refresh();
     });
   });
@@ -924,9 +1027,26 @@ async function init() {
     if (e.key === 'Enter') {
       e.preventDefault();
       saveTabFilters(getActiveType());
+      recordsPage = 1;
       refresh();
     }
   });
+
+  qs('#recordsPageSize')?.addEventListener('change', async (e) => {
+    const raw = e.target.value;
+    recordsPageSize = raw === 'all' ? 'all' : Math.max(1, parseInt(raw, 10) || 10);
+    recordsPage = 1;
+    await refresh();
+  });
+  qs('#recordsPrevPage')?.addEventListener('click', async () => {
+    recordsPage = Math.max(1, recordsPage - 1);
+    await refresh();
+  });
+  qs('#recordsNextPage')?.addEventListener('click', async () => {
+    recordsPage += 1;
+    await refresh();
+  });
+  qs('#exportRecordsPdfBtn')?.addEventListener('click', exportCurrentRecordsPdf);
 
   qs('#addRecordBtn')?.addEventListener('click', () => {
     if (getActiveType() === 'eod_inventory_audit') {

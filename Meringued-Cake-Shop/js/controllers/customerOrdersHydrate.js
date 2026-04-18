@@ -11,6 +11,11 @@ function mergeCustomerLocalWithCloud(local, cloudMapped) {
     if (o && o.supabase_id != null) localBySb.set(String(o.supabase_id), o);
   });
   const cloudIds = new Set(cloudMapped.map((o) => String(o.supabase_id)));
+  const cloudLocalIds = new Set(
+    cloudMapped
+      .map((o) => (o && o.id != null ? String(o.id) : ''))
+      .filter((x) => x)
+  );
   const merged = cloudMapped.map((c) => {
     const lo = localBySb.get(String(c.supabase_id));
     if (lo && lo.receipt && (!c.receipt || String(c.receipt).trim() === '')) {
@@ -25,6 +30,9 @@ function mergeCustomerLocalWithCloud(local, cloudMapped) {
   (local || []).forEach((lo) => {
     if (!lo) return;
     if (lo.supabase_id && cloudIds.has(String(lo.supabase_id))) return;
+    // If this local order matches a cloud-mapped order by local id, prefer the cloud copy
+    // (local may be stale when status was updated by admin).
+    if (lo.id != null && cloudLocalIds.has(String(lo.id))) return;
     merged.push(lo);
   });
   return merged;

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Access - Meringued</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+        :root { --gold: #D4AF37; --gold-dark: #B8941E; --cream: #FFF8F0; }
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(160deg, #FFF8F0 0%, #FFEDE6 50%, #FFF8F0 100%); min-height: 100vh; }
+        .font-display { font-family: 'Playfair Display', serif; }
+        .btn-gold { background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); color: #fff; }
+    </style>
+</head>
+<body class="flex items-center justify-center p-6">
+    <main class="w-full max-w-xl bg-white/95 backdrop-blur-sm rounded-2xl border-2 border-[#D4AF37]/25 shadow-xl p-7 md:p-10">
+        <a href="index.html" class="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-[#B8941E] mb-5">
+            <i class="fas fa-arrow-left"></i> Back to website
+        </a>
+        <h1 class="font-display text-4xl font-bold text-[#D4AF37] mb-2">Admin Access</h1>
+        <p class="text-gray-600 mb-8">Web page for administrator authentication.</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <a href="admin-login.html" class="btn-gold rounded-xl py-4 px-4 text-center font-semibold hover:opacity-95 transition inline-flex items-center justify-center gap-2">
+                <i class="fas fa-user-shield"></i> Admin Login
+            </a>
+            <a href="admin-signup.html" class="rounded-xl py-4 px-4 text-center font-semibold border-2 border-[#D4AF37]/45 text-[#B8941E] hover:bg-[#FFF8F0] transition inline-flex items-center justify-center gap-2">
+                <i class="fas fa-user-plus"></i> Admin Signup
+            </a>
+        </div>
+    </main>
+</body>
+</html>

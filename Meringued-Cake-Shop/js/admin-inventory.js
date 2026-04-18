@@ -9,6 +9,8 @@
     const INVENTORY_STORAGE_KEY = 'adminInventoryItems';
     const MISC_STORAGE_KEY = 'adminMiscInventoryItems';
     var currentCategory = 'ingredient';
+    var inventoryPage = 1;
+    var inventoryPageSize = 10;
     const DEFAULT_INGREDIENTS = [
         'Fondant', 'Flour', 'Sugar', 'Cocoa', 'Compound Chocolate',
         'Baking Soda', 'Baking Powder', 'Evaporated Milk', 'Condensed Milk',
@@ -178,6 +180,7 @@
         if (cat !== 'ingredient' && cat !== 'misc') return;
         saveInventory();
         currentCategory = cat;
+        inventoryPage = 1;
         try { sessionStorage.setItem('adminInventoryCategory', cat); } catch (e) { /* noop */ }
         loadInventory();
         updateInventoryCategoryUI();
@@ -319,6 +322,26 @@
                 var hay = normalizeInventorySearchText(item.name);
                 return hay.indexOf(searchQ) !== -1;
             });
+        var totalVisible = visibleItems.length;
+        var pageSize = inventoryPageSize;
+        var pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalVisible / pageSize));
+        if (inventoryPage > pageCount) inventoryPage = pageCount;
+        if (inventoryPage < 1) inventoryPage = 1;
+        var start = pageSize === 'all' ? 0 : (inventoryPage - 1) * pageSize;
+        var end = pageSize === 'all' ? totalVisible : start + pageSize;
+        var pagedItems = visibleItems.slice(start, end);
+        var pageInfoEl = document.getElementById('inventoryPageInfo');
+        var prevBtn = document.getElementById('inventoryPrevPage');
+        var nextBtn = document.getElementById('inventoryNextPage');
+        var pagerWrap = document.getElementById('inventoryPagerWrap');
+        if (pagerWrap) pagerWrap.classList.toggle('hidden', totalVisible === 0);
+        if (pageInfoEl) {
+            pageInfoEl.textContent = totalVisible
+                ? ('Page ' + inventoryPage + ' of ' + pageCount + ' · ' + (start + 1) + '-' + Math.min(end, totalVisible) + ' of ' + totalVisible)
+                : 'Page 1 of 1';
+        }
+        if (prevBtn) prevBtn.disabled = inventoryPage <= 1;
+        if (nextBtn) nextBtn.disabled = inventoryPage >= pageCount;
 
         if (visibleItems.length === 0) {
             tbody.innerHTML = '';
@@ -358,7 +381,7 @@
             }
         }
 
-        tbody.innerHTML = visibleItems.map(function (item) {
+        tbody.innerHTML = pagedItems.map(function (item) {
             var qty = Number(item.quantity) || 0;
             var reorder = Number(item.reorderLevel) || 0;
             var low = reorder > 0 && qty <= reorder;
@@ -437,7 +460,7 @@
         }
 
         if (cardsGrid) {
-            cardsGrid.innerHTML = visibleItems.map(function (item) {
+            cardsGrid.innerHTML = pagedItems.map(function (item) {
                 var qty = Number(item.quantity) || 0;
                 var reorder = Number(item.reorderLevel) || 0;
                 var low = reorder > 0 && qty <= reorder;
@@ -725,16 +748,43 @@
             var el = document.getElementById(inputId);
             if (el && !el.dataset.invSearchBound) {
                 var rerender = function () { renderInventory(); };
-                el.addEventListener('input', rerender);
-                el.addEventListener('search', rerender);
+                var rerenderResetPage = function () { inventoryPage = 1; rerender(); };
+                el.addEventListener('input', rerenderResetPage);
+                el.addEventListener('search', rerenderResetPage);
                 el.addEventListener('paste', function () {
-                    setTimeout(rerender, 0);
+                    setTimeout(rerenderResetPage, 0);
                 });
                 el.dataset.invSearchBound = '1';
             }
         }
         bindInventorySearchInput('inventorySearchInputIngredient');
         bindInventorySearchInput('inventorySearchInputMisc');
+        var pageSizeSel = document.getElementById('inventoryPageSize');
+        if (pageSizeSel && !pageSizeSel.dataset.boundPager) {
+            pageSizeSel.addEventListener('change', function (e) {
+                var raw = e.target.value;
+                inventoryPageSize = raw === 'all' ? 'all' : Math.max(1, parseInt(raw, 10) || 10);
+                inventoryPage = 1;
+                renderInventory();
+            });
+            pageSizeSel.dataset.boundPager = '1';
+        }
+        var prevBtn = document.getElementById('inventoryPrevPage');
+        if (prevBtn && !prevBtn.dataset.boundPager) {
+            prevBtn.addEventListener('click', function () {
+                inventoryPage = Math.max(1, inventoryPage - 1);
+                renderInventory();
+            });
+            prevBtn.dataset.boundPager = '1';
+        }
+        var nextBtn = document.getElementById('inventoryNextPage');
+        if (nextBtn && !nextBtn.dataset.boundPager) {
+            nextBtn.addEventListener('click', function () {
+                inventoryPage += 1;
+                renderInventory();
+            });
+            nextBtn.dataset.boundPager = '1';
+        }
 
         var tbody = document.getElementById('inventoryTableBody');
         if (!tbody) return;

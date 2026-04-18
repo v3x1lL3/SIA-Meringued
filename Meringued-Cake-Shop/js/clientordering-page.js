@@ -3,6 +3,8 @@
         // Track selections in the cart modal
         let selectedCartIndexes = new Set();
         let orders = [];
+        let customerOrdersPage = 1;
+        let customerOrdersPageSize = 10;
 
         function toggleClientSidebar() { document.body.classList.toggle('sidebar-hidden'); }
         
@@ -82,6 +84,13 @@
             if (typeof refreshCustomerOrdersFromCloud === 'function') void refreshCustomerOrdersFromCloud();
         });
 
+        // Keep statuses fresh while user stays on the page (admin may update status anytime).
+        // The refresh function is internally throttled (CLOUD_ORDERS_REFRESH_MS).
+        setInterval(function () {
+            if (document.hidden) return;
+            if (typeof refreshCustomerOrdersFromCloud === 'function') void refreshCustomerOrdersFromCloud();
+        }, 5000);
+
         document.addEventListener('meringuedClientSessionReady', function () {
             var cartKeyLate = typeof getCartKey === 'function' ? getCartKey() : 'cart';
             cart = JSON.parse(localStorage.getItem(cartKeyLate)) || [];
@@ -89,6 +98,8 @@
             loadOrders();
             if (typeof renderOrdersTable === 'function') renderOrdersTable();
             updateCartBadge();
+            // First sync after session becomes ready (pull latest statuses from Supabase).
+            if (typeof refreshCustomerOrdersFromCloud === 'function') void refreshCustomerOrdersFromCloud();
         });
         
         // ===== ORDER MODAL FUNCTIONS =====
@@ -198,6 +209,10 @@
             const emptySub = document.getElementById('emptyOrdersSub');
             const emptyLogsNote = document.getElementById('emptyOrdersLogsNote');
             const emptyCta = document.getElementById('emptyOrdersCta');
+            const pagerWrap = document.getElementById('customerOrdersPagerWrap');
+            const pageInfo = document.getElementById('customerOrdersPageInfo');
+            const prevBtn = document.getElementById('customerOrdersPrevPage');
+            const nextBtn = document.getElementById('customerOrdersNextPage');
             
             const activeOrders = orders.filter(isPlacedOrderActive);
             const hasAnyOrders = Array.isArray(orders) && orders.length > 0;
@@ -226,16 +241,28 @@
                     if (hasAnyOrders) logSectionWhenArchived.classList.remove('hidden');
                     else logSectionWhenArchived.classList.add('hidden');
                 }
+                if (pagerWrap) pagerWrap.classList.add('hidden');
                 return;
             }
             
             table.classList.remove('hidden');
             emptyDiv.classList.add('hidden');
+            if (pagerWrap) pagerWrap.classList.remove('hidden');
+
+            const sortedActiveOrders = activeOrders.slice().reverse(); // newest first
+            const totalItems = sortedActiveOrders.length;
+            const pageSize = customerOrdersPageSize;
+            const pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalItems / pageSize));
+            if (customerOrdersPage > pageCount) customerOrdersPage = pageCount;
+            if (customerOrdersPage < 1) customerOrdersPage = 1;
+            const start = pageSize === 'all' ? 0 : (customerOrdersPage - 1) * pageSize;
+            const end = pageSize === 'all' ? totalItems : start + pageSize;
+            const visibleOrders = sortedActiveOrders.slice(start, end);
+            if (pageInfo) pageInfo.textContent = 'Page ' + customerOrdersPage + ' of ' + pageCount;
+            if (prevBtn) prevBtn.disabled = customerOrdersPage <= 1;
+            if (nextBtn) nextBtn.disabled = customerOrdersPage >= pageCount;
             
-            const rowsHTML = activeOrders
-                .slice()
-                .reverse() // Show newest first
-                .map(order => {
+            const rowsHTML = visibleOrders.map(order => {
                     const statusColor = getStatusColor(order.status);
                     return `
                         <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
@@ -281,6 +308,21 @@
             var logSection = document.getElementById('orderLogSection');
             if (logSection) logSection.classList.remove('hidden');
         }
+
+        document.getElementById('customerOrdersPageSize')?.addEventListener('change', function (e) {
+            const raw = e.target.value;
+            customerOrdersPageSize = raw === 'all' ? 'all' : Math.max(1, parseInt(raw, 10) || 10);
+            customerOrdersPage = 1;
+            renderOrdersTable();
+        });
+        document.getElementById('customerOrdersPrevPage')?.addEventListener('click', function () {
+            customerOrdersPage = Math.max(1, customerOrdersPage - 1);
+            renderOrdersTable();
+        });
+        document.getElementById('customerOrdersNextPage')?.addEventListener('click', function () {
+            customerOrdersPage += 1;
+            renderOrdersTable();
+        });
         
         /** Customer-facing payment line (two business options: 50% down vs pay in full). */
         function clientOrderPaymentLabel(order) {
@@ -1666,6 +1708,10 @@
   <style>
     @page { margin: 14mm; }
     body { font-family: Arial, sans-serif; color: #111827; }
+    .letterhead { border: 2px solid #d4af37; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; background: #fff8f0; }
+    .brand { font-size: 22px; font-weight: 700; color: #b8941e; margin: 0; letter-spacing: 0.2px; }
+    .tagline { margin: 2px 0 0 0; color: #6b7280; font-size: 12px; }
+    .contacts { margin-top: 6px; color: #4b5563; font-size: 11px; }
     h1 { margin: 0 0 6px 0; font-size: 18px; }
     .meta { color: #6b7280; font-size: 12px; margin-bottom: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -1813,6 +1859,10 @@
   <style>
     @page { margin: 14mm; }
     body { font-family: Arial, sans-serif; color: #111827; }
+    .letterhead { border: 2px solid #d4af37; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; background: #fff8f0; }
+    .brand { font-size: 22px; font-weight: 700; color: #b8941e; margin: 0; letter-spacing: 0.2px; }
+    .tagline { margin: 2px 0 0 0; color: #6b7280; font-size: 12px; }
+    .contacts { margin-top: 6px; color: #4b5563; font-size: 11px; }
     h1 { margin: 0 0 6px 0; font-size: 18px; }
     .meta { color: #6b7280; font-size: 12px; margin-bottom: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -1831,6 +1881,11 @@
 <body>
   <div class="no-print" style="margin-bottom:10px;">
     <button onclick="window.print()" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-weight:600;">Print / Save as PDF</button>
+  </div>
+  <div class="letterhead">
+    <p class="brand">Meringued</p>
+    <p class="tagline">Artisanal Visual Artistry | Custom Cakes</p>
+    <p class="contacts">Davao City • 0945 812 5225 / 0938 597 0991 • avadueyg@gmail.com</p>
   </div>
   <h1>${title}</h1>
   <div class="meta">Generated: ${escapeHtml(generatedAt)}</div>

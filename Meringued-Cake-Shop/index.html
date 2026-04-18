@@ -57,10 +57,7 @@
                 <a href="#gallery" class="nav-link">Gallery</a>
                 <a href="#order" class="nav-link">Order</a>
                 <a href="customer-login.html" class="btn-gold text-white font-semibold px-5 py-2.5 rounded-full text-sm hover:shadow-lg transition inline-flex items-center gap-2">
-                    <i class="fas fa-user"></i> Customer
-                </a>
-                <a href="admin-login.html" class="px-5 py-2.5 rounded-full text-sm font-semibold border-2 border-[#D4AF37]/50 text-[#B8941E] hover:bg-[#FFF8F0] hover:border-[#D4AF37] transition inline-flex items-center gap-2">
-                    <i class="fas fa-user-shield"></i> Admin
+                    <i class="fas fa-user"></i> Login/Signup
                 </a>
             </div>
             <button id="menuBtn" class="md:hidden text-gold hover:scale-110 transition-transform">
@@ -73,10 +70,7 @@
             <a href="#gallery" class="mobile-nav-link">Gallery</a>
             <a href="#order" class="mobile-nav-link">Order</a>
             <a href="customer-login.html" onclick="document.getElementById('mobileMenu').classList.add('hidden');" class="btn-gold text-white font-semibold w-full py-3 rounded-lg mt-2 inline-flex items-center justify-center gap-2">
-                <i class="fas fa-user"></i> Customer
-            </a>
-            <a href="admin-login.html" onclick="document.getElementById('mobileMenu').classList.add('hidden');" class="w-full py-3 rounded-lg mt-2 inline-flex items-center justify-center gap-2 font-semibold border-2 border-[#D4AF37]/50 text-[#B8941E] hover:bg-[#FFF8F0] hover:border-[#D4AF37] transition">
-                <i class="fas fa-user-shield"></i> Admin
+                <i class="fas fa-user"></i> Login/Signup
             </a>
         </div>
     </nav>
@@ -567,7 +561,7 @@
         <i class="fas fa-arrow-up text-xl"></i>
     </div>
     
-    <!-- Login/Signup Modal: "Continue as" (Customer/Admin × Sign in/Sign up). Revert: see REVERT_AUTH_MODAL.txt in this folder. -->
+    <!-- Login/Signup Modal: customer sign in/sign up. Revert: see REVERT_AUTH_MODAL.txt in this folder. -->
     <div id="authModal" class="modal">
         <div class="modal-content max-w-lg">
             <div class="flex justify-between items-center mb-4">
@@ -579,7 +573,7 @@
 
             <!-- Step 1: Choose account type and action -->
             <div id="authContinueAs">
-                <p class="text-gray-600 text-sm mb-6">Choose your account type to sign in or create an account.</p>
+                <p class="text-gray-600 text-sm mb-6">Choose customer sign in or sign up.</p>
                 <div class="grid grid-cols-2 gap-3 md:gap-4">
                     <a href="customer-login.html" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
                         <i class="fas fa-user text-2xl md:text-3xl gold-text mb-2"></i>
@@ -589,16 +583,6 @@
                     <a href="customer-signup.html" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
                         <i class="fas fa-user-plus text-2xl md:text-3xl gold-text mb-2"></i>
                         <span class="font-semibold text-gray-800">Customer</span>
-                        <span class="text-sm text-gray-600">Sign up</span>
-                    </a>
-                    <a href="admin-login.html" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
-                        <i class="fas fa-user-shield text-2xl md:text-3xl gold-text mb-2"></i>
-                        <span class="font-semibold text-gray-800">Admin</span>
-                        <span class="text-sm text-gray-600">Sign in</span>
-                    </a>
-                    <a href="admin-signup.html" class="auth-option flex flex-col items-center justify-center p-5 rounded-xl border-2 border-[#D4AF37]/30 bg-[#FFF8F0]/80 hover:border-[#D4AF37] hover:bg-[#FFF8F0] transition text-left">
-                        <i class="fas fa-user-shield text-2xl md:text-3xl gold-text mb-2"></i>
-                        <span class="font-semibold text-gray-800">Admin</span>
                         <span class="text-sm text-gray-600">Sign up</span>
                     </a>
                 </div>

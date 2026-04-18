@@ -16,6 +16,8 @@
     var ordersLoadGen = 0;
     var ordersStatusFilter = 'open';
     var bakingMiscOrderId = null;
+    var adminOrdersPage = 1;
+    var adminOrdersPageSize = 10;
 
     var ORDER_PIPELINE = ['Pending', 'Acknowledge', 'Baking', 'Ready', 'Completed'];
 
@@ -45,6 +47,7 @@
 
     function setOrderStatusFilter(filter) {
         ordersStatusFilter = filter || 'open';
+        adminOrdersPage = 1;
         var tabs = document.querySelectorAll('#ordersFilterTabs [data-orders-filter]');
         tabs.forEach(function (btn) {
             var on = btn.getAttribute('data-orders-filter') === ordersStatusFilter;
@@ -411,6 +414,10 @@
         var emptyDiv = document.getElementById('emptyOrders');
         var emptyHint = document.getElementById('emptyOrdersHint');
         var table = document.getElementById('ordersTable');
+        var pagerWrap = document.getElementById('adminOrdersPagerWrap');
+        var pageInfo = document.getElementById('adminOrdersPageInfo');
+        var prevBtn = document.getElementById('adminOrdersPrevPage');
+        var nextBtn = document.getElementById('adminOrdersNextPage');
         if (!tbody || !table) return;
 
         updateOrderFilterChrome();
@@ -425,13 +432,15 @@
             table.classList.add('hidden');
             emptyDiv.classList.remove('hidden');
             if (emptyHint) emptyHint.textContent = emptyHintForFilter(ordersStatusFilter);
+            if (pagerWrap) pagerWrap.classList.add('hidden');
             return;
         }
 
         table.classList.remove('hidden');
         emptyDiv.classList.add('hidden');
+        if (pagerWrap) pagerWrap.classList.remove('hidden');
 
-        var rowsHTML = filtered
+        var sorted = filtered
             .slice()
             .sort(function (a, b) {
                 var gidA = a.orderGroupId || '';
@@ -440,8 +449,22 @@
                 var da = Date.parse(a.created_at) || Date.parse(a.date) || 0;
                 var db = Date.parse(b.created_at) || Date.parse(b.date) || 0;
                 return db - da;
-            })
-            .map(function (order) {
+            });
+        var totalItems = sorted.length;
+        var pageSize = adminOrdersPageSize;
+        var pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalItems / pageSize));
+        if (adminOrdersPage > pageCount) adminOrdersPage = pageCount;
+        if (adminOrdersPage < 1) adminOrdersPage = 1;
+        var start = pageSize === 'all' ? 0 : (adminOrdersPage - 1) * pageSize;
+        var end = pageSize === 'all' ? totalItems : start + pageSize;
+        var visibleOrders = sorted.slice(start, end);
+        if (pageInfo) {
+            pageInfo.textContent = 'Page ' + adminOrdersPage + ' of ' + pageCount + ' · ' + (start + 1) + '-' + Math.min(end, totalItems) + ' of ' + totalItems;
+        }
+        if (prevBtn) prevBtn.disabled = adminOrdersPage <= 1;
+        if (nextBtn) nextBtn.disabled = adminOrdersPage >= pageCount;
+
+        var rowsHTML = visibleOrders.map(function (order) {
                 var normStatus = normalizeOrderStatus(order);
                 var statusColor = getStatusColor(normStatus);
                 var idAttr = encodeURIComponent(String(order.id));
@@ -1032,6 +1055,30 @@
                 var tab = e.target.closest('[data-orders-filter]');
                 if (!tab) return;
                 setOrderStatusFilter(tab.getAttribute('data-orders-filter'));
+            });
+        }
+
+        var pageSizeSel = document.getElementById('adminOrdersPageSize');
+        if (pageSizeSel) {
+            pageSizeSel.addEventListener('change', function (e) {
+                var raw = e.target.value;
+                adminOrdersPageSize = raw === 'all' ? 'all' : Math.max(1, parseInt(raw, 10) || 10);
+                adminOrdersPage = 1;
+                renderOrdersTable();
+            });
+        }
+        var prevBtn = document.getElementById('adminOrdersPrevPage');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function () {
+                adminOrdersPage = Math.max(1, adminOrdersPage - 1);
+                renderOrdersTable();
+            });
+        }
+        var nextBtn = document.getElementById('adminOrdersNextPage');
+        if (nextBtn) {
+            nextBtn.addEventListener('click', function () {
+                adminOrdersPage += 1;
+                renderOrdersTable();
             });
         }
 

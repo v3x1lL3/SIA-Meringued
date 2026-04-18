@@ -77,8 +77,8 @@ async function loadClientDashboard() {
     const { user, profile } = await getSessionWithProfile();
     if (!user) return;
 
-    const customerId = profile?.id;
-    if (!customerId) return;
+    // Orders are keyed by auth.users id (orders.customer_id). Do not use profile.id here.
+    const customerId = user.id;
 
     let orders = [];
     if (typeof SUPABASE_AUTH_DISABLED !== 'undefined' && SUPABASE_AUTH_DISABLED) {

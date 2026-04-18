@@ -85,6 +85,13 @@
                 padding: 0.5rem;
             }
         }
+        .cake-wireframe {
+            margin: 0.25rem auto 0;
+            border: 2px solid #d1d5db;
+            border-top-width: 3px;
+            border-radius: 9999px / 55%;
+            background: linear-gradient(180deg, #fff 0%, #fffaf0 100%);
+        }
         
         .sidebar-active {
             background: linear-gradient(135deg, var(--gold) 0%, #B8941E 100%);
@@ -212,6 +219,22 @@
                         <a href="clienthistory.html" class="inline-flex items-center gap-1 ml-1 font-semibold text-[#B8941E] underline decoration-[#D4AF37]/60 hover:text-[#D4AF37]">Open Logs <i class="fas fa-arrow-right text-xs" aria-hidden="true"></i></a>
                     </p>
                 </div>
+                <div id="customerOrdersPagerWrap" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#D4AF37]/20 bg-[#FFF8F0]/70 px-3 py-2 text-sm">
+                    <label class="flex items-center gap-2 text-gray-700">
+                        <span class="font-semibold">List by</span>
+                        <select id="customerOrdersPageSize" class="rounded-lg border border-gray-300 px-2 py-1 text-sm focus:border-[#D4AF37] focus:outline-none">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="all">All</option>
+                        </select>
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <button id="customerOrdersPrevPage" type="button" class="rounded-lg border border-gray-300 px-2.5 py-1 text-sm text-gray-700 hover:bg-white transition">Prev</button>
+                        <span id="customerOrdersPageInfo" class="min-w-[96px] text-center text-xs font-semibold text-gray-600">Page 1 of 1</span>
+                        <button id="customerOrdersNextPage" type="button" class="rounded-lg border border-gray-300 px-2.5 py-1 text-sm text-gray-700 hover:bg-white transition">Next</button>
+                    </div>
+                </div>
                 <div class="overflow-x-auto">
                     <table id="ordersTable" class="w-full">
                         <thead>
@@ -221,7 +244,7 @@
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery <span class="inline-flex align-middle cursor-help font-normal text-[#D4AF37] hover:text-[#b8942a]" title="Pick up = collect your order at our store. Deliver = we deliver to your address (delivery fee may apply)." aria-label="Help: what does Delivery mean?">(?)</span></th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">To be consumed on</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Actions</th>
@@ -314,7 +337,7 @@
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
                                     <i class="fas fa-calendar-heart mr-2" style="color: #D4AF37;"></i>
-                                    I want to eat it on <span class="text-red-500">*</span>
+                                    To be consumed on <span class="text-red-500">*</span>
                                 </label>
                                 <input type="date" id="dateNeeded" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" required>
                                 <p class="text-xs text-gray-500 mt-1">
@@ -338,6 +361,7 @@
                                         <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
                                             <p class="font-semibold">Small</p>
                                             <p class="text-sm text-gray-600 mt-1 leading-snug">6&quot; × 4&quot;</p>
+                                            <div class="cake-wireframe" style="width: 38px; height: 22px;"></div>
                                         </div>
                                     </label>
                                     <label class="relative cursor-pointer">
@@ -345,6 +369,7 @@
                                         <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
                                             <p class="font-semibold">Medium</p>
                                             <p class="text-sm text-gray-600 mt-1 leading-snug">8&quot; × 4&quot;</p>
+                                            <div class="cake-wireframe" style="width: 48px; height: 22px;"></div>
                                         </div>
                                     </label>
                                     <label class="relative cursor-pointer">
@@ -352,6 +377,7 @@
                                         <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
                                             <p class="font-semibold">Large</p>
                                             <p class="text-sm text-gray-600 mt-1 leading-snug">8&quot; × 6&quot;</p>
+                                            <div class="cake-wireframe" style="width: 54px; height: 27px;"></div>
                                         </div>
                                     </label>
                                 </div>
