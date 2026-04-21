@@ -565,8 +565,9 @@
             </div>
             <div class="p-5 overflow-y-auto flex-1">
                 <p class="text-sm text-gray-600 mb-3">
-                    Record extra <strong>miscellaneous</strong> supplies used while baking (boxes, bags, toppers, etc.). Quantities are deducted only from <strong>Inventory → Miscellaneous</strong> (matched by item name).
+                    Record extra <strong>miscellaneous</strong> supplies used while baking (boxes, bags, toppers, etc.). Quantities are deducted only from <strong>Inventory → Miscellaneous</strong> (matched by item name). Materials that are <strong class="text-red-700">out of stock</strong> or <strong class="text-amber-800">low stock</strong> (same thresholds as Inventory → Miscellaneous) are summarized below and on each line when you pick an item.
                 </p>
+                <div id="bakingMiscStockSummary" class="mb-3 hidden text-sm" aria-live="polite"></div>
                 <div id="bakingMiscRows" class="space-y-2 mb-3"></div>
                 <button type="button" id="bakingMiscAddRow" class="text-sm font-semibold text-[#B8941E] hover:text-[#D4AF37]">
                     <i class="fas fa-plus-circle mr-1"></i> Add line

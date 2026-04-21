@@ -1,0 +1,122 @@
+classDiagram
+direction LR
+
+class AdminInventoryPage {
+  <<UI Module>>
+  +renderInventory() void
+  +updateLowStockBanner() void
+  +updateExpiryBanner() void
+  +addInventoryItemFromForm() void
+  +applyStockDelta(id, delta, moveMeta) Result
+  +refreshInventoryFromCloud() Promise~bool~
+  +scheduleInventoryCloudRefresh() void
+}
+
+class InventorySupabaseBridge {
+  <<Bridge Module>>
+  +load() Promise~List~InventoryItem~~
+  +create(item) Promise~InventoryItem~
+  +update(id, patch) Promise~void~
+  +delete(id) Promise~Result~
+}
+
+class MiscInventorySupabaseBridge {
+  <<Bridge Module>>
+  +load() Promise~List~MiscInventoryItem~~
+  +create(item) Promise~MiscInventoryItem~
+  +update(id, patch) Promise~void~
+  +delete(id) Promise~Result~
+}
+
+class InventoryModel {
+  <<Model>>
+  +listInventoryItemsForApp() List~InventoryItem~
+  +createInventoryItem(item) InventoryItem
+  +updateInventoryItem(id, patch) void
+  +deleteInventoryItem(id) Result
+  +getInventoryItemByName(name) InventoryItem
+  +applyQuantityDeltaByName(name, delta) void
+}
+
+class MiscInventoryModel {
+  <<Model>>
+  +listMiscInventoryItemsForApp() List~MiscInventoryItem~
+  +createMiscInventoryItem(item) MiscInventoryItem
+  +updateMiscInventoryItem(id, patch) void
+  +deleteMiscInventoryItem(id) Result
+  +applyMiscQuantityDeltaByName(name, delta) void
+}
+
+class InventoryItem {
+  <<Entity>>
+  +UUID id
+  +String name
+  +Decimal quantity
+  +Decimal reorderLevel
+  +String unit
+  +Decimal unitCost
+  +String imageSrc
+  +Date expiryDate
+}
+
+class MiscInventoryItem {
+  <<Entity>>
+  +UUID id
+  +String name
+  +Decimal quantity
+  +Decimal reorderLevel
+  +String unit
+  +Decimal unitCost
+  +String imageSrc
+}
+
+class AdminRecordsBridge {
+  <<Bridge Module>>
+  +logInventoryMovement(payload) Promise~void~
+  +logPurchaseExpense(payload) Promise~void~
+}
+
+class BrowserStorage {
+  <<Storage>>
+  +adminInventoryItems : JSON
+  +adminMiscInventoryItems : JSON
+  +adminSettings : JSON
+}
+
+class SupabaseInventoryItems {
+  <<Table>>
+  +id : UUID <<PK>>
+  +name : text
+  +quantity : numeric
+  +reorder_level : numeric
+  +unit : text
+  +unit_cost : numeric
+  +image_src : text
+  +expiry_date : date
+}
+
+class SupabaseMiscInventoryItems {
+  <<Table>>
+  +id : UUID <<PK>>
+  +name : text
+  +quantity : numeric
+  +reorder_level : numeric
+  +unit : text
+  +unit_cost : numeric
+  +image_src : text
+}
+
+AdminInventoryPage ..> BrowserStorage : reads/writes cache
+AdminInventoryPage ..> InventorySupabaseBridge : sync ingredient tab
+AdminInventoryPage ..> MiscInventorySupabaseBridge : sync misc tab
+AdminInventoryPage ..> AdminRecordsBridge : logs stock movement/expense
+
+InventorySupabaseBridge ..> InventoryModel : delegates CRUD
+MiscInventorySupabaseBridge ..> MiscInventoryModel : delegates CRUD
+
+InventoryModel ..> SupabaseInventoryItems : persistence
+MiscInventoryModel ..> SupabaseMiscInventoryItems : persistence
+
+InventoryModel --> InventoryItem : maps row<->app shape
+MiscInventoryModel --> MiscInventoryItem : maps row<->app shape
+

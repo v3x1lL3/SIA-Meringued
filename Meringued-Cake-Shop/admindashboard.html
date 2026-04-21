@@ -110,6 +110,11 @@
             color: #92400E;
             border: 1px solid rgba(245, 158, 11, 0.4);
         }
+        .inventory-pill--out {
+            background-color: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid rgba(239, 68, 68, 0.45);
+        }
         .inv-category-tab {
             padding: 0.5rem 1.1rem;
             border-radius: 0.75rem;
@@ -376,8 +381,12 @@
                         <label for="inventorySearchInputMisc" class="sr-only">Search miscellaneous items</label>
                         <input id="inventorySearchInputMisc" type="search" autocomplete="off" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm text-gray-800 placeholder:text-gray-400" placeholder="Search miscellaneous..." />
                     </div>
+                    <div id="inventoryOutStockBanner" class="hidden mb-4 rounded-xl border-2 border-red-300 bg-red-50 p-4">
+                        <p id="inventoryOutStockTitle" class="font-semibold text-red-800 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> Out of stock — please restock</p>
+                        <p id="inventoryOutStockList" class="text-sm text-red-700 mt-1"></p>
+                    </div>
                     <div id="inventoryLowStockBanner" class="hidden mb-4 rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
-                        <p class="font-semibold text-amber-800 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> Low stock — please restock</p>
+                        <p id="inventoryLowStockTitle" class="font-semibold text-amber-800 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> Low stock — please restock</p>
                         <p id="inventoryLowStockList" class="text-sm text-amber-700 mt-1"></p>
                     </div>
                     <div id="inventoryExpiryBanner" class="hidden mb-4 rounded-xl border-2 border-amber-300 bg-amber-50/90 p-4">

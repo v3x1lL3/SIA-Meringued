@@ -1,0 +1,108 @@
+classDiagram
+direction LR
+
+class AdminOrderingPage {
+  <<UI Module>>
+  +reloadOrdersMerged() void
+  +renderOrdersTable() void
+  +advanceOrderNextStep(orderId) void
+  +performOrderStatusUpdate(orderIdx, newStatus) void
+  +openBakingMiscModal(orderId) void
+  +confirmBakingMiscStockOut() void
+}
+
+class SupabaseOrdersBridge {
+  <<Bridge Module>>
+  +loadOrders() Promise~List~Order~~
+  +updateOrderStatus(supabaseId, status) Promise~bool~
+}
+
+class AdminOrdersRealtime {
+  <<Realtime Module>>
+  +subscribeToOrdersChanges() void
+  +reloadOnChange() void
+}
+
+class OrderModel {
+  <<Model>>
+  +listOrdersForAdmin() List~Order~
+  +listOrdersForCustomer(customerId) List~Order~
+  +insertOrder(orderPayload) Order
+  +updateOrder(id, patch) void
+  +getOrderCountsForAdminToday() JSON
+}
+
+class AdminOrderIngredients {
+  <<Domain Service>>
+  +applyOrderIngredientStock(order) Result
+  +restoreCancelledOrdersIngredientStock() void
+  +applyBakingMiscStockOut(order, lines) Result
+}
+
+class OrderIngredientsSupabase {
+  <<Bridge Module>>
+  +deductIngredientsForOrder(order) Promise~void~
+  +restoreIngredientsForCancelledOrder(order) Promise~void~
+}
+
+class OrderMiscStockSupabase {
+  <<Bridge Module>>
+  +applyBakingMiscStockOut(lines) Promise~void~
+}
+
+class InventoryModel {
+  <<Model>>
+  +applyQuantityDeltaByName(name, delta) void
+}
+
+class MiscInventoryModel {
+  <<Model>>
+  +applyMiscQuantityDeltaByName(name, delta) void
+}
+
+class AdminRecordsBridge {
+  <<Bridge Module>>
+  +logSaleFromOrder(order) Promise~void~
+  +logInventoryMovement(payload) Promise~void~
+}
+
+class Order {
+  <<Entity>>
+  +UUID id
+  +UUID customer_id <<FK->AuthUser.id>>
+  +String status
+  +Decimal total_amount
+  +String delivery_type
+  +Date date_needed
+  +JSON details
+}
+
+class SupabaseOrders {
+  <<Table>>
+  +id : UUID <<PK>>
+  +customer_id : UUID <<FK>>
+  +status : text
+  +total_amount : numeric
+  +details : jsonb
+}
+
+class BrowserOrderStorage {
+  <<Storage>>
+  +customerOrders : JSON
+}
+
+AdminOrderingPage ..> BrowserOrderStorage : merge local orders
+AdminOrderingPage ..> SupabaseOrdersBridge : cloud load/update
+AdminOrderingPage ..> AdminOrderIngredients : stock side effects
+AdminOrderingPage ..> AdminRecordsBridge : sales + ops logging
+AdminOrderingPage ..> AdminOrdersRealtime : live refresh
+
+SupabaseOrdersBridge ..> OrderModel : delegates DB operations
+OrderModel ..> SupabaseOrders : persistence
+OrderModel --> Order : maps row<->app shape
+
+AdminOrderIngredients ..> InventoryModel : deduct/restore ingredients
+AdminOrderIngredients ..> MiscInventoryModel : deduct misc baking extras
+AdminOrderIngredients ..> OrderIngredientsSupabase : cloud ingredient sync
+AdminOrderIngredients ..> OrderMiscStockSupabase : cloud misc sync
+

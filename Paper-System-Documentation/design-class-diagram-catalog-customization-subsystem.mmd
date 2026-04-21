@@ -1,0 +1,94 @@
+classDiagram
+direction LR
+
+class ProductController {
+  <<Controller>>
+  +loadProductsInto(containerId) Promise~void~
+}
+
+class CustomizationController {
+  <<Controller>>
+  +loadCustomizationUI(containerId) Promise~void~
+}
+
+class ProductModel {
+  <<Model>>
+  +listProducts() List~Product~
+  +createProduct(payload) Product
+  +updateProduct(id, patch) Product
+  +listOptions() List~ProductOption~
+  +listOptionValues(optionId) List~ProductOptionValue~
+}
+
+class CustomizationModel {
+  <<Model>>
+  +listCustomizationOptions() List~ProductOption~
+  +listCustomizationValues(optionId) List~ProductOptionValue~
+}
+
+class ProductView {
+  <<View>>
+  +renderProductList(containerId, products) void
+}
+
+class CustomizationView {
+  <<View>>
+  +renderCustomizationOptions(containerId, options, valuesByOptionId) void
+}
+
+class Product {
+  <<Entity>>
+  +UUID id <<PK>>
+  +DateTime created_at
+}
+
+class ProductOption {
+  <<Entity>>
+  +UUID id <<PK>>
+  +Int sort_order
+}
+
+class ProductOptionValue {
+  <<Entity>>
+  +UUID id <<PK>>
+  +UUID option_id <<FK->ProductOption.id>>
+  +Int sort_order
+}
+
+class SupabaseProducts {
+  <<Table>>
+  +id : UUID <<PK>>
+}
+
+class SupabaseProductOptions {
+  <<Table>>
+  +id : UUID <<PK>>
+  +sort_order : int
+}
+
+class SupabaseProductOptionValues {
+  <<Table>>
+  +id : UUID <<PK>>
+  +option_id : UUID <<FK>>
+  +sort_order : int
+}
+
+ProductController ..> ProductModel : loads catalog data
+ProductController ..> ProductView : renders products
+
+CustomizationController ..> CustomizationModel : loads options/values
+CustomizationController ..> CustomizationView : renders UI choices
+
+ProductModel ..> SupabaseProducts : CRUD
+ProductModel ..> SupabaseProductOptions : read options
+ProductModel ..> SupabaseProductOptionValues : read values
+
+CustomizationModel ..> SupabaseProductOptions : read options
+CustomizationModel ..> SupabaseProductOptionValues : read values
+
+ProductModel --> Product
+ProductModel --> ProductOption
+ProductModel --> ProductOptionValue
+
+ProductOption "1" --> "0..*" ProductOptionValue : defines
+

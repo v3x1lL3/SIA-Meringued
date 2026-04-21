@@ -71,9 +71,14 @@ export async function updateMiscInventoryItem(id, patch) {
   if (error) console.warn('[MiscInventoryModel] updateMiscInventoryItem failed:', error.message);
 }
 
+/** @returns {Promise<{ ok: boolean, error?: string }>} */
 export async function deleteMiscInventoryItem(id) {
   const { error } = await supabase.from(MISC_TABLE).delete().eq('id', id);
-  if (error) console.warn('[MiscInventoryModel] deleteMiscInventoryItem failed:', error.message);
+  if (error) {
+    console.warn('[MiscInventoryModel] deleteMiscInventoryItem failed:', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
 }
 
 /**

@@ -14,7 +14,8 @@ export async function load() {
     return await listInventoryItemsForApp();
   } catch (e) {
     console.warn('[admin-inventory-supabase] load failed', e);
-    return [];
+    // null = unknown; do not treat as empty list (avoids wiping localStorage on refresh).
+    return null;
   }
 }
 
@@ -37,9 +38,10 @@ export async function update(id, patch) {
 
 export async function deleteItem(id) {
   try {
-    await deleteInventoryItem(id);
+    return await deleteInventoryItem(id);
   } catch (e) {
     console.warn('[admin-inventory-supabase] delete failed', e);
+    return { ok: false, error: e && e.message ? e.message : String(e) };
   }
 }
 

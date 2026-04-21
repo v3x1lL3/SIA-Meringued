@@ -1,0 +1,47 @@
+digraph Domain {
+  graph [
+    rankdir=BT
+    fontsize=13
+    fontname="Helvetica"
+    labelloc="t"
+    label="Meringued — Domain model (conceptual classes)\nAligned with use cases: customer POS/checkout, admin orders, inventory, records, auth, shop settings (events table A–G)."
+    nodesep=0.45
+    ranksep=0.65
+  ];
+  node [shape=record fontname="Helvetica" fontsize=9 style=filled fillcolor="#FFF9E8" color="#333333"];
+  edge [fontname="Helvetica" fontsize=8 color="#333333"];
+
+  UserAccount [
+    label="{UserAccount|«Supabase Auth user»|+ id : UUID\\l+ email : String\\l}"
+  ];
+
+  Profile [
+    label="{Profile|«public.profiles»|+ id : UUID\\l+ role : String\\l  (customer or admin)\\l}"
+  ];
+
+  Order [
+    label="{Order|«public.orders»|+ id : UUID\\l+ customer_id : UUID?\\l+ status : String\\l+ total_amount : Decimal?\\l+ delivery_type : String\\l+ date_needed : Date?\\l+ delivery_address : String?\\l+ customer_phone : String?\\l+ owner_phone : String?\\l+ payment_method : String?\\l+ details : JSON\\l  (POS lines, receipt, design refs)\\l}"
+  ];
+
+  InventoryItem [
+    label="{InventoryItem|«public.inventory_items»|+ id : UUID\\l+ name : String\\l+ quantity : Decimal\\l+ reorder_level : Decimal\\l+ unit : String\\l+ unit_cost : Decimal\\l+ expiry_date : Date?\\l+ image_src : String?\\l}"
+  ];
+
+  MiscInventoryItem [
+    label="{MiscInventoryItem|«miscellaneous stock»|+ id : String\\l+ name : String\\l+ quantity : Decimal\\l  (often local + cloud merge)\\l}"
+  ];
+
+  AdminRecord [
+    label="{AdminRecord|«public.admin_records»|+ id : UUID\\l+ type : String\\l+ record_date : Date\\l+ title : String\\l+ amount : Decimal?\\l+ ref : String?\\l+ notes : String?\\l}"
+  ];
+
+  BusinessPublicSettings [
+    label="{BusinessPublicSettings|«public.business_public_settings»|+ id (=1)\\l+ settings : JSON\\l  (fees, address, hours, rules)\\l}"
+  ];
+
+  /* Associations (domain) */
+  UserAccount -> Profile [dir=both taillabel="1" headlabel="1" label="same id"];
+  UserAccount -> Order [taillabel="1" headlabel="0..*" label="places / owns"];
+  InventoryItem -> Order [style=dashed label="misc usage\n(baking stock-out)"];
+  AdminRecord -> InventoryItem [style=dashed label="purchase from\nstock-in (conceptual)"];
+}

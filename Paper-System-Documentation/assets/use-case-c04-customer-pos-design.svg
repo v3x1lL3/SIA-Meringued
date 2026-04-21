@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="720" viewBox="0 0 1000 720">
+  <defs>
+    <marker id="mk-customer-pos-design-media" markerWidth="12" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 0 0 L 10 5 L 0 10" fill="none" stroke="#000" stroke-width="1.4"/>
+    </marker>
+    <style>
+      .boundary { fill: #fff; stroke: #111; stroke-width: 2.2; }
+      .uc { fill: #1fa3a0; stroke: #000; stroke-width: 1.15; }
+      .uc-text { font-family: Consolas, 'DejaVu Sans Mono', monospace; fill: #000; text-anchor: middle; dominant-baseline: middle; }
+      .title-box { fill: #111; }
+      .title-text { font-family: Consolas, 'DejaVu Sans Mono', monospace; font-size: 12.2px; fill: #fff; font-weight: bold; }
+      .actor-name { font-family: Consolas, 'DejaVu Sans Mono', monospace; font-size: 11px; fill: #000; text-anchor: middle; }
+      .assoc { stroke: #000; stroke-width: 1.45; fill: none; }
+      .dep { stroke: #000; stroke-width: 1.45; fill: none; stroke-dasharray: 7 5; marker-end: url(#mk-customer-pos-design-media); }
+      .stereo { font-family: Consolas, 'DejaVu Sans Mono', monospace; font-size: 8px; fill: #111; font-style: italic; }
+    </style>
+  </defs>
+  <ellipse class="boundary" cx="518" cy="360" rx="448" ry="322"/>
+  <rect class="title-box" x="383" y="46" width="234" height="34"/>
+  <text class="title-text" x="500" y="68" text-anchor="middle">Customer — POS: Design &amp; Media</text>
+  
+  <g transform="translate(82, 318)">
+    <circle cx="0" cy="14" r="12" fill="none" stroke="#000" stroke-width="1.6"/>
+    <line x1="0" y1="26" x2="0" y2="72" stroke="#000" stroke-width="1.6"/>
+    <line x1="-28" y1="42" x2="28" y2="42" stroke="#000" stroke-width="1.6"/>
+    <line x1="0" y1="72" x2="-22" y2="118" stroke="#000" stroke-width="1.6"/>
+    <line x1="0" y1="72" x2="22" y2="118" stroke="#000" stroke-width="1.6"/>
+  </g>
+  <text class="actor-name" x="82" y="470">Customer</text>
+  <ellipse class="uc" cx="408" cy="102" rx="162" ry="23.0"/><text class="uc-text" x="408" y="102" font-size="8.5px">Set Required Consumption Date</text><ellipse class="uc" cx="408" cy="146" rx="162" ry="26.0"/><text class="uc-text" x="408" y="146" font-size="8.5px"><tspan x="408" dy="-5">Capture Dedication &amp; Design</tspan><tspan x="408" dy="12">Instructions</tspan></text><ellipse class="uc" cx="408" cy="190" rx="162" ry="26.0"/><text class="uc-text" x="408" y="190" font-size="8.5px"><tspan x="408" dy="-5">Upload Multiple Design Reference</tspan><tspan x="408" dy="12">Images</tspan></text><ellipse class="uc" cx="408" cy="234" rx="162" ry="26.0"/><text class="uc-text" x="408" y="234" font-size="8.5px"><tspan x="408" dy="-5">Remove One Image or Clear All</tspan><tspan x="408" dy="12">Uploads</tspan></text>
+  <ellipse class="uc" cx="712" cy="110" rx="148" ry="24.0"/><text class="uc-text" x="712" y="110" font-size="8.1px"><tspan x="712" dy="-4">Validate File Types &amp; Cumulative</tspan><tspan x="712" dy="11">Size</tspan></text>
+  <line class="assoc" x1="112" y1="370" x2="246" y2="102"/><line class="assoc" x1="112" y1="370" x2="246" y2="146"/><line class="assoc" x1="112" y1="370" x2="246" y2="190"/><line class="assoc" x1="112" y1="370" x2="246" y2="234"/>
+  <path class="dep" d="M 570 190 L 564 110"/><text class="stereo" x="567" y="142" text-anchor="middle">&lt;&lt;include&gt;&gt;</text>
+</svg>

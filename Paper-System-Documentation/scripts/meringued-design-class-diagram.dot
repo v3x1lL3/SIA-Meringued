@@ -1,0 +1,114 @@
+digraph Design {
+  graph [
+    rankdir=TB
+    fontsize=13
+    fontname="Helvetica"
+    labelloc="t"
+    label="Meringued — Design / implementation view\n(major modules: HTML pages, controllers & page scripts, models, Supabase client; hybrid localStorage where noted.)"
+    compound=true
+    nodesep=0.35
+    ranksep=0.55
+  ];
+  node [shape=box fontname="Helvetica" fontsize=9 style="rounded,filled" fillcolor="#E8F4FF" color="#333333"];
+  edge [fontname="Helvetica" fontsize=7 color="#444444"];
+
+  subgraph cluster_pres {
+    label="Presentation (HTML + inline UI)";
+    style=filled;
+    fillcolor="#F5F5F5";
+    color="#666666";
+
+    index [label="index.html\n(public + auth modal)" fillcolor="#FFFFFF"];
+    clientdash [label="clientdashboard.html\nclienthistory / clientsettings\nclientordering.html" fillcolor="#FFFFFF"];
+    admindash [label="admindashboard.html\nadminordering / admininventory\nadminrecords / admincustomers…" fillcolor="#FFFFFF"];
+    adminauth [label="admin-auth.html\ncustomer-login / signup" fillcolor="#FFFFFF"];
+  }
+
+  subgraph cluster_app {
+    label="Application (JavaScript)";
+    style=filled;
+    fillcolor="#FFF8E8";
+    color="#666666";
+
+    subgraph cluster_ctrl {
+      label="Controllers (ES modules)";
+      style=dashed;
+      authCtrl [label="authController.js" fillcolor="#FFE8CC"];
+      clientBoot [label="clientBootstrap.js" fillcolor="#FFE8CC"];
+      adminBoot [label="adminBootstrap.js" fillcolor="#FFE8CC"];
+      dashCtrl [label="dashboardController.js" fillcolor="#FFE8CC"];
+      custCtrl [label="customersController.js" fillcolor="#FFE8CC"];
+      admRecCtrl [label="adminRecordsController.js" fillcolor="#FFE8CC"];
+      ordHydrate [label="customerOrdersHydrate.js" fillcolor="#FFE8CC"];
+    }
+
+    subgraph cluster_pagescripts {
+      label="Page orchestration (legacy / bundled)";
+      style=dashed;
+      cop [label="clientordering-page.js\n(POS, cart, receipt)" fillcolor="#FFE8CC"];
+      aop [label="admin-ordering-page.js\n(filters, pagination)" fillcolor="#FFE8CC"];
+      ainv [label="admin-inventory.js\nadmin-inventory-supabase.js" fillcolor="#FFE8CC"];
+      merge [label="admin-orders-merge.js\nsupabaseOrdersBridge.js" fillcolor="#FFE8CC"];
+    }
+  }
+
+  subgraph cluster_domain {
+    label="Domain access (models)";
+    style=filled;
+    fillcolor="#E8FFE8";
+    color="#666666";
+
+    authModel [label="authModel.js"];
+    orderModel [label="orderModel.js"];
+    invModel [label="inventoryModel.js"];
+    miscModel [label="miscInventoryModel.js"];
+    recModel [label="adminRecordsModel.js"];
+    shopModel [label="shopSettingsModel.js"];
+    custModel [label="customerModel.js"];
+  }
+
+  subgraph cluster_infra {
+    label="Infrastructure";
+    style=filled;
+    fillcolor="#EEE8FF";
+    color="#666666";
+
+    sb [label="supabaseClient.js\n(Supabase JS v2)"];
+    ls [label="«stereotype»\nlocalStorage\n(merge cache,\nadminSettings, …)" shape=note fillcolor="#FFFACD"];
+  }
+
+  /* Presentation uses application */
+  index -> authCtrl [lhead=cluster_app];
+  clientdash -> clientBoot;
+  clientdash -> ordHydrate;
+  admindash -> adminBoot;
+  admindash -> dashCtrl;
+  adminauth -> authCtrl;
+  clientdash -> cop [style=dashed label="inline scripts"];
+
+  /* Application to models */
+  authCtrl -> authModel;
+  clientBoot -> authCtrl [style=dashed];
+  clientBoot -> ordHydrate;
+  ordHydrate -> orderModel;
+  adminBoot -> authCtrl [style=dashed];
+  dashCtrl -> orderModel [style=dashed];
+  custCtrl -> custModel;
+  admRecCtrl -> recModel;
+  cop -> merge [style=dashed];
+  merge -> orderModel;
+  aop -> merge;
+  ainv -> invModel;
+  ainv -> miscModel;
+
+  /* Models to infrastructure */
+  authModel -> sb;
+  orderModel -> sb;
+  invModel -> sb;
+  miscModel -> sb;
+  recModel -> sb;
+  shopModel -> sb;
+  recModel -> ls [style=dashed label="fallback / merge"];
+  cop -> ls [style=dashed];
+  merge -> ls [style=dashed];
+}

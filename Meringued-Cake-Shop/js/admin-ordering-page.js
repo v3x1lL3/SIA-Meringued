@@ -502,9 +502,45 @@
                     var stepperHtml = buildStepperRowHtml(order);
                     var bakingMiscBtnHtml = '';
                     if (normStatus === 'Baking') {
+                        var bakeMiscAlerts = getBakingMiscPipelineAlertSummary();
+                        var miscTitle = escapeHtml(bakingMiscStockOutButtonTitle());
+                        var alertDot =
+                            bakeMiscAlerts.outNames.length > 0
+                                ? '<span class="inline-block w-2 h-2 rounded-full bg-red-600 mr-1.5 align-middle flex-shrink-0" aria-hidden="true"></span>'
+                                : bakeMiscAlerts.lowNames.length > 0
+                                  ? '<span class="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5 align-middle flex-shrink-0" aria-hidden="true"></span>'
+                                  : '';
                         bakingMiscBtnHtml =
-                            '<button type="button" data-order-action="baking-misc" data-order-id="' + idAttr + '" class="orders-btn-misc" title="Deduct miscellaneous supplies (boxes, bags, etc.)">' +
+                            '<button type="button" data-order-action="baking-misc" data-order-id="' +
+                            idAttr +
+                            '" class="orders-btn-misc" title="' +
+                            miscTitle +
+                            '">' +
+                            alertDot +
                             '<i class="fas fa-minus-circle mr-1" aria-hidden="true"></i>Miscellaneous stock out</button>';
+                        if (bakeMiscAlerts.hasAny) {
+                            var miscSubLine = '';
+                            if (bakeMiscAlerts.outNames.length) {
+                                miscSubLine =
+                                    '<span>Misc: ' +
+                                    bakeMiscAlerts.outNames.length +
+                                    ' out of stock</span>' +
+                                    (bakeMiscAlerts.lowNames.length
+                                        ? '<span class="text-amber-900 font-semibold"> · ' +
+                                          bakeMiscAlerts.lowNames.length +
+                                          ' low</span>'
+                                        : '');
+                            } else {
+                                miscSubLine =
+                                    '<span>Misc: ' + bakeMiscAlerts.lowNames.length + ' low stock</span>';
+                            }
+                            bakingMiscBtnHtml +=
+                                '<div class="text-[10px] leading-snug mt-1 max-w-[260px] ' +
+                                (bakeMiscAlerts.outNames.length ? 'text-red-700 font-semibold' : 'text-amber-800 font-semibold') +
+                                '">' +
+                                miscSubLine +
+                                '</div>';
+                        }
                     }
                     var nextBtnHtml = '';
                     if (nextSt) {
@@ -864,15 +900,198 @@
         reloadOrdersMerged();
     }
 
+    function loadMiscInventoryItems() {
+        var raw = localStorage.getItem('adminMiscInventoryItems');
+        try {
+            var arr = raw ? JSON.parse(raw) : [];
+            return Array.isArray(arr) ? arr : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /** Same thresholds as admin inventory: reorder > 0 && qty <= 0 → out; reorder > 0 && qty <= reorder → low. */
+    function miscItemStockStatus(item) {
+        if (!item) return 'ok';
+        var reorder = Number(item.reorderLevel) || 0;
+        var qty = Number(item.quantity) || 0;
+        if (reorder <= 0) return 'noreorder';
+        if (qty <= 0) return 'out';
+        if (qty <= reorder) return 'low';
+        return 'ok';
+    }
+
+    function getBakingMiscPipelineAlertSummary() {
+        var outNames = [];
+        var lowNames = [];
+        loadMiscInventoryItems().forEach(function (it) {
+            var st = miscItemStockStatus(it);
+            var nm = (it.name && String(it.name).trim()) || '';
+            if (!nm) return;
+            if (st === 'out') outNames.push(nm);
+            else if (st === 'low') lowNames.push(nm);
+        });
+        return {
+            outNames: outNames,
+            lowNames: lowNames,
+            hasAny: outNames.length > 0 || lowNames.length > 0
+        };
+    }
+
+    function bakingMiscStockOutButtonTitle() {
+        var s = getBakingMiscPipelineAlertSummary();
+        var base = 'Deduct miscellaneous supplies (boxes, bags, etc.).';
+        if (!s.hasAny) return base;
+        var parts = [];
+        if (s.outNames.length) {
+            parts.push('Out of stock: ' + s.outNames.slice(0, 8).join(', ') + (s.outNames.length > 8 ? '…' : ''));
+        }
+        if (s.lowNames.length) {
+            parts.push('Low stock: ' + s.lowNames.slice(0, 8).join(', ') + (s.lowNames.length > 8 ? '…' : ''));
+        }
+        return base + ' ' + parts.join(' ');
+    }
+
+    function updateBakingMiscModalStockSummary() {
+        var el = document.getElementById('bakingMiscStockSummary');
+        if (!el) return;
+        var items = loadMiscInventoryItems();
+        var out = [];
+        var low = [];
+        items.forEach(function (it) {
+            var st = miscItemStockStatus(it);
+            if (st === 'out') out.push(it);
+            else if (st === 'low') low.push(it);
+        });
+        if (out.length === 0 && low.length === 0) {
+            el.className =
+                'mb-3 rounded-xl border border-emerald-200 bg-emerald-50/90 p-3 text-sm text-emerald-900';
+            el.innerHTML =
+                '<div class="font-semibold"><i class="fas fa-check-circle mr-1"></i>No miscellaneous stock alerts</div>' +
+                '<div class="text-xs mt-1 text-emerald-800">Every miscellaneous item either has no reorder level set, or is above its low-stock threshold. Pick a material on a line below to double-check before you stock out.</div>';
+            el.classList.remove('hidden');
+            return;
+        }
+        var blocks = [];
+        if (out.length) {
+            blocks.push(
+                '<div class="rounded-lg border border-red-300 bg-red-50 p-3 text-red-900">' +
+                    '<div class="font-semibold text-sm"><i class="fas fa-triangle-exclamation mr-1"></i>Out of stock (miscellaneous)</div>' +
+                    '<ul class="list-disc list-inside text-xs mt-1.5 space-y-0.5">' +
+                    out
+                        .map(function (it) {
+                            var u = (it.unit || 'units').trim() || 'units';
+                            var reo = Number(it.reorderLevel) || 0;
+                            return (
+                                '<li><span class="font-medium">' +
+                                escapeHtml(String(it.name || '').trim() || '(unnamed)') +
+                                '</span> — <span class="text-red-800">0 ' +
+                                escapeHtml(u) +
+                                ', reorder at ' +
+                                reo.toFixed(2) +
+                                ' ' +
+                                escapeHtml(u) +
+                                '</span></li>'
+                            );
+                        })
+                        .join('') +
+                    '</ul></div>'
+            );
+        }
+        if (low.length) {
+            blocks.push(
+                '<div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950">' +
+                    '<div class="font-semibold text-sm"><i class="fas fa-triangle-exclamation mr-1"></i>Low stock — restock soon</div>' +
+                    '<ul class="list-disc list-inside text-xs mt-1.5 space-y-0.5">' +
+                    low
+                        .map(function (it) {
+                            var u = (it.unit || 'units').trim() || 'units';
+                            var qty = Number(it.quantity) || 0;
+                            var reo = Number(it.reorderLevel) || 0;
+                            return (
+                                '<li><span class="font-medium">' +
+                                escapeHtml(String(it.name || '').trim() || '(unnamed)') +
+                                '</span> — <span class="text-amber-900">' +
+                                qty.toFixed(2) +
+                                ' ' +
+                                escapeHtml(u) +
+                                ', reorder at ' +
+                                reo.toFixed(2) +
+                                ' ' +
+                                escapeHtml(u) +
+                                '</span></li>'
+                            );
+                        })
+                        .join('') +
+                    '</ul></div>'
+            );
+        }
+        el.className = 'mb-3 space-y-2 text-sm';
+        el.innerHTML = blocks.join('');
+        el.classList.remove('hidden');
+    }
+
+    function updateBakingMiscLineStatus(selectEl) {
+        var line = selectEl && selectEl.closest('.baking-misc-line');
+        if (!line) return;
+        var statusEl = line.querySelector('.baking-misc-line-status');
+        if (!statusEl) return;
+        var name = (selectEl.value || '').trim();
+        if (!name) {
+            statusEl.textContent = '';
+            statusEl.className = 'baking-misc-line-status text-xs min-h-[1rem] text-gray-500';
+            return;
+        }
+        var item = loadMiscInventoryItems().find(function (x) {
+            return (x.name || '').trim() === name;
+        });
+        if (!item) {
+            statusEl.textContent = 'Not found in miscellaneous inventory.';
+            statusEl.className = 'baking-misc-line-status text-xs text-orange-700 font-medium';
+            return;
+        }
+        var st = miscItemStockStatus(item);
+        var u = (item.unit || 'units').trim() || 'units';
+        if (st === 'out') {
+            statusEl.textContent = 'Out of stock — restock this material if you can before deducting.';
+            statusEl.className = 'baking-misc-line-status text-xs font-semibold text-red-700';
+        } else if (st === 'low') {
+            var qty = Number(item.quantity) || 0;
+            var reorder = Number(item.reorderLevel) || 0;
+            statusEl.textContent =
+                'Low stock — on hand ' +
+                qty.toFixed(2) +
+                ' ' +
+                u +
+                ', reorder at ' +
+                reorder.toFixed(2) +
+                ' ' +
+                u +
+                '.';
+            statusEl.className = 'baking-misc-line-status text-xs font-semibold text-amber-800';
+        } else if (st === 'noreorder') {
+            statusEl.textContent =
+                'No reorder threshold set — on hand ' + (Number(item.quantity) || 0).toFixed(2) + ' ' + u + '.';
+            statusEl.className = 'baking-misc-line-status text-xs text-gray-600';
+        } else {
+            statusEl.textContent = 'Stock OK for this material.';
+            statusEl.className = 'baking-misc-line-status text-xs text-gray-500';
+        }
+    }
+
+    function refreshAllBakingMiscLineStatuses() {
+        document.querySelectorAll('#bakingMiscRows select.baking-misc-misc-item').forEach(function (sel) {
+            updateBakingMiscLineStatus(sel);
+        });
+    }
+
     function fillBakingMiscIngredientSelect(sel) {
         if (!sel) return;
-        var raw = localStorage.getItem('adminMiscInventoryItems');
-        var items = [];
-        try {
-            items = raw ? JSON.parse(raw) : [];
-        } catch (e) {
-            items = [];
-        }
+        var items = loadMiscInventoryItems();
+        var byName = {};
+        items.forEach(function (x) {
+            if (x && x.name) byName[String(x.name).trim()] = x;
+        });
         var names = items.map(function (x) { return x.name; }).filter(Boolean);
         names.sort(function (a, b) { return a.localeCompare(b); });
         var prev = sel.value;
@@ -884,17 +1103,25 @@
         names.forEach(function (n) {
             var o = document.createElement('option');
             o.value = n;
-            o.textContent = n;
+            var it = byName[String(n).trim()];
+            var st = miscItemStockStatus(it);
+            var suffix = '';
+            if (st === 'out') suffix = ' — Out of stock';
+            else if (st === 'low') suffix = ' — Low stock';
+            o.textContent = n + suffix;
             sel.appendChild(o);
         });
         if (prev && names.indexOf(prev) !== -1) sel.value = prev;
+        updateBakingMiscLineStatus(sel);
     }
 
     function addBakingMiscRow() {
         var host = document.getElementById('bakingMiscRows');
         if (!host) return;
         var line = document.createElement('div');
-        line.className = 'baking-misc-line flex gap-2 items-center flex-wrap';
+        line.className = 'baking-misc-line flex flex-col gap-1';
+        var rowTop = document.createElement('div');
+        rowTop.className = 'flex gap-2 items-center flex-wrap';
         var sel = document.createElement('select');
         sel.className =
             'baking-misc-misc-item flex-1 min-w-[140px] px-3 py-2 rounded-lg border-2 border-gray-200 text-sm focus:border-[#D4AF37] focus:outline-none';
@@ -912,12 +1139,23 @@
         rm.innerHTML = '<i class="fas fa-times"></i>';
         rm.addEventListener('click', function () {
             line.remove();
+            updateBakingMiscModalStockSummary();
         });
-        line.appendChild(sel);
-        line.appendChild(inp);
-        line.appendChild(rm);
+        var statusEl = document.createElement('div');
+        statusEl.className = 'baking-misc-line-status text-xs min-h-[1rem] text-gray-500';
+        statusEl.setAttribute('aria-live', 'polite');
+        sel.addEventListener('change', function () {
+            updateBakingMiscLineStatus(sel);
+            updateBakingMiscModalStockSummary();
+        });
+        rowTop.appendChild(sel);
+        rowTop.appendChild(inp);
+        rowTop.appendChild(rm);
+        line.appendChild(rowTop);
+        line.appendChild(statusEl);
         host.appendChild(line);
         fillBakingMiscIngredientSelect(sel);
+        updateBakingMiscModalStockSummary();
     }
 
     function resetBakingMiscModal() {

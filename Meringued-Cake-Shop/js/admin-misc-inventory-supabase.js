@@ -14,7 +14,7 @@ export async function load() {
     return await listMiscInventoryItemsForApp();
   } catch (e) {
     console.warn('[admin-misc-inventory-supabase] load failed', e);
-    return [];
+    return null;
   }
 }
 
@@ -37,9 +37,10 @@ export async function update(id, patch) {
 
 export async function deleteItem(id) {
   try {
-    await deleteMiscInventoryItem(id);
+    return await deleteMiscInventoryItem(id);
   } catch (e) {
     console.warn('[admin-misc-inventory-supabase] delete failed', e);
+    return { ok: false, error: e && e.message ? e.message : String(e) };
   }
 }
 

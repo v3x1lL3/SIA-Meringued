@@ -1,0 +1,68 @@
+classDiagram
+direction LR
+
+class AdminRecordsController {
+  <<Controller>>
+  +refresh() Promise~void~
+  +renderRecords(rows) void
+  +saveRecordFromForm() Promise~void~
+  +deleteRecord(id) Promise~void~
+  +runEodGeneration() Promise~void~
+}
+
+class AdminRecordsModel {
+  <<Model>>
+  +listAdminRecords(filters) Result
+  +upsertAdminRecord(payload) Result
+  +deleteAdminRecord(id) Result
+}
+
+class AdminRecordsBridge {
+  <<Bridge Module>>
+  +logSaleFromOrder(order) Promise~void~
+  +logInventoryMovement(payload) Promise~void~
+  +logPurchaseExpense(payload) Promise~void~
+}
+
+class AdminRecord {
+  <<Entity>>
+  +UUID id <<PK>>
+  +String type
+  +Date record_date
+  +String title
+  +Decimal amount
+  +String ref
+  +String notes
+  +DateTime created_at
+}
+
+class SupabaseAdminRecords {
+  <<Table>>
+  +id : UUID <<PK>>
+  +type : text
+  +record_date : date
+  +title : text
+  +amount : numeric
+  +ref : text
+  +notes : text
+  +created_at : timestamptz
+}
+
+class BrowserLocalRecords {
+  <<Storage Fallback>>
+  +adminRecords_v1 : JSON
+}
+
+class DashboardController {
+  <<Controller>>
+  +loadTodayStats() Promise~void~
+}
+
+AdminRecordsController ..> AdminRecordsModel : CRUD orchestration
+AdminRecordsBridge ..> AdminRecordsModel : writes operational logs
+DashboardController ..> AdminRecordsModel : reads daily totals
+
+AdminRecordsModel ..> SupabaseAdminRecords : primary persistence
+AdminRecordsModel ..> BrowserLocalRecords : fallback on error
+AdminRecordsModel --> AdminRecord : maps/normalizes rows
+

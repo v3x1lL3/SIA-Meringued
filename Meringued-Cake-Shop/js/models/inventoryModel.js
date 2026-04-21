@@ -106,9 +106,14 @@ export async function updateInventoryItem(id, patch) {
 /**
  * Delete an inventory item by id (Supabase uuid).
  */
+/** @returns {Promise<{ ok: boolean, error?: string }>} */
 export async function deleteInventoryItem(id) {
   const { error } = await supabase.from(ITEMS_TABLE).delete().eq('id', id);
-  if (error) console.warn('[InventoryModel] deleteInventoryItem failed:', error.message);
+  if (error) {
+    console.warn('[InventoryModel] deleteInventoryItem failed:', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
 }
 
 /**

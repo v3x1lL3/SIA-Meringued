@@ -1,0 +1,129 @@
+classDiagram
+direction LR
+
+class AuthUser {
+  <<External>>
+  +UUID id <<PK>>
+  +String email
+  +JSON user_metadata
+  +signUpWithEmail(email, password, fullName, role) Session
+  +signInWithEmail(email, password) Session
+  +signOut() void
+  +getSession() Session
+}
+
+class Profile {
+  <<Entity>>
+  +UUID id <<PK, FK -> AuthUser.id>>
+  +String role
+  +DateTime updated_at
+  +createOnAuthSignup() Profile
+  +updateRole(userId, role) void
+}
+
+class Order {
+  <<Entity>>
+  +UUID id <<PK>>
+  +UUID customer_id <<FK -> AuthUser.id, nullable>>
+  +String status
+  +Decimal total_amount
+  +String delivery_address
+  +String customer_phone
+  +String owner_phone
+  +String payment_method
+  +String delivery_type
+  +Date date_needed
+  +JSON details
+  +DateTime created_at
+  +DateTime updated_at
+  +listOrdersForAdmin() List~Order~
+  +listOrdersForCustomer(customerId) List~Order~
+  +insertOrder(orderPayload) Order
+  +updateOrder(id, patch) void
+}
+
+class InventoryItem {
+  <<Entity>>
+  +UUID id <<PK>>
+  +String name
+  +Decimal quantity
+  +Decimal reorder_level
+  +String unit
+  +Decimal unit_cost
+  +String image_src
+  +Date expiry_date
+  +DateTime created_at
+  +DateTime updated_at
+  +listInventoryItems() List~InventoryItem~
+  +createInventoryItem(item) InventoryItem
+  +updateInventoryItem(id, patch) void
+  +deleteInventoryItem(id) Result
+  +applyQuantityDeltaByName(name, delta) void
+}
+
+class MiscInventoryItem {
+  <<Entity>>
+  +UUID id <<PK>>
+  +String name
+  +Decimal quantity
+  +Decimal reorder_level
+  +String unit
+  +Decimal unit_cost
+  +String image_src
+  +DateTime created_at
+  +DateTime updated_at
+  +listMiscInventoryItems() List~MiscInventoryItem~
+  +createMiscInventoryItem(item) MiscInventoryItem
+  +updateMiscInventoryItem(id, patch) void
+  +deleteMiscInventoryItem(id) Result
+  +applyMiscQuantityDeltaByName(name, delta) void
+}
+
+class AdminRecord {
+  <<Entity>>
+  +UUID id <<PK>>
+  +String type
+  +Date record_date
+  +String title
+  +Decimal amount
+  +String ref
+  +String notes
+  +DateTime created_at
+  +listAdminRecords(filters) List~AdminRecord~
+  +upsertAdminRecord(payload) AdminRecord
+  +deleteAdminRecord(id) void
+}
+
+class Product {
+  <<Entity>>
+  +UUID id <<PK>>
+  +DateTime created_at
+  +listProducts() List~Product~
+  +createProduct(payload) Product
+  +updateProduct(id, patch) Product
+}
+
+class ProductOption {
+  <<Entity>>
+  +UUID id <<PK>>
+  +Int sort_order
+  +listOptions() List~ProductOption~
+}
+
+class ProductOptionValue {
+  <<Entity>>
+  +UUID id <<PK>>
+  +UUID option_id <<FK -> ProductOption.id>>
+  +Int sort_order
+  +listOptionValues(optionId) List~ProductOptionValue~
+}
+
+AuthUser "1" --> "0..1" Profile : has
+AuthUser "1" --> "0..*" Order : places
+Product "1" --> "0..*" ProductOption : has
+ProductOption "1" --> "0..*" ProductOptionValue : defines
+Order ..> Product : ordered product
+Order ..> InventoryItem : deducts stock
+Order ..> MiscInventoryItem : deducts misc stock
+Order ..> AdminRecord : logs sales/ops
+InventoryItem ..> AdminRecord : logs inventory audit

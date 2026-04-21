@@ -312,6 +312,8 @@
                 emptyEl.classList.remove('hidden');
                 applyDefaultInventoryEmptyCopy();
             }
+            updateLowStockBanner();
+            updateExpiryBanner();
             return;
         }
 
@@ -384,8 +386,10 @@
         tbody.innerHTML = pagedItems.map(function (item) {
             var qty = Number(item.quantity) || 0;
             var reorder = Number(item.reorderLevel) || 0;
-            var low = reorder > 0 && qty <= reorder;
-            var qtyClass = low ? 'text-red-600' : 'text-gray-800';
+            var outOfStockRow = reorder > 0 && qty <= 0;
+            var lowStockRow = reorder > 0 && qty > 0 && qty <= reorder;
+            var showStockAlert = outOfStockRow || lowStockRow;
+            var qtyClass = outOfStockRow ? 'text-red-600' : (lowStockRow ? 'text-amber-700' : 'text-gray-800');
             var imgHtml = item.imageSrc
                 ? '<img src="' + item.imageSrc.replace(/"/g, '&quot;') + '" alt="' + escapeHtml(item.name) + '" class="w-12 h-12 rounded-lg object-cover border border-gray-200" />'
                 : '<div class="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400"><i class="fas fa-image"></i></div>';
@@ -431,7 +435,11 @@
                 '<td class="py-3 px-3">' +
                 '<span class="inv-view-only text-gray-800 font-semibold text-sm">' + escapeHtml(String(item.reorderLevel != null ? item.reorderLevel : 0)) + '</span>' +
                 '<input data-action="reorder" data-id="' + escapeHtml(item.id) + '" type="number" min="0" step="0.01" class="inv-edit-only w-20 px-2 py-1 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-xs" value="' + escapeHtml(String(item.reorderLevel != null ? item.reorderLevel : 0)) + '">' +
-                (low ? '<div class="text-xs text-red-600 mt-1"><i class="fas fa-triangle-exclamation mr-1"></i>Low stock</div>' : '<div class="text-xs text-gray-400 mt-1">—</div>') +
+                (showStockAlert
+                    ? (outOfStockRow
+                        ? '<div class="text-xs text-red-600 mt-1 font-semibold"><i class="fas fa-triangle-exclamation mr-1"></i>Out of stock</div>'
+                        : '<div class="text-xs text-amber-700 mt-1"><i class="fas fa-triangle-exclamation mr-1"></i>Low stock</div>')
+                    : '<div class="text-xs text-gray-400 mt-1">—</div>') +
                 '</td>' +
                 expiryTd +
                 '<td class="py-3 px-3">' +
@@ -463,7 +471,8 @@
             cardsGrid.innerHTML = pagedItems.map(function (item) {
                 var qty = Number(item.quantity) || 0;
                 var reorder = Number(item.reorderLevel) || 0;
-                var low = reorder > 0 && qty <= reorder;
+                var outOfStockRow = reorder > 0 && qty <= 0;
+                var lowStockRow = reorder > 0 && qty > 0 && qty <= reorder;
                 var unitLabel = (item.unit || 'units') || '';
                 var unitDisplay = unitLabel && String(unitLabel).trim() ? ' ' + unitLabel : '';
                 var extended = !isMisc && item.expiryDate && getExtendedExpiryString(item.expiryDate);
@@ -480,7 +489,9 @@
                     '<div class="flex-1 min-w-0">' +
                     '<div class="flex items-start justify-between gap-2 mb-1">' +
                     '<div class="font-semibold text-gray-800 truncate" title="' + escapeHtml(item.name || '') + '">' + escapeHtml(item.name || 'Ingredient') + '</div>' +
-                    (low ? '<span class="inventory-pill inventory-pill--low"><i class="fas fa-triangle-exclamation mr-1"></i>Low stock</span>' : '') +
+                    (outOfStockRow
+                        ? '<span class="inventory-pill inventory-pill--out"><i class="fas fa-triangle-exclamation mr-1"></i>Out of stock</span>'
+                        : (lowStockRow ? '<span class="inventory-pill inventory-pill--low"><i class="fas fa-triangle-exclamation mr-1"></i>Low stock</span>' : '')) +
                     '</div>' +
                     '<div class="text-[11px] text-gray-600 flex flex-wrap gap-x-4 gap-y-1">' +
                     '<span>Qty: <span class="font-semibold">' + qty.toFixed(2) + unitDisplay + '</span></span>' +
@@ -555,23 +566,53 @@
         var parts = [];
         if (expiringSoon.length > 0) {
             parts.push(expiringSoon.map(function (x) {
+                var nm = String(x.name || '').trim() || '(unnamed)';
                 var label = x.days === 0 ? 'today' : (x.days === 1 ? 'tomorrow' : 'in ' + x.days + ' days');
-                return x.name + ' (expires ' + x.date + ' — ' + label + ')';
+                return nm + ' (expires ' + x.date + ' — ' + label + ')';
             }).join('; '));
         }
         if (expired.length > 0) {
             parts.push('Already expired (check extended expiry date): ' + expired.map(function (x) {
-                return x.name + ' (' + x.date + ')';
+                var nm = String(x.name || '').trim() || '(unnamed)';
+                return nm + ' (' + x.date + ')';
             }).join('; '));
         }
         listEl.textContent = parts.join(' · ');
         banner.classList.remove('hidden');
     }
 
+    function resetLowStockBannerTheme(banner, titleEl, listEl) {
+        if (!banner) return;
+        banner.classList.remove('border-red-300', 'bg-red-50');
+        banner.classList.add('border-amber-200', 'bg-amber-50');
+        if (titleEl) {
+            titleEl.className = 'font-semibold text-amber-800 flex items-center gap-2';
+            titleEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Low stock — please restock';
+        }
+        if (listEl) {
+            listEl.className = 'text-sm text-amber-700 mt-1';
+        }
+    }
+
+    function applyOutOfStockBannerTheme(banner, titleEl, listEl) {
+        if (!banner) return;
+        banner.classList.remove('border-amber-200', 'bg-amber-50');
+        banner.classList.add('border-red-300', 'bg-red-50');
+        if (titleEl) {
+            titleEl.className = 'font-semibold text-red-800 flex items-center gap-2';
+            titleEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Out of stock — please restock';
+        }
+        if (listEl) {
+            listEl.className = 'text-sm text-red-700 mt-1';
+        }
+    }
+
     function updateLowStockBanner() {
-        var banner = document.getElementById('inventoryLowStockBanner');
-        var listEl = document.getElementById('inventoryLowStockList');
-        if (!banner || !listEl) return;
+        var lowBanner = document.getElementById('inventoryLowStockBanner');
+        var lowListEl = document.getElementById('inventoryLowStockList');
+        var outBanner = document.getElementById('inventoryOutStockBanner');
+        var outListEl = document.getElementById('inventoryOutStockList');
+        if (!lowBanner || !lowListEl) return;
         var settingsRaw = localStorage.getItem('adminSettings');
         var notifyLowStock = true;
         if (settingsRaw) {
@@ -580,22 +621,47 @@
                 if (s && s.notifyLowStock === false) notifyLowStock = false;
             } catch (e) {}
         }
-        var lowItems = (inventoryItems || []).filter(function (item) {
+
+        var outItems = (inventoryItems || []).filter(function (item) {
             var reorder = Number(item.reorderLevel) || 0;
             var qty = Number(item.quantity) || 0;
-            return reorder > 0 && qty <= reorder;
+            return reorder > 0 && qty <= 0;
         });
-        if (!notifyLowStock || lowItems.length === 0) {
-            banner.classList.add('hidden');
+        var lowOnlyItems = (inventoryItems || []).filter(function (item) {
+            var reorder = Number(item.reorderLevel) || 0;
+            var qty = Number(item.quantity) || 0;
+            return reorder > 0 && qty > 0 && qty <= reorder;
+        });
+
+        var u = function (item) { return (item.unit || 'units').trim() ? ' ' + (item.unit || 'units') : ''; };
+        function line(item) {
+            var nm = String(item.name || '').trim() || '(unnamed)';
+            var qty = Number(item.quantity) || 0;
+            var reorder = Number(item.reorderLevel) || 0;
+            return nm + ' (' + qty + u(item) + ' — reorder at ' + reorder + u(item) + ')';
+        }
+
+        if (!notifyLowStock) {
+            lowBanner.classList.add('hidden');
+            if (outBanner) outBanner.classList.add('hidden');
             return;
         }
-        var u = function (item) { return (item.unit || 'units').trim() ? ' ' + (item.unit || 'units') : ''; };
-        listEl.textContent = lowItems.map(function (item) {
-            var qty = Number(item.quantity) || 0;
-            var reorder = Number(item.reorderLevel) || 0;
-            return item.name + ' (' + qty + u(item) + ' — reorder at ' + reorder + u(item) + ')';
-        }).join('; ');
-        banner.classList.remove('hidden');
+
+        if (outBanner && outListEl) {
+            if (outItems.length > 0) {
+                outListEl.textContent = outItems.map(line).join('; ');
+                outBanner.classList.remove('hidden');
+            } else {
+                outBanner.classList.add('hidden');
+            }
+        }
+
+        if (lowOnlyItems.length > 0) {
+            lowListEl.textContent = lowOnlyItems.map(line).join('; ');
+            lowBanner.classList.remove('hidden');
+        } else {
+            lowBanner.classList.add('hidden');
+        }
     }
 
     function applyStockDelta(id, delta, moveMeta) {
@@ -613,6 +679,7 @@
         saveInventory();
         renderInventory();
         inventorySupabaseUpdate(item.id, { quantity: item.quantity });
+        if (isSupabaseId(item.id)) scheduleInventoryCloudRefresh();
         return { item: item, before: current, delta: delta };
     }
 
@@ -685,7 +752,11 @@
             var createBridge = currentCategory === 'misc' ? window.MiscInventorySupabase : window.InventorySupabase;
             if (createBridge && createBridge.create) {
                 createBridge.create(newItem).then(function (created) {
-                    if (created && created.id) { newItem.id = created.id; saveInventory(); }
+                    if (created && created.id) {
+                        newItem.id = created.id;
+                        saveInventory();
+                    }
+                    scheduleInventoryCloudRefresh();
                 });
             }
         }
@@ -707,12 +778,14 @@
                 saveInventory();
                 renderInventory();
                 inventorySupabaseUpdate(item.id, { imageSrc: item.imageSrc });
+                if (isSupabaseId(item.id)) scheduleInventoryCloudRefresh();
             });
         } else {
             item.imageSrc = imageSrc || '';
             saveInventory();
             renderInventory();
             inventorySupabaseUpdate(item.id, { imageSrc: item.imageSrc });
+            if (isSupabaseId(item.id)) scheduleInventoryCloudRefresh();
         }
     }
 
@@ -867,6 +940,7 @@
                         };
                         if (currentCategory !== 'misc') patchImg.expiryDate = item.expiryDate;
                         inventorySupabaseUpdate(item.id, patchImg);
+                        if (isSupabaseId(item.id)) scheduleInventoryCloudRefresh();
                         renderInventory();
                     }).catch(function () {
                         // If reading fails, still exit edit mode.
@@ -885,16 +959,45 @@
                 };
                 if (currentCategory !== 'misc') patchDone.expiryDate = item.expiryDate;
                 inventorySupabaseUpdate(item.id, patchDone);
+                if (isSupabaseId(item.id)) scheduleInventoryCloudRefresh();
                 return;
             }
 
             if (action === 'delete') {
                 var item = inventoryItems.find(function (x) { return x.id === id; });
                 if (!confirm('Delete "' + (item && item.name ? item.name : (currentCategory === 'misc' ? 'this item' : 'this ingredient')) + '"?')) return;
-                if (item) inventorySupabaseDelete(item.id);
-                inventoryItems = inventoryItems.filter(function (x) { return x.id !== id; });
-                saveInventory();
-                renderInventory();
+                (async function () {
+                    var didCloudDelete = false;
+                    if (item && isSupabaseId(item.id)) {
+                        var bridge = currentCategory === 'misc' ? window.MiscInventorySupabase : window.InventorySupabase;
+                        if (bridge && typeof bridge.delete === 'function') {
+                            var delRes = await bridge.delete(item.id);
+                            if (delRes && delRes.ok === false) {
+                                var msg =
+                                    'Could not delete this row in Supabase: ' +
+                                    (delRes.error || 'unknown error') +
+                                    '\n\nIt was not removed from the database. Common causes: RLS (admin role), or you are not signed in as admin. Check the browser console and Supabase policies for DELETE on inventory_items / misc_inventory_items.';
+                                if (typeof window.showToast === 'function') {
+                                    window.showToast(msg.replace(/\n/g, ' '), 'error');
+                                } else {
+                                    alert(msg);
+                                }
+                                return;
+                            }
+                            didCloudDelete = true;
+                        }
+                    }
+                    inventoryItems = inventoryItems.filter(function (x) { return x.id !== id; });
+                    saveInventory();
+                    if (didCloudDelete) {
+                        await refreshInventoryFromCloud().catch(function () { /* keep filtered list in localStorage */ });
+                    } else {
+                        renderInventory();
+                    }
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Item removed.', 'success');
+                    }
+                })();
                 return;
             }
             if (action === 'stockIn' || action === 'stockOut') {
@@ -947,6 +1050,7 @@
                 priceItem.unitCost = (Number.isFinite(pv) && pv >= 0) ? pv : 0;
                 saveInventory();
                 inventorySupabaseUpdate(priceItem.id, { unitCost: priceItem.unitCost });
+                if (isSupabaseId(priceItem.id)) scheduleInventoryCloudRefresh();
                 renderInventory();
                 try {
                     if (typeof window.showToast === 'function') {
@@ -973,6 +1077,7 @@
                     saveInventory();
                     renderInventory();
                     inventorySupabaseUpdate(u.id, { unit: u.unit });
+                    if (isSupabaseId(u.id)) scheduleInventoryCloudRefresh();
                 }
                 return;
             }
@@ -985,6 +1090,7 @@
                     saveInventory();
                     renderInventory();
                     inventorySupabaseUpdate(r.id, { reorderLevel: r.reorderLevel });
+                    if (isSupabaseId(r.id)) scheduleInventoryCloudRefresh();
                 }
                 return;
             }
@@ -997,6 +1103,7 @@
                     saveInventory();
                     renderInventory();
                     inventorySupabaseUpdate(expItem.id, { expiryDate: expItem.expiryDate });
+                    if (isSupabaseId(expItem.id)) scheduleInventoryCloudRefresh();
                 }
             }
         });
@@ -1018,17 +1125,55 @@
         return typeof id === 'string' && id.length > 0 && id.indexOf('inv_') !== 0;
     }
 
+    /**
+     * Pull latest ingredient + misc lists from Supabase into localStorage, then re-render.
+     * Unlike first-time init, an empty cloud array is kept (no template seed) so deletes stay gone.
+     */
+    function refreshInventoryFromCloud() {
+        var ingBridge = window.InventorySupabase && typeof window.InventorySupabase.load === 'function';
+        var miscBridge = window.MiscInventorySupabase && typeof window.MiscInventorySupabase.load === 'function';
+        if (!ingBridge && !miscBridge) return Promise.resolve(false);
+        var ingP = ingBridge ? window.InventorySupabase.load().catch(function () { return null; }) : Promise.resolve(null);
+        var miscP = miscBridge ? window.MiscInventorySupabase.load().catch(function () { return null; }) : Promise.resolve(null);
+        return Promise.all([ingP, miscP]).then(function (pair) {
+            var items = pair[0];
+            var miscItems = pair[1];
+            if (Array.isArray(items)) {
+                try {
+                    localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(items));
+                } catch (e) {
+                    console.warn('[admin-inventory] could not write ingredients to localStorage', e);
+                }
+            }
+            if (Array.isArray(miscItems)) {
+                try {
+                    localStorage.setItem(MISC_STORAGE_KEY, JSON.stringify(miscItems));
+                } catch (e) {
+                    console.warn('[admin-inventory] could not write misc to localStorage', e);
+                }
+            }
+            loadInventory();
+            renderInventory();
+            return true;
+        });
+    }
+
+    var invCloudRefreshTimer = null;
+    function scheduleInventoryCloudRefresh() {
+        if (invCloudRefreshTimer) clearTimeout(invCloudRefreshTimer);
+        invCloudRefreshTimer = setTimeout(function () {
+            invCloudRefreshTimer = null;
+            refreshInventoryFromCloud().catch(function (e) {
+                console.warn('[admin-inventory] scheduled cloud refresh failed', e);
+            });
+        }, 320);
+    }
+
     /** Sync patch to the correct Supabase table for the active inventory tab. */
     function inventorySupabaseUpdate(id, patch) {
         if (!isSupabaseId(id)) return;
         var bridge = currentCategory === 'misc' ? window.MiscInventorySupabase : window.InventorySupabase;
         if (bridge && bridge.update) bridge.update(id, patch);
-    }
-
-    function inventorySupabaseDelete(id) {
-        if (!isSupabaseId(id)) return;
-        var bridge = currentCategory === 'misc' ? window.MiscInventorySupabase : window.InventorySupabase;
-        if (bridge && bridge.delete) bridge.delete(id);
     }
 
     /**
@@ -1157,13 +1302,26 @@
     document.addEventListener('DOMContentLoaded', init);
 
     document.addEventListener('visibilitychange', function () {
-        if (!document.hidden && document.getElementById('inventoryTableBody')) renderInventory();
+        if (!document.hidden && document.getElementById('inventoryTableBody')) {
+            if (window.InventorySupabase || window.MiscInventorySupabase) {
+                scheduleInventoryCloudRefresh();
+            } else {
+                renderInventory();
+            }
+        }
     });
     window.addEventListener('focus', function () {
-        if (document.getElementById('inventoryTableBody')) renderInventory();
+        if (document.getElementById('inventoryTableBody')) {
+            if (window.InventorySupabase || window.MiscInventorySupabase) {
+                scheduleInventoryCloudRefresh();
+            } else {
+                renderInventory();
+            }
+        }
     });
 
     window.renderInventory = renderInventory;
+    window.refreshAdminInventoryFromCloud = refreshInventoryFromCloud;
     window.setInventoryCategory = setInventoryCategory;
     window.openLogoutModal = openLogoutModal;
     window.closeLogoutModal = closeLogoutModal;

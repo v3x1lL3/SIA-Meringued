@@ -1727,6 +1727,11 @@
   <div class="no-print" style="margin-bottom:10px;">
     <button onclick="window.print()" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-weight:600;">Print / Save as PDF</button>
   </div>
+  <div class="letterhead">
+    <p class="brand">Meringued</p>
+    <p class="tagline">Artisanal Visual Artistry | Custom Cakes</p>
+    <p class="contacts">Davao City • 0945 812 5225 / 0938 597 0991 • avadueyg@gmail.com</p>
+  </div>
   <h1>${escapeHtml(title)}</h1>
   <div class="meta">Generated: ${escapeHtml(generatedAt)}</div>
   <table>
