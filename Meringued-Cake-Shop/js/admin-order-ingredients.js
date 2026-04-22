@@ -181,22 +181,60 @@
         return { ok: true, item: item };
     }
 
-    function applyBakingMiscStockOut(order, lines) {
+    function normalizeBakingMiscLines(lines) {
+        var bucket = {};
+        (Array.isArray(lines) ? lines : []).forEach(function (line) {
+            var name = line && line.name != null ? String(line.name).trim() : '';
+            var qty = Number(line && line.quantity);
+            if (!name || !(qty > 0)) return;
+            var key = name.toLowerCase();
+            if (!bucket[key]) bucket[key] = { name: name, quantity: 0 };
+            bucket[key].quantity += qty;
+        });
+        return Object.keys(bucket)
+            .map(function (k) { return bucket[k]; })
+            .filter(function (x) { return x.quantity > 0; });
+    }
+
+    function applyBakingMiscStockOut(order, lines, previousLines) {
         const ref = order && (order.orderGroupId || order.supabase_id || order.id)
             ? String(order.orderGroupId || order.supabase_id || order.id)
             : '';
-        const reason = 'Baking — additional misc stock out' + (ref ? (' (' + ref + ')') : '');
+        const reasonBase = 'Baking — additional misc stock out' + (ref ? (' (' + ref + ')') : '');
         const applied = [];
         const failed = [];
-        (Array.isArray(lines) ? lines : []).forEach(function (line) {
-            const name = line && line.name != null ? String(line.name).trim() : '';
-            const qty = Number(line && line.quantity);
-            if (!name || !(qty > 0)) return;
-            const r = applyStockDeltaByNameMisc(name, -Math.abs(qty), { reason: reason });
-            if (r && r.ok) applied.push({ name: name, quantity: qty });
-            else failed.push({ name: name, quantity: qty, message: (r && r.message) ? r.message : 'Skipped' });
+        const current = normalizeBakingMiscLines(lines);
+        const prev = normalizeBakingMiscLines(previousLines);
+        const byNamePrev = {};
+        prev.forEach(function (line) { byNamePrev[line.name.toLowerCase()] = line.quantity; });
+        const byNameCurrent = {};
+        current.forEach(function (line) { byNameCurrent[line.name.toLowerCase()] = line.quantity; });
+        const allKeys = {};
+        Object.keys(byNamePrev).forEach(function (k) { allKeys[k] = true; });
+        Object.keys(byNameCurrent).forEach(function (k) { allKeys[k] = true; });
+
+        Object.keys(allKeys).forEach(function (key) {
+            var newQty = Number(byNameCurrent[key]) || 0;
+            var oldQty = Number(byNamePrev[key]) || 0;
+            var delta = newQty - oldQty;
+            if (delta === 0) return;
+            var canonicalName = '';
+            var lineCurrent = current.find(function (x) { return x.name.toLowerCase() === key; });
+            var linePrev = prev.find(function (x) { return x.name.toLowerCase() === key; });
+            canonicalName = (lineCurrent && lineCurrent.name) || (linePrev && linePrev.name) || '';
+            if (!canonicalName) return;
+
+            // Positive delta means additional stock out (deduct). Negative means reduce/remove previous line (restore).
+            var stockDelta = delta > 0 ? -Math.abs(delta) : Math.abs(delta);
+            var reason = delta > 0 ? reasonBase : ('Baking — misc stock out adjusted (restore)' + (ref ? (' (' + ref + ')') : ''));
+            const r = applyStockDeltaByNameMisc(canonicalName, stockDelta, { reason: reason });
+            if (r && r.ok) {
+                applied.push({ name: canonicalName, delta: delta, quantity: Math.abs(delta) });
+            } else {
+                failed.push({ name: canonicalName, delta: delta, quantity: Math.abs(delta), message: (r && r.message) ? r.message : 'Skipped' });
+            }
         });
-        return { applied: applied, failed: failed };
+        return { applied: applied, failed: failed, lines: current };
     }
 
     /**

@@ -23,6 +23,18 @@ function nonEmptyReceipt(o) {
   return true;
 }
 
+function normalizeMiscLines(lines) {
+  if (!Array.isArray(lines)) return [];
+  const out = [];
+  lines.forEach((line) => {
+    const name = line && line.name != null ? String(line.name).trim() : '';
+    const qty = Number(line && line.quantity);
+    if (!name || !(qty > 0)) return;
+    out.push({ name, quantity: qty });
+  });
+  return out;
+}
+
 /** Pickup → owner_phone; delivery → customer_phone. Legacy rows used customer_phone for shop pickup. */
 function resolvePhonesFromRow(row, det) {
   const dt = row.delivery_type || det.deliveryType || 'Pick up';
@@ -79,6 +91,7 @@ export function mapSupabaseRowToAppOrder(row) {
     date: det.date || (row.created_at ? String(row.created_at).slice(0, 10) : ''),
     created_at: row.created_at,
     ingredientsDeducted: det.ingredientsDeducted === true,
+    bakingMiscLines: normalizeMiscLines(det.bakingMiscLines),
   };
 }
 
@@ -126,6 +139,11 @@ export async function fetchMergedOrdersForAdmin() {
       if (le && !me) {
         mapped.customerEmail = le;
         mapped.email = le;
+      }
+      const localMisc = normalizeMiscLines(loc.bakingMiscLines);
+      const remoteMisc = normalizeMiscLines(mapped.bakingMiscLines);
+      if (localMisc.length > 0 && remoteMisc.length === 0) {
+        mapped.bakingMiscLines = localMisc;
       }
     }
   });

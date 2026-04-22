@@ -377,6 +377,17 @@ function filterToToIsoUtc(value) {
   return Number.isNaN(d.getTime()) ? '' : d.toISOString();
 }
 
+/** Manila calendar day as UTC ISO bounds for timestamptz filtering. */
+function getTodayIsoRangeManilaUtc() {
+  const ymd = getTodayYmd(); // YYYY-MM-DD in Asia/Manila
+  const start = new Date(`${ymd}T00:00:00+08:00`);
+  const end = new Date(`${ymd}T23:59:59.999+08:00`);
+  return {
+    fromIso: Number.isNaN(start.getTime()) ? '' : start.toISOString(),
+    toIso: Number.isNaN(end.getTime()) ? '' : end.toISOString(),
+  };
+}
+
 function exportCurrentRecordsPdf() {
   const type = getActiveType();
   const label = TYPE_LABEL[type] || type;
@@ -777,9 +788,17 @@ async function refresh() {
   let effectiveFrom = '';
   let effectiveTo = '';
   if (preset === 'today') {
-    const y = getTodayYmd();
-    effectiveFrom = y;
-    effectiveTo = y;
+    // EOD rows can be DATE-like snapshots; keep DATE bounds for reliable matching.
+    // Other types (purchase/sales/inventory audit) are timestamped; use Manila day datetime bounds.
+    if (activeType === 'eod_inventory_audit') {
+      const y = getTodayYmd();
+      effectiveFrom = y;
+      effectiveTo = y;
+    } else {
+      const r = getTodayIsoRangeManilaUtc();
+      effectiveFrom = r.fromIso || '';
+      effectiveTo = r.toIso || '';
+    }
   } else {
     effectiveFrom = from ? filterFromToIsoUtc(from) : '';
     effectiveTo = to ? filterToToIsoUtc(to) : '';

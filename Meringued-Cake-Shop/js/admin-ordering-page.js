@@ -18,6 +18,8 @@
     var bakingMiscOrderId = null;
     var adminOrdersPage = 1;
     var adminOrdersPageSize = 10;
+    var adminOrdersAutoRefreshTimer = null;
+    var ordersRefreshInFlight = false;
 
     var ORDER_PIPELINE = ['Pending', 'Acknowledge', 'Baking', 'Ready', 'Completed'];
 
@@ -263,7 +265,38 @@
         return orders.findIndex(function (o) { return String(o.id) === String(orderId); });
     }
 
-    function performOrderStatusUpdate(orderIndex, newStatus) {
+    function normalizeBakingMiscLines(lines) {
+        var bucket = {};
+        (Array.isArray(lines) ? lines : []).forEach(function (line) {
+            var name = line && line.name != null ? String(line.name).trim() : '';
+            var qty = Number(line && line.quantity);
+            if (!name || !(qty > 0)) return;
+            var key = name.toLowerCase();
+            if (!bucket[key]) bucket[key] = { name: name, quantity: 0 };
+            bucket[key].quantity += qty;
+        });
+        return Object.keys(bucket).map(function (k) { return bucket[k]; });
+    }
+
+    function updateOrderInLocalStorage(order) {
+        var uid = order && order.userId;
+        if (uid && typeof getOrdersForUser === 'function' && typeof saveOrdersForUser === 'function') {
+            var list = getOrdersForUser(uid);
+            var idx = list.findIndex(function (o) { return String(o.id) === String(order.id); });
+            if (idx !== -1) list[idx] = order;
+            saveOrdersForUser(uid, list);
+        } else if (typeof updateOrderInStorage === 'function') {
+            updateOrderInStorage(order.id, {
+                status: order.status,
+                ingredientsDeducted: order.ingredientsDeducted,
+                bakingMiscLines: order.bakingMiscLines
+            });
+        } else {
+            try { localStorage.setItem('customerOrders', JSON.stringify(orders)); } catch (e) {}
+        }
+    }
+
+    async function performOrderStatusUpdate(orderIndex, newStatus) {
         var order = orders[orderIndex];
         if (!order) return;
         var currentStatus = normalizeOrderStatus(order);
@@ -290,27 +323,25 @@
             }
         }
 
-        var uid = order.userId;
-        if (uid && typeof getOrdersForUser === 'function' && typeof saveOrdersForUser === 'function') {
-            var list = getOrdersForUser(uid);
-            var idx = list.findIndex(function (o) { return String(o.id) === String(order.id); });
-            if (idx !== -1) list[idx] = order;
-            saveOrdersForUser(uid, list);
-        } else if (typeof updateOrderInStorage === 'function') {
-            updateOrderInStorage(order.id, { status: order.status, ingredientsDeducted: order.ingredientsDeducted });
-        } else {
-            try { localStorage.setItem('customerOrders', JSON.stringify(orders)); } catch (e) {}
-        }
+        updateOrderInLocalStorage(order);
+
+        // Repaint immediately so operators see pipeline progress without waiting for network.
+        renderOrdersTable();
 
         if (order.supabase_id && typeof window.updateOrderInSupabase === 'function') {
-            window.updateOrderInSupabase(order.supabase_id, { status: newStatus });
+            try {
+                await window.updateOrderInSupabase(order.supabase_id, { status: newStatus });
+            } catch (e) {
+                console.warn('[admin-ordering-page] updateOrderInSupabase failed:', e && e.message ? e.message : e);
+            }
         }
 
-        reloadOrdersMerged();
+        // Pull merged data after write settles so cloud state stays authoritative.
+        await reloadOrdersMerged({ localFirst: false });
         showToast('Order moved to: ' + statusDisplayLabel(newStatus));
     }
 
-    function advanceOrderNextStep(orderId) {
+    async function advanceOrderNextStep(orderId) {
         var orderIndex = findOrderIndexById(orderId);
         if (orderIndex === -1) {
             alert('Order not found. Try refreshing the page.');
@@ -327,7 +358,7 @@
         if (next === 'Completed') {
             if (!confirm('Mark this order as Completed? Sales / payment logging will run if configured.')) return;
         }
-        performOrderStatusUpdate(orderIndex, next);
+        await performOrderStatusUpdate(orderIndex, next);
     }
 
     function loadOrders() {
@@ -359,36 +390,54 @@
         }
     }
 
-    async function reloadOrdersMerged() {
-        var myGen = ++ordersLoadGen;
-        loadOrders();
-        var hadLocalActive = orders.some(function (o) { return o && normalizeOrderStatus(o) !== 'Cancelled'; });
-        renderOrdersTable();
-        setOrdersCloudSyncHint(!hadLocalActive);
-
+    async function reloadOrdersMerged(opts) {
+        opts = opts || {};
+        var localFirst = opts.localFirst !== false;
+        if (ordersRefreshInFlight) return;
+        ordersRefreshInFlight = true;
         try {
-            // Script file is in js/ — must be ./admin-orders-merge.js (NOT ./js/... → broken js/js/ path).
-            var m = await import('./admin-orders-merge.js');
-            var mergedResult = await Promise.race([
-                m.fetchMergedOrdersForAdmin(),
-                new Promise(function (_, rej) {
-                    setTimeout(function () { rej(new Error('Supabase orders fetch timed out')); }, 20000);
-                })
-            ]);
+            var myGen = ++ordersLoadGen;
+            if (localFirst) {
+                loadOrders();
+                var hadLocalActive = orders.some(function (o) { return o && normalizeOrderStatus(o) !== 'Cancelled'; });
+                renderOrdersTable();
+                setOrdersCloudSyncHint(!hadLocalActive);
+            }
+
+            try {
+                // Script file is in js/ — must be ./admin-orders-merge.js (NOT ./js/... → broken js/js/ path).
+                var m = await import('./admin-orders-merge.js');
+                var mergedResult = await Promise.race([
+                    m.fetchMergedOrdersForAdmin(),
+                    new Promise(function (_, rej) {
+                        setTimeout(function () { rej(new Error('Supabase orders fetch timed out')); }, 20000);
+                    })
+                ]);
+                if (myGen !== ordersLoadGen) return;
+                var list = mergedResult && mergedResult.orders ? mergedResult.orders : mergedResult;
+                var src = mergedResult && mergedResult.source ? mergedResult.source : 'supabase';
+                orders = Array.isArray(list) ? list : [];
+                setOrdersSourceBanner(src);
+            } catch (e) {
+                if (myGen !== ordersLoadGen) return;
+                console.warn('[admin-ordering-page] Cloud merge failed, showing local orders only:', e && e.message ? e.message : e);
+                loadOrders();
+                setOrdersSourceBanner('local');
+            }
             if (myGen !== ordersLoadGen) return;
-            var list = mergedResult && mergedResult.orders ? mergedResult.orders : mergedResult;
-            var src = mergedResult && mergedResult.source ? mergedResult.source : 'supabase';
-            orders = Array.isArray(list) ? list : [];
-            setOrdersSourceBanner(src);
-        } catch (e) {
-            if (myGen !== ordersLoadGen) return;
-            console.warn('[admin-ordering-page] Cloud merge failed, showing local orders only:', e && e.message ? e.message : e);
-            loadOrders();
-            setOrdersSourceBanner('local');
+            setOrdersCloudSyncHint(false);
+            renderOrdersTable();
+        } finally {
+            ordersRefreshInFlight = false;
         }
-        if (myGen !== ordersLoadGen) return;
-        setOrdersCloudSyncHint(false);
-        renderOrdersTable();
+    }
+
+    function startAdminOrdersAutoRefresh() {
+        if (adminOrdersAutoRefreshTimer) return;
+        adminOrdersAutoRefreshTimer = setInterval(function () {
+            if (document.hidden) return;
+            reloadOrdersMerged({ localFirst: false });
+        }, 5000);
     }
 
     function getStatusColor(status) {
@@ -843,7 +892,7 @@
         currentOrderId = null;
     }
 
-    function confirmStatusChange() {
+    async function confirmStatusChange() {
         if (!currentOrderId) return;
         var newStatus = document.getElementById('newStatus').value;
         if (!newStatus) {
@@ -861,7 +910,7 @@
         if (newStatus === 'Completed' && currentStatus !== 'Completed') {
             if (!confirm('Mark this order as Completed? Sales / payment logging will run if configured.')) return;
         }
-        performOrderStatusUpdate(orderIndex, newStatus);
+        await performOrderStatusUpdate(orderIndex, newStatus);
         closeStatusModal();
     }
 
@@ -1115,7 +1164,7 @@
         updateBakingMiscLineStatus(sel);
     }
 
-    function addBakingMiscRow() {
+    function addBakingMiscRow(initial) {
         var host = document.getElementById('bakingMiscRows');
         if (!host) return;
         var line = document.createElement('div');
@@ -1155,14 +1204,22 @@
         line.appendChild(statusEl);
         host.appendChild(line);
         fillBakingMiscIngredientSelect(sel);
+        if (initial && initial.name) sel.value = String(initial.name).trim();
+        if (initial && Number(initial.quantity) > 0) inp.value = String(Number(initial.quantity));
         updateBakingMiscModalStockSummary();
+        updateBakingMiscLineStatus(sel);
     }
 
-    function resetBakingMiscModal() {
+    function resetBakingMiscModal(lines) {
         var host = document.getElementById('bakingMiscRows');
         if (!host) return;
         host.innerHTML = '';
-        addBakingMiscRow();
+        var normalized = normalizeBakingMiscLines(lines);
+        if (normalized.length > 0) {
+            normalized.forEach(function (line) { addBakingMiscRow(line); });
+        } else {
+            addBakingMiscRow();
+        }
     }
 
     function openBakingMiscModal(orderId) {
@@ -1178,7 +1235,7 @@
         bakingMiscOrderId = String(orderId);
         var label = document.getElementById('bakingMiscOrderLabel');
         if (label) label.textContent = order.orderGroupId || String(order.id);
-        resetBakingMiscModal();
+        resetBakingMiscModal(order.bakingMiscLines);
         var modal = document.getElementById('bakingMiscModal');
         if (!modal) return;
         modal.classList.remove('hidden');
@@ -1227,21 +1284,66 @@
             alert('Inventory link not loaded.');
             return;
         }
-        var res = window.OrderIngredients.applyBakingMiscStockOut(order, lines);
-        closeBakingMiscModal();
-        if (res.applied.length) {
-            showToast('Stocked out ' + res.applied.length + ' miscellaneous item(s)');
+        var previousLines = normalizeBakingMiscLines(order.bakingMiscLines);
+        var res = window.OrderIngredients.applyBakingMiscStockOut(order, lines, previousLines);
+        var nextLines = normalizeBakingMiscLines(res && res.lines ? res.lines : lines);
+        order.bakingMiscLines = nextLines;
+        updateOrderInLocalStorage(order);
+
+        if (order.supabase_id && typeof window.updateOrderInSupabase === 'function') {
+            var cloudDetails = {
+                localId: order.id != null ? order.id : null,
+                orderGroupId: order.orderGroupId || null,
+                customer: order.customer || null,
+                customerEmail: order.customerEmail || order.email || null,
+                email: order.customerEmail || order.email || null,
+                name: order.name || null,
+                cake: order.cake || null,
+                size: order.size || null,
+                quantity: order.quantity != null ? order.quantity : null,
+                flavor: order.flavor || null,
+                frosting: order.frosting || null,
+                cakeDesign: order.cakeDesign || null,
+                dedication: order.dedication || null,
+                receiptFileName: order.receiptFileName || null,
+                designImageName: order.designImageName || null,
+                date: order.date || null,
+                paymentPlan: order.paymentPlan || null,
+                downPaymentAmount: order.downPaymentAmount != null ? order.downPaymentAmount : null,
+                receipt: order.receipt || null,
+                designImage: order.designImage || null,
+                designImages: Array.isArray(order.designImages) && order.designImages.length ? order.designImages : null,
+                customerPhone: order.customerPhone || null,
+                ownerPhone: order.ownerPhone || null,
+                ingredientsDeducted: order.ingredientsDeducted === true,
+                bakingMiscLines: nextLines
+            };
+            window.updateOrderInSupabase(order.supabase_id, { details: cloudDetails });
         }
-        if (res.failed.length) {
+
+        closeBakingMiscModal();
+        var plusN = (res.applied || []).filter(function (x) { return Number(x.delta) > 0; }).length;
+        var minusN = (res.applied || []).filter(function (x) { return Number(x.delta) < 0; }).length;
+        if (plusN || minusN) {
+            var msg = [];
+            if (plusN) msg.push('deducted ' + plusN);
+            if (minusN) msg.push('restored ' + minusN);
+            showToast('Misc stock updated: ' + msg.join(', ') + ' item(s)');
+        } else {
+            showToast('No miscellaneous stock changes to apply.');
+        }
+        var failedLines = (res && Array.isArray(res.failed)) ? res.failed : [];
+        if (failedLines.length) {
             alert(
                 'Could not stock out:\n' +
-                    res.failed
+                    failedLines
                         .map(function (x) {
                             return '• ' + x.name + ': ' + (x.message || '');
                         })
                         .join('\n')
             );
         }
+        renderOrdersTable();
     }
 
     function openLogoutModal() {
@@ -1324,6 +1426,7 @@
         document.getElementById('bakingMiscApplyBtn') && document.getElementById('bakingMiscApplyBtn').addEventListener('click', confirmBakingMiscStockOut);
 
         reloadOrdersMerged();
+        startAdminOrdersAutoRefresh();
     });
 
     document.getElementById('orderDetailsModal') &&

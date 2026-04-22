@@ -20,18 +20,13 @@
             font-family: 'Inter', sans-serif;
         }
         
-        .meringued-bg { position: relative; min-height: 100vh; overflow-x: hidden; background: transparent !important; }
+        .meringued-bg { position: relative; min-height: 100vh; overflow-x: hidden; background: #ffffff !important; }
         .meringued-bg::before {
             content: ''; position: fixed; inset: 0; z-index: -2;
-            background: linear-gradient(120deg, #FFF8F0 0%, #FFEDE6 20%, #FFE5E0 40%, #FFF0F5 60%, #FFE8E8 80%, #FFF8F0 100%);
-            background-size: 300% 300%;
-            animation: meringuedGradient 14s ease-in-out infinite;
+            background: #ffffff;
         }
         .meringued-bg::after {
-            content: ''; position: fixed; width: 80vmax; height: 80vmax; border-radius: 50%;
-            top: -20vmax; right: -20vmax; z-index: -1; pointer-events: none;
-            background: radial-gradient(circle at 40% 40%, rgba(212,175,55,0.12) 0%, rgba(255,229,224,0.06) 45%, transparent 70%);
-            animation: meringuedOrb 18s ease-in-out infinite;
+            content: none;
         }
         @keyframes meringuedGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes meringuedOrb { 0%, 100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-6%,-3%) scale(1.05); } 66% { transform: translate(3%,-6%) scale(0.97); } }
@@ -191,6 +186,40 @@
             </button>
         </div>
 
+        <!-- Filter & sort by order date (per tab) -->
+        <div class="mb-6 rounded-2xl border-2 border-[#D4AF37]/20 bg-white/90 p-4 md:p-5">
+            <h3 class="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <i class="fas fa-filter text-[#D4AF37]"></i>
+                Filter &amp; sort by order date
+            </h3>
+            <div class="flex flex-wrap items-end gap-3">
+                <div>
+                    <label for="historyFilterFrom" class="block text-xs font-semibold text-gray-600 mb-1">From</label>
+                    <input id="historyFilterFrom" type="date" class="px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm min-w-[10rem]" />
+                </div>
+                <div>
+                    <label for="historyFilterTo" class="block text-xs font-semibold text-gray-600 mb-1">To</label>
+                    <input id="historyFilterTo" type="date" class="px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm min-w-[10rem]" />
+                </div>
+                <div>
+                    <label for="historySortOrder" class="block text-xs font-semibold text-gray-600 mb-1">Date order</label>
+                    <select id="historySortOrder" class="px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm min-w-[10rem]">
+                        <option value="desc">Descending</option>
+                        <option value="asc">Ascending</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" id="historyApplyFiltersBtn" class="btn-primary text-white font-semibold px-4 py-2 rounded-xl shadow">
+                        <i class="fas fa-check mr-1"></i>Apply
+                    </button>
+                    <button type="button" id="historyResetFiltersBtn" class="px-4 py-2 rounded-xl font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
+                        Reset
+                    </button>
+                </div>
+            </div>
+            <p id="historyFilterSummary" class="mt-2 text-xs text-gray-600"></p>
+        </div>
+
         <!-- Order updates banner (customer notifications) -->
         <div id="orderUpdatesBanner" class="hidden mb-6 rounded-2xl border border-blue-200 bg-blue-50/90 px-4 py-3 text-sm text-blue-800 flex items-start gap-2">
             <i class="fas fa-info-circle mt-0.5"></i>
@@ -211,7 +240,7 @@
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery <span class="inline-flex align-middle cursor-help font-normal text-[#D4AF37] hover:text-[#b8942a]" title="Pick up = collect your order at our store. Deliver = we deliver to your address (delivery fee may apply)." aria-label="Help: what does Delivery mean?">(?)</span></th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
-                            <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
+                            <th class="text-left py-4 px-4 font-semibold text-gray-700">To be consumed on</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
                         </tr>
@@ -239,7 +268,7 @@
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Cake</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Delivery <span class="inline-flex align-middle cursor-help font-normal text-[#D4AF37] hover:text-[#b8942a]" title="Pick up = collect your order at our store. Deliver = we deliver to your address (delivery fee may apply)." aria-label="Help: what does Delivery mean?">(?)</span></th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Payment</th>
-                            <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
+                            <th class="text-left py-4 px-4 font-semibold text-gray-700">To be consumed on</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
                             <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
                         </tr>
@@ -441,6 +470,10 @@
         let cart = JSON.parse(localStorage.getItem(typeof getCartKey === 'function' ? getCartKey() : 'cart')) || [];
         let orders = [];
         let currentTab = 'completed';
+        const historyFiltersByTab = {
+            completed: { from: '', to: '', sort: 'desc' },
+            cancelled: { from: '', to: '', sort: 'desc' }
+        };
 
         function toggleClientSidebar() { document.body.classList.toggle('sidebar-hidden'); }
 
@@ -510,6 +543,31 @@
             renderOrders();
             initializeReceiptUpload();
             showOrderUpdatesBannerIfNeeded();
+            syncHistoryFilterUi(currentTab);
+
+            const applyBtn = document.getElementById('historyApplyFiltersBtn');
+            if (applyBtn) {
+                applyBtn.addEventListener('click', function () {
+                    const fromEl = document.getElementById('historyFilterFrom');
+                    const toEl = document.getElementById('historyFilterTo');
+                    const sortEl = document.getElementById('historySortOrder');
+                    historyFiltersByTab[currentTab] = {
+                        from: fromEl ? String(fromEl.value || '').trim() : '',
+                        to: toEl ? String(toEl.value || '').trim() : '',
+                        sort: sortEl && sortEl.value === 'asc' ? 'asc' : 'desc'
+                    };
+                    renderOrders();
+                });
+            }
+
+            const resetBtn = document.getElementById('historyResetFiltersBtn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function () {
+                    historyFiltersByTab[currentTab] = { from: '', to: '', sort: 'desc' };
+                    syncHistoryFilterUi(currentTab);
+                    renderOrders();
+                });
+            }
 
             // Sidebar responsive toggle
             const sidebar = document.getElementById('clientSidebar');
@@ -609,17 +667,91 @@
                 document.getElementById('completedSection').classList.add('hidden');
                 document.getElementById('cancelledSection').classList.remove('hidden');
             }
+            syncHistoryFilterUi(tab);
             
             renderOrders();
         }
 
+        function parseOrderPlacedMs(order) {
+            if (!order) return null;
+            if (order.created_at) {
+                const t = Date.parse(String(order.created_at));
+                if (!Number.isNaN(t)) return t;
+            }
+            if (order.date) {
+                const t2 = Date.parse(String(order.date));
+                if (!Number.isNaN(t2)) return t2;
+            }
+            return null;
+        }
+
+        function dateInputStartMs(yyyyMmDd) {
+            const s = String(yyyyMmDd || '').trim();
+            if (!s) return null;
+            const t = Date.parse(s + 'T00:00:00');
+            return Number.isNaN(t) ? null : t;
+        }
+
+        function dateInputEndMs(yyyyMmDd) {
+            const s = String(yyyyMmDd || '').trim();
+            if (!s) return null;
+            const t = Date.parse(s + 'T23:59:59.999');
+            return Number.isNaN(t) ? null : t;
+        }
+
+        function filterAndSortOrdersByTab(list, tab) {
+            const state = historyFiltersByTab[tab] || historyFiltersByTab.completed;
+            const fromMs = dateInputStartMs(state.from);
+            const toMs = dateInputEndMs(state.to);
+            const arr = (Array.isArray(list) ? list : []).filter(order => {
+                if (fromMs == null && toMs == null) return true;
+                const t = parseOrderPlacedMs(order);
+                if (t == null) return false;
+                if (fromMs != null && t < fromMs) return false;
+                if (toMs != null && t > toMs) return false;
+                return true;
+            });
+            arr.sort((a, b) => {
+                const ta = parseOrderPlacedMs(a) || 0;
+                const tb = parseOrderPlacedMs(b) || 0;
+                if (ta !== tb) return state.sort === 'asc' ? ta - tb : tb - ta;
+                return String(a.orderGroupId || '').localeCompare(String(b.orderGroupId || ''));
+            });
+            return arr;
+        }
+
+        function syncHistoryFilterUi(tab) {
+            const state = historyFiltersByTab[tab] || historyFiltersByTab.completed;
+            const fromEl = document.getElementById('historyFilterFrom');
+            const toEl = document.getElementById('historyFilterTo');
+            const sortEl = document.getElementById('historySortOrder');
+            if (fromEl) fromEl.value = state.from || '';
+            if (toEl) toEl.value = state.to || '';
+            if (sortEl) sortEl.value = state.sort || 'desc';
+        }
+
+        function updateHistoryFilterSummary(completedCount, cancelledCount) {
+            const el = document.getElementById('historyFilterSummary');
+            if (!el) return;
+            const state = historyFiltersByTab[currentTab] || historyFiltersByTab.completed;
+            const fromTxt = state.from || 'Any';
+            const toTxt = state.to || 'Any';
+            const sortTxt = state.sort === 'asc' ? 'Ascending' : 'Descending';
+            const shown = currentTab === 'completed' ? completedCount : cancelledCount;
+            const label = currentTab === 'completed' ? 'Completed' : 'Cancelled';
+            el.textContent = `${label}: showing ${shown} order(s) • From ${fromTxt} • To ${toTxt} • ${sortTxt}`;
+        }
+
         // Render orders
         function renderOrders() {
-            const completedOrders = orders.filter(order => order.status === 'Completed');
-            const cancelledOrders = orders.filter(order => order.status === 'Cancelled');
+            const completedOrdersRaw = orders.filter(order => order.status === 'Completed');
+            const cancelledOrdersRaw = orders.filter(order => order.status === 'Cancelled');
+            const completedOrders = filterAndSortOrdersByTab(completedOrdersRaw, 'completed');
+            const cancelledOrders = filterAndSortOrdersByTab(cancelledOrdersRaw, 'cancelled');
             
             renderCompletedOrders(completedOrders);
             renderCancelledOrders(cancelledOrders);
+            updateHistoryFilterSummary(completedOrders.length, cancelledOrders.length);
         }
 
         // Get status badge color
@@ -652,8 +784,6 @@
             emptyDiv.classList.add('hidden');
             
             const rowsHTML = completedOrders
-                .slice()
-                .reverse()
                 .map(order => {
                     const statusColor = getStatusColor(order.status);
                     return `
@@ -706,8 +836,6 @@
             emptyDiv.classList.add('hidden');
             
             const rowsHTML = cancelledOrders
-                .slice()
-                .reverse()
                 .map(order => {
                     const statusColor = getStatusColor(order.status);
                     return `
