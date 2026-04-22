@@ -87,6 +87,40 @@ function mapToInsert(payload) {
   };
 }
 
+function parseRecordDateMs(v) {
+  if (v == null || v === '') return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const t = Date.parse(`${s}T00:00:00`);
+    return Number.isNaN(t) ? null : t;
+  }
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? null : t;
+}
+
+function parseFilterFromMs(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const t = Date.parse(`${s}T00:00:00`);
+    return Number.isNaN(t) ? null : t;
+  }
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? null : t;
+}
+
+function parseFilterToMs(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const t = Date.parse(`${s}T23:59:59.999`);
+    return Number.isNaN(t) ? null : t;
+  }
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? null : t;
+}
+
 async function trySupabaseSelect(filters = {}) {
   let q = supabase.from(TABLE).select('*').order('record_date', { ascending: false }).order('created_at', { ascending: false });
   if (filters.type) q = q.eq('type', filters.type);
@@ -117,8 +151,24 @@ export async function listAdminRecords(filters = {}) {
     const all = loadLocalAll();
     let rows = all;
     if (filters.type) rows = rows.filter(r => r.type === filters.type);
-    if (filters.from) rows = rows.filter(r => String(r.record_date || '') >= String(filters.from));
-    if (filters.to) rows = rows.filter(r => String(r.record_date || '') <= String(filters.to));
+    if (filters.from) {
+      const fromMs = parseFilterFromMs(filters.from);
+      if (fromMs != null) {
+        rows = rows.filter(r => {
+          const t = parseRecordDateMs(r.record_date);
+          return t != null && t >= fromMs;
+        });
+      }
+    }
+    if (filters.to) {
+      const toMs = parseFilterToMs(filters.to);
+      if (toMs != null) {
+        rows = rows.filter(r => {
+          const t = parseRecordDateMs(r.record_date);
+          return t != null && t <= toMs;
+        });
+      }
+    }
     rows = rows
       .slice()
       .sort((a, b) => String(b.record_date || '').localeCompare(String(a.record_date || '')) || String(b.created_at || '').localeCompare(String(a.created_at || '')));

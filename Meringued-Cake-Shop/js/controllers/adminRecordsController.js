@@ -48,13 +48,13 @@ function saveTabFilters(type) {
   let to = qs('#filterTo')?.value || '';
   const search = qs('#filterSearch')?.value || '';
   if (datePreset === 'today') {
-    const t = getTodayYmd();
-    from = t;
-    to = t;
+    const { from: f0, to: t0 } = getTodayDatetimeRangeManila();
+    from = f0;
+    to = t0;
     const ff = qs('#filterFrom');
     const ft = qs('#filterTo');
-    if (ff) ff.value = t;
-    if (ft) ft.value = t;
+    if (ff) ff.value = f0;
+    if (ft) ft.value = t0;
   }
   try {
     sessionStorage.setItem(
@@ -78,8 +78,12 @@ function loadTabFilters(type) {
       let datePreset = o.datePreset;
       if (datePreset !== 'today' && datePreset !== 'all' && datePreset !== 'custom') {
         if (!from && !to) datePreset = 'all';
-        else if (from && to && from === to && from === getTodayYmd()) datePreset = 'today';
-        else datePreset = 'custom';
+        else {
+          const tr = getTodayDatetimeRangeManila();
+          if (from && to && from === tr.from && to === tr.to) datePreset = 'today';
+          else if (from && to && from === to && from.length === 10 && from === getTodayYmd()) datePreset = 'today';
+          else datePreset = 'custom';
+        }
       }
       return { from, to, search, datePreset };
     }
@@ -93,16 +97,20 @@ function applyTabFiltersToInputs(f) {
   let preset = f.datePreset;
   if (preset !== 'today' && preset !== 'all' && preset !== 'custom') {
     if (!f.from && !f.to) preset = 'all';
-    else if (f.from && f.to && f.from === f.to && f.from === getTodayYmd()) preset = 'today';
-    else preset = 'custom';
+    else {
+      const tr = getTodayDatetimeRangeManila();
+      if (f.from && f.to && f.from === tr.from && f.to === tr.to) preset = 'today';
+      else if (f.from && f.to && f.from === f.to && f.from.length === 10 && f.from === getTodayYmd()) preset = 'today';
+      else preset = 'custom';
+    }
   }
   const ff = qs('#filterFrom');
   const ft = qs('#filterTo');
   const fs = qs('#filterSearch');
   if (preset === 'today') {
-    const t = getTodayYmd();
-    if (ff) ff.value = t;
-    if (ft) ft.value = t;
+    const { from: f0, to: t0 } = getTodayDatetimeRangeManila();
+    if (ff) ff.value = f0;
+    if (ft) ft.value = t0;
   } else if (preset === 'all') {
     if (ff) ff.value = '';
     if (ft) ft.value = '';
@@ -262,6 +270,48 @@ function formatDate(yyyyMmDd) {
   }
 }
 
+/** Table / PDF: show calendar date + time (records may be date-only or full timestamps). */
+function formatRecordDate(value) {
+  if (value == null || value === '') return '—';
+  const s = String(value).trim();
+  if (!s) return '—';
+  const d = s.length <= 10 ? new Date(`${s}T00:00:00`) : new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+/** Value for &lt;input type="datetime-local"&gt; from ISO or YYYY-MM-DD. */
+function toDatetimeLocalInputValue(isoOrYmd) {
+  const fallback = new Date();
+  const raw = isoOrYmd != null && String(isoOrYmd).trim() !== '' ? String(isoOrYmd).trim() : fallback.toISOString();
+  const d = raw.length <= 10 ? new Date(`${raw}T00:00:00`) : new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw.slice(0, 16);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function filterFromToIsoUtc(value) {
+  const v = String(value || '').trim();
+  if (!v) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const d = new Date(`${v}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+  }
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+}
+
+function filterToToIsoUtc(value) {
+  const v = String(value || '').trim();
+  if (!v) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const d = new Date(`${v}T23:59:59.999`);
+    return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+  }
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+}
+
 function exportCurrentRecordsPdf() {
   const type = getActiveType();
   const label = TYPE_LABEL[type] || type;
@@ -276,7 +326,7 @@ function exportCurrentRecordsPdf() {
       const amount = r.amount == null ? '—' : ('₱' + formatMoney(r.amount));
       return (
         '<tr>' +
-        '<td>' + escapeHtml(formatDate(r.record_date)) + '</td>' +
+        '<td>' + escapeHtml(formatRecordDate(r.record_date)) + '</td>' +
         '<td>' + escapeHtml(r.title || '') + '</td>' +
         '<td class="right">' + escapeHtml(amount) + '</td>' +
         '<td>' + escapeHtml(r.ref || '—') + '</td>' +
@@ -310,7 +360,7 @@ th{background:#fff7ed;text-align:left;}
 <div class="letterhead"><p class="brand">Meringued</p><p class="tagline">Artisanal Visual Artistry | Custom Cakes</p><p class="contacts">Davao City • 0945 812 5225 / 0938 597 0991 • avadueyg@gmail.com</p></div>
 <h1>Records Export — ${escapeHtml(label)}</h1>
 <div class="meta">Generated: ${escapeHtml(generated)} · Total records: ${rows.length}</div>
-<table><thead><tr><th style="width:13%">Date</th><th style="width:23%">Title</th><th style="width:12%">Amount</th><th style="width:16%">Ref</th><th>Notes</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+<table><thead><tr><th style="width:16%">Date &amp; time</th><th style="width:21%">Title</th><th style="width:12%">Amount</th><th style="width:16%">Ref</th><th>Notes</th></tr></thead><tbody>${rowsHtml}</tbody></table>
 </body></html>`;
   const win = window.open('', '_blank');
   if (!win) {
@@ -423,7 +473,7 @@ function setModalMode(mode, row) {
 function fillForm(row, typeOverride) {
   const type = typeOverride || row?.type || getActiveType();
   qs('#recordType').value = type;
-  qs('#recordDate').value = row?.record_date || new Date().toISOString().slice(0, 10);
+  qs('#recordDate').value = toDatetimeLocalInputValue(row?.record_date);
   qs('#recordTitle').value = row?.title || '';
   qs('#recordAmount').value = row?.amount != null && row?.amount !== '' ? String(row.amount) : '';
   qs('#recordRef').value = row?.ref || '';
@@ -431,10 +481,13 @@ function fillForm(row, typeOverride) {
 }
 
 function readForm() {
+  const dateRaw = qs('#recordDate')?.value || '';
+  const parsed = dateRaw ? new Date(dateRaw) : null;
+  const recordDateIso = parsed && !Number.isNaN(parsed.getTime()) ? parsed.toISOString() : dateRaw;
   return {
     id: qs('#recordId').value || undefined,
     type: qs('#recordType').value,
-    record_date: qs('#recordDate').value,
+    record_date: recordDateIso,
     title: qs('#recordTitle').value.trim(),
     amount: qs('#recordAmount').value,
     ref: qs('#recordRef').value.trim(),
@@ -586,7 +639,7 @@ function renderRows(rows) {
       }
       return `
         <tr class="border-b border-gray-100 hover:bg-[#FFF8F0]/60">
-          <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">${escapeHtml(formatDate(r.record_date))}</td>
+          <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">${escapeHtml(formatRecordDate(r.record_date))}</td>
           <td class="py-3 px-3 text-sm font-semibold text-gray-800">${escapeHtml(displayTitle || '')}${subLine ? `<div class="text-xs text-gray-400 mt-0.5">${escapeHtml(subLine)}</div>` : ''}</td>
           <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap records-amount-cell">${escapeHtml(amount)}</td>
           <td class="py-3 px-3 text-sm text-gray-600">${notesCell}</td>
@@ -651,8 +704,8 @@ async function refresh() {
   showLoadingOverlay('Loading records...');
   // Use filter From/To for all types (including EOD inventory) so you can view yesterday and earlier days.
   // Do NOT overwrite #filterFrom / #filterTo — that broke other tabs' date filters after EOD init.
-  const effectiveFrom = from;
-  const effectiveTo = to;
+  const effectiveFrom = from ? filterFromToIsoUtc(from) : '';
+  const effectiveTo = to ? filterToToIsoUtc(to) : '';
 
   const { rows, source } = await listAdminRecords({
     type: activeType,
@@ -694,15 +747,21 @@ function getTodayYmd() {
   }
 }
 
+/** Manila calendar day as datetime-local range (whole day) for filter presets. */
+function getTodayDatetimeRangeManila() {
+  const ymd = getTodayYmd();
+  return { from: `${ymd}T00:00`, to: `${ymd}T23:59` };
+}
+
 /** Run on every Records page load: all tabs show today's date range; keep saved search per tab. */
 function resetAllRecordsDateFiltersToToday() {
-  const today = getTodayYmd();
+  const { from, to } = getTodayDatetimeRangeManila();
   for (const type of Object.keys(TYPE_LABEL)) {
     const prev = loadTabFilters(type);
     try {
       sessionStorage.setItem(
         ADMIN_RECORDS_FILTERS_PREFIX + type,
-        JSON.stringify({ from: today, to: today, search: prev.search || '', datePreset: 'today' })
+        JSON.stringify({ from, to, search: prev.search || '', datePreset: 'today' })
       );
     } catch (_) {
       /* ignore */
@@ -949,11 +1008,11 @@ async function init() {
     btn.addEventListener('click', async () => {
       const preset = btn.getAttribute('data-date-preset') || 'today';
       if (preset === 'today') {
-        const t = getTodayYmd();
+        const { from, to } = getTodayDatetimeRangeManila();
         const ff = qs('#filterFrom');
         const ft = qs('#filterTo');
-        if (ff) ff.value = t;
-        if (ft) ft.value = t;
+        if (ff) ff.value = from;
+        if (ft) ft.value = to;
         setDatePresetUi('today');
       } else if (preset === 'all') {
         const ff = qs('#filterFrom');
@@ -1003,12 +1062,12 @@ async function init() {
     await refresh();
   });
   qs('#resetFiltersBtn')?.addEventListener('click', async () => {
-    const t = getTodayYmd();
+    const { from, to } = getTodayDatetimeRangeManila();
     const ff = qs('#filterFrom');
     const ft = qs('#filterTo');
     const fs = qs('#filterSearch');
-    if (ff) ff.value = t;
-    if (ft) ft.value = t;
+    if (ff) ff.value = from;
+    if (ft) ft.value = to;
     if (fs) fs.value = '';
     setDatePresetUi('today');
     saveTabFilters(getActiveType());

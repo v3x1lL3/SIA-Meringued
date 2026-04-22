@@ -10,6 +10,15 @@ function ymd(date = new Date()) {
   }
 }
 
+/** Full instant for `record_date` so admin time filters apply to auto-logged rows. */
+function recordTimestampIso() {
+  try {
+    return new Date().toISOString();
+  } catch {
+    return ymd();
+  }
+}
+
 function safeMoney(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
@@ -33,7 +42,7 @@ export async function logSaleFromOrder(order) {
   const payload = {
     id,
     type: 'sales_receipts',
-    record_date: ymd(),
+    record_date: recordTimestampIso(),
     title: title || 'Sale',
     amount: safeMoney(order.total_amount ?? order.price),
     ref: order.supabase_id ? String(order.supabase_id) : (order.orderGroupId ? String(order.orderGroupId) : ''),
@@ -60,7 +69,7 @@ export async function logInventoryMovement({ itemId, itemName, delta, newQty, un
     // Inventory movements are logged under Inventory audit (with time/date),
     // while EOD Inventory Audit is created as an end-of-day snapshot.
     type: 'inventory_audit',
-    record_date: ymd(),
+    record_date: recordTimestampIso(),
     title,
     amount: null,
     ref: itemId ? String(itemId) : '',
@@ -73,7 +82,7 @@ export async function logPurchaseExpense({ itemName, quantity, unit, unitCost, t
   if (!itemName) return;
   const payload = {
     type: 'purchase_expenses',
-    record_date: ymd(),
+    record_date: recordTimestampIso(),
     title: `Purchase — ${itemName}`,
     amount: Number(totalCost),
     ref: ref != null && String(ref).trim() !== '' ? String(ref).trim() : 'Inventory stock-in',

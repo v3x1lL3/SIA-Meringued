@@ -852,6 +852,12 @@
         <div class="container mx-auto px-6 text-center">
             <p class="text-gray-600 font-display text-lg font-semibold mb-2" style="color: #D4AF37;">Meringued</p>
             <p class="text-gray-600 text-sm mb-1"><i class="fas fa-envelope mr-1"></i><a href="mailto:avadueyg@gmail.com" class="hover:text-[#D4AF37] transition">avadueyg@gmail.com</a> <span class="mx-2">|</span> <i class="fas fa-phone mr-1"></i>0945 812 5225 <span class="mx-2">|</span> <i class="fas fa-phone mr-1"></i>0938 597 0991</p>
+            <p class="text-gray-600 text-sm mb-1 max-w-2xl mx-auto leading-relaxed">
+                <i class="fas fa-map-marker-alt mr-1 text-[#D4AF37]" aria-hidden="true"></i>
+                <span id="clientFooterAddressText" class="font-medium">Our pickup location</span>
+                —
+                <a id="clientFooterMapLink" href="https://www.google.com/maps?q=7.079683,125.539021" target="_blank" rel="noopener noreferrer" class="text-[#D4AF37] hover:underline font-medium">Open in Google Maps</a>
+            </p>
             <p class="text-gray-600 text-sm mb-2"><i class="fas fa-clock mr-1"></i>Mon-Sun: 8AM - 6PM</p>
             <p class="mb-2"><a href="https://www.facebook.com/profile.php?id=100066926310810" target="_blank" rel="noopener noreferrer" class="inline-flex w-9 h-9 rounded-full items-center justify-center text-white hover:opacity-90 transition text-sm" style="background: linear-gradient(135deg, #D4AF37 0%, #B8941E 100%);" aria-label="Meringued on Facebook"><i class="fab fa-facebook-f"></i></a></p>
             <p class="text-gray-500 text-xs mt-2">© 2026 Meringued. All rights reserved.</p>
@@ -867,6 +873,10 @@
 
     <!-- Shared auth guard and Supabase-ready controllers -->
     <script type="module" src="js/controllers/clientBootstrap.js"></script>
+    <script type="module">
+        import { hydrateClientFooterMap } from './js/hydrateClientFooterMap.js';
+        hydrateClientFooterMap();
+    </script>
 </body>
 </html>
 

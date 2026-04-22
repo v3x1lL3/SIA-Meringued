@@ -1,0 +1,288 @@
+Meringued Cake Shop — Domain subsystems (plain text for copy/paste)
+This file is documentation only (not code to run).
+
+================================================================================
+1. IDENTITY & SHOP POLICY
+================================================================================
+Domain class diagram (subsystem).
+Legend: This subsystem uses dashed links for optional / process-scoped associations (not every mandatory FK).
+Multiplicity: 0..1, 1, 1..*. Solid lines on other subsystems mark strict structural FKs (e.g. Catalog).
+
+--- UserAccount ---
+Attributes:
+  + accountId: Identifier (PK)
+  + email: Text
+  + profileInfo: StructuredData
+Operations:
+  + registerAccount(email, password, fullName, role)
+  + openSession(email, password)
+  + closeSession()
+  + whoIsSignedIn()
+
+--- ShopAccessProfile ---
+Attributes:
+  + accountId: Identifier (PK) (FK)
+  + shopRole: Text
+  + lastChanged: DateTime
+Operations:
+  + ensureProfileAfterRegistration()
+  + grantRole(accountId, role)
+  + mayManageOrders(): Boolean
+  + mayManageStock(): Boolean
+
+--- Customer ---
+Attributes:
+  + customerId: Identifier (PK)
+  + linkedAccountId: Identifier (FK) 0..1
+  + name: Text
+  + contactEmail: Text
+  + segment: Text
+  + ordersCount: WholeNumber
+  + lastOrderAt: DateTime
+  + createdAt: DateTime
+  + updatedAt: DateTime
+Operations:
+  + findAllInCrm()
+  + registerInCrm(details)
+  + changeContact(customerId, patch)
+  + removeFromCrm(customerId)
+
+--- PublicShopInformation ---
+Attributes:
+  + policyId: WholeNumber (PK)
+  + publishedDetails: StructuredData
+  + lastChanged: DateTime
+Operations:
+  + readWhatCustomersSee()
+  + publishChanges(patch)
+  + reconcileWithLocalDraft(local)
+
+Associations:
+  UserAccount -- ShopAccessProfile   (0..1 one-to-one, dashed)
+  Customer --0..1 : 1-- UserAccount   (CRM via linkedAccountId; many-to-one, dashed)
+  PublicShopInformation --1 : 1..*-- UserAccount   (maintainers; multi-admin when RLS allows, dashed)
+  Note: If only one admin may publish shop policy, model this link as 1 — 1 instead.
+
+Note: Customer links to UserAccount through linkedAccountId (CRM / buyer identity). ShopAccessProfile is only for staff roles — not part of the Customer path.
+
+Note: CakeOrder and payment classes belong to the Orders & Payment subsystem.
+
+================================================================================
+2. CATALOG & CUSTOMIZATION
+================================================================================
+Domain class diagram (subsystem).
+Legend: Solid line = structural association (FK). CustomizationChoice.groupId references CustomizationGroup.
+
+--- MenuProduct ---
+Attributes:
+  + productId: Identifier (PK)
+  + name: Text
+  + introducedOn: DateTime
+Operations:
+  + findAllOnMenu()
+  + addProduct(command)
+  + renameProduct(productId, name)
+
+--- CustomizationGroup ---
+Attributes:
+  + groupId: Identifier (PK)
+  + label: Text
+  + displayOrder: WholeNumber
+Operations:
+  + findAllGroups()
+  + findGroupsForCheckout()
+
+--- CustomizationChoice ---
+Attributes:
+  + choiceId: Identifier (PK)
+  + groupId: Identifier (FK)
+  + label: Text
+  + displayOrder: WholeNumber
+Operations:
+  + findAllChoices()
+  + findChoicesForGroup(groupId)
+  + findChoicesForCheckout(groupId)
+
+Associations:
+  CustomizationGroup --1 : 1..*-- CustomizationChoice   (one-to-many)
+
+Note: MenuProduct is catalog; groups and choices are global customization options used at checkout (details copied into order specification).
+
+================================================================================
+3. STOCK & SHOP RECORDS
+================================================================================
+Domain class diagram (subsystem).
+Legend: Stock events = balances on IngredientStock / SupplyStock + ShopActivityRecord.
+ShopActivityRecord «depends on» both IngredientStock and SupplyStock (audit / stock events).
+IngredientStock «supporting» SupplyStock (many-to-many narrative). No separate InventoryTransaction entity.
+
+--- IngredientStock ---
+Attributes:
+  + stockId: Identifier (PK)
+  + ingredientName: Text
+  + onHand: Quantity
+  + reorderPoint: Quantity
+  + unit: Text
+  + typicalUnitCost: MoneyAmount
+  + photoUrl: Text
+  + bestBefore: Date
+  + createdAt: DateTime
+  + updatedAt: DateTime
+Operations:
+  + findAllIngredients()
+  + receiveIngredient(line)
+  + adjustIngredient(stockId, patch)
+  + retireIngredient(stockId)
+  + findIngredientByName(name)
+
+--- SupplyStock ---
+Attributes:
+  + stockId: Identifier (PK)
+  + itemName: Text
+  + unit: Text
+  + onHand: Quantity
+  + reorderPoint: Quantity
+  + typicalUnitCost: MoneyAmount
+  + photoUrl: Text
+  + createdAt: DateTime
+  + updatedAt: DateTime
+Operations:
+  + findAllSupplies()
+  + receiveSupply(line)
+  + adjustSupply(stockId, patch)
+  + retireSupply(stockId)
+
+--- ShopActivityRecord ---
+Attributes:
+  + recordId: Identifier (PK)
+  + kind: Text
+  + businessDate: Date
+  + headline: Text
+  + moneyAmount: MoneyAmount
+  + referenceCode: Text
+  + narrative: Text
+  + recordedAt: DateTime
+Operations:
+  + findRecords(criteria)
+  + saveRecord(record)
+  + voidRecord(recordId, reason)
+
+Associations:
+  IngredientStock --<<supporting>>-- SupplyStock   (many-to-many narrative, dashed)
+  ShopActivityRecord --<<depends on>>-- IngredientStock   (audit / stock events, dashed)
+  ShopActivityRecord --<<depends on>>-- SupplyStock   (audit / stock events, dashed)
+
+================================================================================
+4. RESTOCKING
+================================================================================
+Domain class diagram (subsystem).
+Conceptual — align class names with persisted tables (e.g. purchase_orders, expense/activity records) if you have no dedicated restock header table.
+Legend: Green dashed = behavioral / process link (receipt of goods updates on-hand quantities on stock aggregates). No Vendor class in this system. If persistence differs, treat RestockOrder / RestockLineItem as conceptual aggregates over purchase/expense + adjustment flows.
+
+--- RestockOrder ---
+Attributes:
+  + restockId: Identifier (PK)
+  + status: Text
+  + totalCost: MoneyAmount
+  + openedOn: DateTime
+  + closedOn: DateTime
+Operations:
+  + findAllRestockOrders()
+  + startRestockOrder(header, lineItems)
+
+--- RestockLineItem ---
+Attributes:
+  + lineId: Identifier (PK)
+  + restockId: Identifier (FK)
+  + description: Text
+  + quantity: Quantity
+  + unitPrice: MoneyAmount
+  + addedOn: DateTime
+Operations:
+  + attachLinesToRestock(restockOrder, lines)
+
+Referenced from Stock & Shop Records (full detail on Stock & Shop Records diagram):
+  - IngredientStock
+  - SupplyStock
+
+Associations:
+  RestockOrder --1 : 1..*-- RestockLineItem   (one-to-many)
+  RestockOrder --<<process>>-- IngredientStock   (many-to-many behavioral, dashed green)
+  RestockOrder --<<process>>-- SupplyStock       (many-to-many behavioral, dashed green)
+
+================================================================================
+5. ORDERS & PAYMENT
+================================================================================
+Domain class diagram (subsystem).
+Legend: Solid = structural associations. Green dashed = fulfillment / kitchen process affecting inventory (not FKs on CakeOrder): ingredients and misc supplies. UserAccount stub links to the Identity & Shop Policy diagram.
+
+--- UserAccount (stub: Identity & Shop Policy) ---
+Buyer places orders. See Identity & Shop Policy diagram for full attributes and operations.
+
+--- CakeOrder ---
+Attributes:
+  + orderId: Identifier (PK)
+  + buyerAccountId: Identifier (FK)
+  + customerId: Identifier (FK) 0..1
+  + lifecycle: Text
+  + quotedTotal: MoneyAmount
+  + deliveryAddress: Text
+  + phone: Text
+  + paymentMethod: Text
+  + deliveryType: Text
+  + neededOn: Date
+  + specificationSnapshot: StructuredData
+  + openedOn: DateTime
+  + lastChangedOn: DateTime
+Operations:
+  + findOrdersForStaff()
+  + findOrdersForBuyer(buyerAccountId)
+  + placeOrder(order)
+  + changeOrder(orderId, patch)
+  + todaysOrderSummaryForStaff()
+
+--- CakeOrderSpecification (value object, part of CakeOrder, no PK) ---
+No specificationSnapshot attribute on this class: only CakeOrder holds the persisted JSON; toPersistedForm() builds that payload.
+Attributes:
+  + cakeStyle: Text
+  + tierSize: Text
+  + flavor: Text
+  + frosting: Text
+  + servings: WholeNumber
+  + decorationBrief: StructuredData
+  + dedication: Text
+  + receipt: Text
+  + paymentPlan: Text
+  + downPayment: MoneyAmount
+Operations:
+  + validateCustomerChoices()
+  + mergeInto(order: CakeOrder)
+  + toPersistedForm(): StructuredData
+
+--- PaymentRecord ---
+Attributes:
+  + paymentId: Identifier (PK)
+  + cakeOrderId: Identifier (FK)
+  + amount: MoneyAmount
+  + clearingStatus: Text
+  + tenderKind: Text
+  + externalReference: Text
+  + capturedOn: DateTime
+Operations:
+  + registerPayment(details)
+  + findPaymentsForOrder(orderId)
+
+Referenced from Stock & Shop Records (stubs on diagram):
+  - IngredientStock
+  - SupplyStock
+
+Associations:
+  UserAccount --1 : 1..*-- CakeOrder   (one-to-many)
+  CakeOrder --1 : 1-- CakeOrderSpecification   (composition)
+  CakeOrder --1 : 1..*-- PaymentRecord   (one-to-many)
+  CakeOrder --<<process>>-- IngredientStock   (ingredients; behavioral, dashed green; not a FK on CakeOrder)
+  CakeOrder --<<process>>-- SupplyStock       (misc / supplies; behavioral, dashed green; not a FK on CakeOrder)
+
+================================================================================
+END
+================================================================================
