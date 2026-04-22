@@ -39,7 +39,6 @@
         <li><a href="adminrecords.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium sidebar-active"><i class="fas fa-file-invoice-dollar w-5"></i><span>Records</span></a></li>
         <li><a href="adminhistory.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-history w-5"></i><span>Logs</span></a></li>
         <li><a href="admincustomers.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-users w-5"></i><span>Customers</span></a></li>
-        <li><a href="adminfeedback.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-comment-alt w-5"></i><span>Feedback</span></a></li>
         <li><a href="adminsettings.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium"><i class="fas fa-cog w-5"></i><span>Settings</span></a></li>
         <li><button type="button" onclick="openLogoutModal()" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition font-medium"><i class="fas fa-sign-out-alt w-5"></i><span>Logout</span></button></li>
       </ul>
@@ -145,6 +144,11 @@
               </button>
             </div>
             <div class="flex flex-wrap items-center gap-2 text-sm">
+              <label class="text-gray-700 font-semibold" for="recordsSortOrder">Date order</label>
+              <select id="recordsSortOrder" class="rounded-lg border border-gray-300 px-2 py-1 text-sm focus:border-[#D4AF37] focus:outline-none" title="Sort by date &amp; time: descending = latest first, ascending = earliest first">
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
+              </select>
               <label class="text-gray-700 font-semibold" for="recordsPageSize">List by</label>
               <select id="recordsPageSize" class="rounded-lg border border-gray-300 px-2 py-1 text-sm focus:border-[#D4AF37] focus:outline-none">
                 <option value="5">5</option>

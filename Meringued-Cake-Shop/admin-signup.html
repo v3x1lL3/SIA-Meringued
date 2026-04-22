@@ -75,11 +75,5 @@
         window._authSignupRole = 'admin';
     </script>
     <script type="module" src="js/controllers/authController.js"></script>
-    <script>
-        document.getElementById('adminSignupForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (typeof window.handleSignup === 'function') window.handleSignup();
-        });
-    </script>
 </body>
 </html>

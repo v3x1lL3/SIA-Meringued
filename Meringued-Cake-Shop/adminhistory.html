@@ -102,11 +102,6 @@
                     </a>
                 </li>
                 <li>
-                    <a href="adminfeedback.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
-                        <i class="fas fa-comment-alt w-5"></i><span>Feedback</span>
-                    </a>
-                </li>
-                <li>
                     <a href="adminsettings.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
                         <i class="fas fa-cog w-5"></i><span>Settings</span>
                     </a>
@@ -155,6 +150,31 @@
                 </button>
             </div>
 
+            <!-- Date filters & sort (applies to both tabs) -->
+            <div class="mb-6 rounded-2xl border-2 border-[#D4AF37]/20 bg-white/85 p-4 md:p-5 shadow-sm">
+                <p class="text-sm font-semibold text-gray-800 mb-3"><i class="fas fa-filter mr-2 text-[#D4AF37]"></i>Filter &amp; sort by order date</p>
+                <div class="flex flex-wrap items-end gap-4">
+                    <div>
+                        <span class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Range</span>
+                        <div class="flex flex-wrap gap-2" role="group" aria-label="Date range">
+                            <button type="button" id="historyFilterAll" class="history-filter-btn px-4 py-2 rounded-lg text-sm font-semibold border-2 border-[#D4AF37] bg-gradient-to-br from-[#D4AF37] to-[#B8941E] text-white shadow-sm transition">All</button>
+                            <button type="button" id="historyFilterToday" class="history-filter-btn px-4 py-2 rounded-lg text-sm font-semibold border-2 border-gray-200 bg-white text-gray-700 hover:border-[#D4AF37]/60 hover:text-[#B8941E] transition">Today</button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label for="historyFilterDay" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Specific date</label>
+                        <input type="date" id="historyFilterDay" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/40" title="Show orders placed on this day (Philippine time when time is known)" />
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label for="historySortOrder" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date order</label>
+                        <select id="historySortOrder" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/40" title="Sort by when the order was placed (uses cloud timestamp when available)">
+                            <option value="desc">Descending</option>
+                            <option value="asc">Ascending</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <!-- Completed Orders -->
             <section id="completedSection" class="bg-white/90 rounded-2xl shadow-lg p-6 md:p-8 border-2 border-[#D4AF37]/20">
                 <div class="overflow-x-auto">
@@ -170,7 +190,6 @@
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Date</th>
                             </tr>
                         </thead>
                         <tbody id="completedBody"></tbody>
@@ -197,7 +216,6 @@
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">I wanna eat on</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
                                 <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Date</th>
                             </tr>
                         </thead>
                         <tbody id="cancelledBody"></tbody>
@@ -295,8 +313,131 @@
         let orders = [];
 
         let currentTab = 'completed';
+        /** @type {'all'|'today'|'day'} */
+        let historyRangeMode = 'all';
+        let historyDayPick = '';
+
+        const HISTORY_TZ = 'Asia/Manila';
+
+        function ymdInTz(d, tz) {
+            try {
+                return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d);
+            } catch {
+                return d.toISOString().slice(0, 10);
+            }
+        }
+
+        /** Best-effort ms for “when was this order placed” — prefers Supabase created_at. */
+        function orderLogInstantMs(order) {
+            if (!order) return 0;
+            if (order.created_at) {
+                const t = Date.parse(String(order.created_at));
+                if (!Number.isNaN(t)) return t;
+            }
+            if (order.date) {
+                const s = String(order.date).trim();
+                if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+                    const t = Date.parse(s + 'T12:00:00');
+                    if (!Number.isNaN(t)) return t;
+                }
+                const t = Date.parse(s);
+                if (!Number.isNaN(t)) return t;
+            }
+            return 0;
+        }
+
+        /** Calendar day in Manila (YYYY-MM-DD) for range filters. */
+        function orderLogYmdManila(order) {
+            if (order.created_at) {
+                const t = Date.parse(String(order.created_at));
+                if (!Number.isNaN(t)) return ymdInTz(new Date(t), HISTORY_TZ);
+            }
+            if (order.date) {
+                const s = String(order.date).trim();
+                if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+                const t = Date.parse(s);
+                if (!Number.isNaN(t)) return ymdInTz(new Date(t), HISTORY_TZ);
+            }
+            return '';
+        }
+
+        function passesHistoryDateFilter(order) {
+            if (historyRangeMode === 'all') return true;
+            const y = orderLogYmdManila(order);
+            if (!y) return false;
+            if (historyRangeMode === 'today') return y === ymdInTz(new Date(), HISTORY_TZ);
+            if (historyRangeMode === 'day') return Boolean(historyDayPick) && y === historyDayPick;
+            return true;
+        }
+
+        function filterAndSortLogList(list) {
+            let out = (list || []).filter(passesHistoryDateFilter);
+            const sortEl = document.getElementById('historySortOrder');
+            const desc = sortEl ? sortEl.value !== 'asc' : true;
+            out = out.slice().sort((a, b) => {
+                const ta = orderLogInstantMs(a);
+                const tb = orderLogInstantMs(b);
+                if (ta !== tb) return desc ? tb - ta : ta - tb;
+                return String(a.orderGroupId || '').localeCompare(String(b.orderGroupId || ''));
+            });
+            return out;
+        }
+
+        function updateHistoryFilterChrome() {
+            const active =
+                'history-filter-btn px-4 py-2 rounded-lg text-sm font-semibold border-2 border-[#D4AF37] bg-gradient-to-br from-[#D4AF37] to-[#B8941E] text-white shadow-sm transition';
+            const inactive =
+                'history-filter-btn px-4 py-2 rounded-lg text-sm font-semibold border-2 border-gray-200 bg-white text-gray-700 hover:border-[#D4AF37]/60 hover:text-[#B8941E] transition';
+            const allBtn = document.getElementById('historyFilterAll');
+            const todayBtn = document.getElementById('historyFilterToday');
+            if (allBtn) allBtn.className = historyRangeMode === 'all' ? active : inactive;
+            if (todayBtn) todayBtn.className = historyRangeMode === 'today' ? active : inactive;
+        }
+
+        function setupHistoryFilters() {
+            const allBtn = document.getElementById('historyFilterAll');
+            const todayBtn = document.getElementById('historyFilterToday');
+            const dayIn = document.getElementById('historyFilterDay');
+            const sortEl = document.getElementById('historySortOrder');
+            allBtn?.addEventListener('click', () => {
+                historyRangeMode = 'all';
+                historyDayPick = '';
+                if (dayIn) dayIn.value = '';
+                updateHistoryFilterChrome();
+                renderCompletedOrders();
+                renderCancelledOrders();
+            });
+            todayBtn?.addEventListener('click', () => {
+                historyRangeMode = 'today';
+                historyDayPick = '';
+                if (dayIn) dayIn.value = '';
+                updateHistoryFilterChrome();
+                renderCompletedOrders();
+                renderCancelledOrders();
+            });
+            dayIn?.addEventListener('change', () => {
+                const v = String(dayIn.value || '').trim();
+                if (v) {
+                    historyRangeMode = 'day';
+                    historyDayPick = v;
+                } else {
+                    historyRangeMode = 'all';
+                    historyDayPick = '';
+                }
+                updateHistoryFilterChrome();
+                renderCompletedOrders();
+                renderCancelledOrders();
+            });
+            sortEl?.addEventListener('change', () => {
+                renderCompletedOrders();
+                renderCancelledOrders();
+            });
+            updateHistoryFilterChrome();
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             loadOrders();
+            setupHistoryFilters();
             showTab('completed');
             setupModalOutsideClose();
             // Match Supabase + prune rows deleted in DB (otherwise localStorage keeps showing them).
@@ -318,6 +459,13 @@
             })();
         }
 
+        function isCompletedStatus(s) {
+            return String(s || '').trim().toLowerCase() === 'completed';
+        }
+        function isCancelledStatus(s) {
+            return String(s || '').trim().toLowerCase() === 'cancelled';
+        }
+
         /** Delivery → customer phone; pickup → shop/owner phone (legacy rows may only have customer_phone). */
         function orderDisplayContact(order) {
             const del = String(order.deliveryType || '').toLowerCase().startsWith('deliver');
@@ -330,45 +478,52 @@
             const tbody = document.getElementById('completedBody');
             const emptyDiv = document.getElementById('emptyCompleted');
             const table = document.getElementById('completedTable');
-            const list = orders.filter(o => o.status === 'Completed');
+            const raw = orders.filter(o => o && isCompletedStatus(o.status));
+            const list = filterAndSortLogList(raw);
             if (list.length === 0) {
                 tbody.innerHTML = '';
                 table.classList.add('hidden');
                 emptyDiv.classList.remove('hidden');
+                const h3 = emptyDiv.querySelector('h3');
+                if (h3) h3.textContent = raw.length === 0 ? 'No Completed Orders Yet' : 'No completed orders in this date range';
                 return;
             }
             table.classList.remove('hidden');
             emptyDiv.classList.add('hidden');
-            tbody.innerHTML = list.slice().reverse().map(order => rowHtml(order)).join('');
+            tbody.innerHTML = list.map(order => rowHtml(order)).join('');
         }
 
         function renderCancelledOrders() {
             const tbody = document.getElementById('cancelledBody');
             const emptyDiv = document.getElementById('emptyCancelled');
             const table = document.getElementById('cancelledTable');
-            const list = orders.filter(o => o.status === 'Cancelled');
+            const raw = orders.filter(o => o && isCancelledStatus(o.status));
+            const list = filterAndSortLogList(raw);
             if (list.length === 0) {
                 tbody.innerHTML = '';
                 table.classList.add('hidden');
                 emptyDiv.classList.remove('hidden');
+                const h3 = emptyDiv.querySelector('h3');
+                if (h3) h3.textContent = raw.length === 0 ? 'No Cancelled Orders' : 'No cancelled orders in this date range';
                 return;
             }
             table.classList.remove('hidden');
             emptyDiv.classList.add('hidden');
-            tbody.innerHTML = list.slice().reverse().map(order => rowHtml(order)).join('');
+            tbody.innerHTML = list.map(order => rowHtml(order)).join('');
         }
 
         function rowHtml(order) {
             const oc = orderDisplayContact(order);
+            const idLit = JSON.stringify(order.id);
             const paymentHtml = (order.paymentMethod === 'Online Payment' && order.receipt)
-                ? `<button onclick="viewReceipt(${order.id})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">${escapeHtml(order.paymentMethod || 'Online Payment')}</button>`
+                ? `<button onclick="viewReceipt(${idLit})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">${escapeHtml(order.paymentMethod || 'Online Payment')}</button>`
                 : `${escapeHtml(order.paymentMethod || '')}`;
             return `
                 <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
                     <td class="py-4 px-4 text-gray-700 text-sm font-mono">${escapeHtml(order.orderGroupId || '-')}</td>
                     <td class="py-4 px-4 text-gray-600 text-sm">${escapeHtml(order.date || '')}</td>
                     <td class="py-4 px-4">
-                        <button onclick="viewOrderDetails(${order.id})" class="text-left">
+                        <button onclick="viewOrderDetails(${idLit})" class="text-left">
                             <div class="font-semibold text-gray-800 hover:text-[#D4AF37] transition cursor-pointer">${escapeHtml(order.name || order.cake || 'Custom Order')}</div>
                             <div class="text-xs text-gray-500 mt-1">Click to view details</div>
                         </button>
@@ -442,7 +597,7 @@
 
         // Order details modal
         function viewOrderDetails(orderId) {
-            const order = orders.find(o => o.id === orderId);
+            const order = orders.find(o => String(o.id) === String(orderId));
             if (!order) return;
             const oc = orderDisplayContact(order);
             const el = document.getElementById('orderDetailsContent');
@@ -489,7 +644,7 @@
 
         // Receipt view
         function viewReceipt(orderId) {
-            const order = orders.find(o => o.id === orderId);
+            const order = orders.find(o => String(o.id) === String(orderId));
             if (!order || !order.receipt) return;
             const receiptContent = document.getElementById('receiptViewContent');
             const receiptFileName = order.receiptFileName || 'receipt';

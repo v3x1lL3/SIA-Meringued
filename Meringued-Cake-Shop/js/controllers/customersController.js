@@ -165,9 +165,20 @@ function getCustomersFromOrders() {
 /** Add DB-only customers (e.g. signed up but no order row yet). */
 function mergeOrderCustomersWithDb(fromOrders, dbRows) {
   if (!dbRows || dbRows.length === 0) return fromOrders;
+  const uidToEmail = new Map();
+  dbRows.forEach((row) => {
+    const rowUid = row.auth_user_id || row.user_id || row.userId || null;
+    const email = (row.email || '').trim();
+    if (rowUid && email) uidToEmail.set(String(rowUid), email);
+  });
+  const enriched = fromOrders.map((o) => {
+    if (!o || (o.email && o.email !== '—') || !o.userId) return o;
+    const em = uidToEmail.get(String(o.userId));
+    return em ? { ...o, email: em } : o;
+  });
   const seenEmail = new Set();
   const seenUid = new Set();
-  fromOrders.forEach((o) => {
+  enriched.forEach((o) => {
     const e = (o.email || '').toLowerCase();
     if (e && e !== '—') seenEmail.add(e);
     if (o.userId) seenUid.add(String(o.userId));
@@ -192,7 +203,7 @@ function mergeOrderCustomersWithDb(fromOrders, dbRows) {
       lastOrderDate: row.updated_at || row.created_at || '',
     });
   });
-  return [...fromOrders, ...extra].sort((a, b) =>
+  return [...enriched, ...extra].sort((a, b) =>
     String(b.lastOrderDate || '').localeCompare(String(a.lastOrderDate || ''))
   );
 }
@@ -415,7 +426,8 @@ function closeReceiptViewModal() {
 }
 
 /**
- * Render customers (array of { name, email?, orderCount?, lastOrderDate?, role?, created_at? }).
+ * Render customers (array of { name, email?, userId?, orderCount?, lastOrderDate?, role?, created_at? }).
+ * Email is kept for matching orders in "View orders" but not shown in the table (Account ID column instead).
  */
 function renderCustomers(customers, source) {
   const tbody = document.getElementById(CUSTOMERS_TBODY_ID);
@@ -442,20 +454,23 @@ function renderCustomers(customers, source) {
       const role = c.role ?? 'customer';
       const nameSafe = String(name).replace(/"/g, '&quot;');
       const emailSafe = String(email).replace(/"/g, '&quot;');
-      const uid = c.userId != null ? String(c.userId) : '';
+      const uid = c.userId != null ? String(c.userId).trim() : '';
       const uidSafe = uid.replace(/"/g, '&quot;');
+      const uidDisplay =
+        uid.length > 0
+          ? '<span class="font-mono text-xs text-gray-700" title="' +
+            escapeHtml(uid) +
+            '">' +
+            escapeHtml(uid.slice(0, 12) + (uid.length > 12 ? '…' : '')) +
+            '</span>'
+          : '<span class="text-gray-400">—</span>';
       return (
         '<tr class="border-b border-gray-100 hover:bg-[#FFF8F0]/40 transition">' +
         '<td class="py-3 px-3 font-semibold text-gray-800">' +
         escapeHtml(name) +
-        (uid
-          ? '<div class="text-xs font-normal text-gray-500 mt-0.5">Account ID: ' +
-            escapeHtml(uid.slice(0, 12) + (uid.length > 12 ? '…' : '')) +
-            '</div>'
-          : '') +
         '</td>' +
-        '<td class="py-3 px-3 text-gray-700">' +
-        escapeHtml(email) +
+        '<td class="py-3 px-3">' +
+        uidDisplay +
         '</td>' +
         '<td class="py-3 px-3"><span class="px-2 py-1 rounded-full text-xs font-medium bg-[#D4AF37]/20 text-[#B8941E]">' +
         escapeHtml(String(role)) +

@@ -59,6 +59,8 @@ function mapOrderToPayload(order) {
   const deliver = isDeliverDeliveryType(order);
   const customerPhone = deliver ? (order.customerPhone || null) : null;
   const ownerPhone = deliver ? null : (order.ownerPhone || null);
+  const customerEmailRaw = (order.customerEmail || order.email || '').trim();
+  const customerEmail = customerEmailRaw || null;
   return {
     customer_id: customerId || undefined,
     status: order.status || 'Pending',
@@ -73,6 +75,8 @@ function mapOrderToPayload(order) {
       localId: order.id != null ? order.id : null,
       orderGroupId: order.orderGroupId,
       customer: order.customer,
+      customerEmail,
+      email: customerEmail,
       name: order.name,
       cake: order.cake,
       size: order.size,
@@ -125,11 +129,13 @@ function slimOrderPayloadForInsert(payload) {
 export async function insertOrder(order) {
   if (!order) return null;
   let effective = order;
-  if (!effective.userId) {
-    const { data: auth } = await supabase.auth.getUser();
-    if (auth && auth.user && auth.user.id) {
-      effective = { ...order, userId: auth.user.id };
-    }
+  const { data: auth } = await supabase.auth.getUser();
+  if (!effective.userId && auth?.user?.id) {
+    effective = { ...effective, userId: auth.user.id };
+  }
+  const authEmail = (auth?.user?.email || '').trim();
+  if (authEmail && !(String(effective.customerEmail || effective.email || '').trim())) {
+    effective = { ...effective, customerEmail: authEmail };
   }
 
   const payload = mapOrderToPayload(effective);
@@ -165,4 +171,3 @@ export async function updateOrder(id, patch) {
   const { error } = await supabase.from(ORDERS_TABLE).update(patch).eq('id', id);
   if (error) console.warn('[OrderModel] updateOrder failed:', error.message);
 }
-

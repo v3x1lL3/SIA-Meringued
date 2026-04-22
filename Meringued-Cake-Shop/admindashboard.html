@@ -185,12 +185,6 @@
                     </a>
                 </li>
                 <li>
-                    <a href="adminfeedback.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
-                        <i class="fas fa-comment-alt w-5"></i>
-                        <span>Feedback</span>
-                    </a>
-                </li>
-                <li>
                     <a href="adminsettings.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-[#FFF8F0] hover:text-[#D4AF37] transition font-medium">
                         <i class="fas fa-cog w-5"></i>
                         <span>Settings</span>
@@ -296,135 +290,32 @@
                 </div>
             </div>
 
-                <!-- Inventory -->
-                <div id="inventory" class="stat-card p-5 md:p-6 mt-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                    <div>
-                        <h2 class="font-display text-lg md:text-xl font-semibold text-gray-900">Inventory</h2>
-                        <p id="invBlockSubtitle" class="text-gray-500 text-sm mt-0.5">Ingredients and supplies</p>
+                <!-- Stock & order alerts (inventory CRUD on Inventory page) -->
+                <div id="dashboardInventoryAlertsOnly" class="stat-card p-5 md:p-6 mt-8">
+                    <div class="mb-4">
+                        <h2 class="font-display text-lg md:text-xl font-semibold text-gray-900">
+                            <i class="fas fa-bell mr-2 text-[#D4AF37]"></i>Stock &amp; order alerts
+                        </h2>
+                        <p class="text-xs text-gray-600 mt-1 max-w-3xl">
+                            <strong>Purchase expenses:</strong> each <strong>Stock In</strong> logs to <strong>Records → Purchase expenses</strong> using <strong>Price (₱/unit)</strong>. Out-of-stock and low-stock include <strong>baking ingredients and miscellaneous</strong> supplies. Add items, images, and stock in/out on the <a href="admininventory.html" class="text-[#B8941E] font-semibold hover:underline">Inventory</a> page.
+                        </p>
                     </div>
-                    <div class="flex gap-3">
-                        <button id="resetInventoryBtn" class="px-4 py-3 rounded-xl font-semibold bg-gray-100 hover:bg-gray-200 transition text-gray-700">
-                            <i class="fas fa-rotate-left mr-2"></i>Reset template
-                        </button>
-                    </div>
-                </div>
 
-                <div class="flex flex-wrap gap-2 mb-6" role="tablist" aria-label="Inventory category">
-                    <button type="button" id="invTabIngredient" class="inv-category-tab inv-category-tab--active">Ingredients</button>
-                    <button type="button" id="invTabMisc" class="inv-category-tab inv-category-tab--inactive">Miscellaneous</button>
-                </div>
+                    <div id="dashboardNewOrdersBanner" class="hidden mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-4">
+                        <p class="font-semibold text-violet-900 flex items-center gap-2"><i class="fas fa-shopping-bag"></i> New orders</p>
+                        <p id="dashboardNewOrdersBannerText" class="text-sm text-violet-800 mt-1"></p>
+                        <a href="adminordering.html" class="inline-block mt-2 text-sm font-semibold text-violet-900 hover:underline">Review orders →</a>
+                    </div>
 
-                <!-- Add Ingredient Template -->
-                <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-4 md:p-5 mb-4">
-                    <h3 id="invAddCardTitle" class="font-display text-lg font-bold text-gray-800 mb-3">
-                        <i class="fas fa-plus-circle mr-2 text-[#D4AF37]"></i>Add Ingredient
-                    </h3>
-                    <form id="inventoryAddForm" class="grid grid-cols-1 md:grid-cols-6 gap-3">
-                        <div class="md:col-span-2">
-                            <label id="invNameLabel" for="invName" class="block text-sm font-semibold text-gray-700 mb-1">Ingredient name</label>
-                            <input id="invName" type="text" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g., Fondant" required />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
-                            <input id="invQty" type="number" min="0" step="0.01" value="0" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Unit</label>
-                            <select id="invUnit" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition">
-                                <option value="units" selected>units</option>
-                                <option value="kg">kg</option>
-                                <option value="g">g</option>
-                                <option value="L">L</option>
-                                <option value="ml">ml</option>
-                                <option value="pcs">pcs</option>
-                                <option value="roll">roll</option>
-                                <option value="in">in</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Reorder</label>
-                            <input id="invReorder" type="number" min="0" step="0.01" value="0" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" />
-                        </div>
-                        <div id="invExpiryFieldWrap">
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Expiry</label>
-                            <input id="invExpiryDate" type="date" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" title="Pick expiry date" />
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Image</label>
-                            <div class="flex flex-col md:flex-row gap-3">
-                                <input id="invImageUrl" type="text" class="flex-1 px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none transition" placeholder="e.g., images/ingredients/fondant.png" />
-                                <input id="invImageFile" type="file" accept="image/*" class="flex-1 text-sm" />
-                            </div>
-                        </div>
-                        <div class="md:col-span-6 flex justify-end gap-3 pt-2">
-                            <button type="submit" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg">
-                                <i class="fas fa-plus mr-2"></i>Add
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Inventory List -->
-                <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-5 md:p-6">
-                    <div class="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
-                        <h3 id="invListTitle" class="font-display text-xl font-bold text-gray-800">
-                            <i class="fas fa-clipboard-list mr-2 text-[#D4AF37]"></i>Ingredients list
-                        </h3>
-                        <p class="text-xs text-gray-600 max-w-xl"><strong>Purchase expenses:</strong> each <strong>Stock In</strong> logs to <strong>Records → Purchase expenses</strong> using <strong>Price (₱/unit)</strong>. Add other purchases manually there if needed.</p>
-                    </div>
-                    <div id="invSearchWrapIngredient" class="mb-4">
-                        <label for="inventorySearchInputIngredient" class="sr-only">Search ingredients</label>
-                        <input id="inventorySearchInputIngredient" type="search" autocomplete="off" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm text-gray-800 placeholder:text-gray-400" placeholder="Search ingredients..." />
-                    </div>
-                    <div id="invSearchWrapMisc" class="mb-4 hidden">
-                        <label for="inventorySearchInputMisc" class="sr-only">Search miscellaneous items</label>
-                        <input id="inventorySearchInputMisc" type="search" autocomplete="off" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#D4AF37] focus:outline-none text-sm text-gray-800 placeholder:text-gray-400" placeholder="Search miscellaneous..." />
-                    </div>
                     <div id="inventoryOutStockBanner" class="hidden mb-4 rounded-xl border-2 border-red-300 bg-red-50 p-4">
                         <p id="inventoryOutStockTitle" class="font-semibold text-red-800 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> Out of stock — please restock</p>
                         <p id="inventoryOutStockList" class="text-sm text-red-700 mt-1"></p>
                     </div>
-                    <div id="inventoryLowStockBanner" class="hidden mb-4 rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
+                    <div id="inventoryLowStockBanner" class="hidden rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
                         <p id="inventoryLowStockTitle" class="font-semibold text-amber-800 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> Low stock — please restock</p>
                         <p id="inventoryLowStockList" class="text-sm text-amber-700 mt-1"></p>
                     </div>
-                    <div id="inventoryExpiryBanner" class="hidden mb-4 rounded-xl border-2 border-amber-300 bg-amber-50/90 p-4">
-                        <p class="font-semibold text-amber-900 flex items-center gap-2"><i class="fas fa-calendar-exclamation"></i> Expiring soon — within 1 week</p>
-                        <p id="inventoryExpiryList" class="text-sm text-amber-800 mt-1"></p>
-                    </div>
-
-                    <!-- New card-style ingredient overview -->
-                    <div id="inventoryCardsGrid" class="hidden">
-                        <!-- Cards are rendered by js/admin-inventory.js -->
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full min-w-[900px]">
-                            <thead>
-                                <tr class="border-b-2 border-[#D4AF37]/20 text-left">
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Image</th>
-                                    <th id="invTableNameHeader" class="py-3 px-3 text-sm font-semibold text-gray-700">Ingredient</th>
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Qty</th>
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Unit</th>
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Price</th>
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Reorder</th>
-                                    <th id="invTableExpiryHeader" class="py-3 px-3 text-sm font-semibold text-gray-700">Expiry / Extended</th>
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Stock In/Out</th>
-                                    <th class="py-3 px-3 text-sm font-semibold text-gray-700">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="inventoryTableBody"></tbody>
-                        </table>
-
-                        <div id="inventoryEmpty" class="text-center py-10 text-gray-400 hidden">
-                            <i class="fas fa-box-open text-6xl mb-4 opacity-30"></i>
-                            <h3 id="inventoryEmptyTitle" class="text-xl font-semibold mb-2">No ingredients yet</h3>
-                            <p id="inventoryEmptyHint">Add your first ingredient above, or use Reset template to load the default list.</p>
-                        </div>
-                    </div>
                 </div>
-            </div>
         </div>
     </div>
 
@@ -526,6 +417,24 @@
                       })();
         }
 
+        function updateDashboardNewOrdersAlert() {
+            const banner = document.getElementById('dashboardNewOrdersBanner');
+            const textEl = document.getElementById('dashboardNewOrdersBannerText');
+            if (!banner || !textEl) return;
+            const pending = orders.filter(
+                (o) => o && String(o.status || '').trim() === 'Pending'
+            ).length;
+            if (pending < 1) {
+                banner.classList.add('hidden');
+                return;
+            }
+            textEl.textContent =
+                pending === 1
+                    ? '1 order is waiting as Pending — needs your attention.'
+                    : pending + ' orders are waiting as Pending — needs your attention.';
+            banner.classList.remove('hidden');
+        }
+
         function updateStatistics() {
             const total = orders.length;
             const pending = orders.filter((order) => order.status === 'Pending').length;
@@ -546,6 +455,7 @@
             document.getElementById('totalRevenue').textContent =
                 '₱' +
                 revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            updateDashboardNewOrdersAlert();
         }
 
         function renderRecentOrders() {

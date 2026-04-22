@@ -11,6 +11,118 @@
     var currentCategory = 'ingredient';
     var inventoryPage = 1;
     var inventoryPageSize = 10;
+    var INV_SORT_COL_KEY = 'adminInventorySortColumn_v1';
+    var INV_SORT_DIR_KEY = 'adminInventorySortDir_v1';
+    var VALID_INV_SORT_COLS = ['name', 'quantity', 'unit', 'price', 'reorder', 'expiry'];
+
+    function expirySortMillis(item) {
+        if (!item || !item.expiryDate) return null;
+        var d = String(item.expiryDate).slice(0, 10);
+        var t = Date.parse(d + 'T12:00:00');
+        return Number.isNaN(t) ? null : t;
+    }
+
+    /** Nulls last for both ascending and descending expiry sorts. */
+    function compareInventoryExpiry(a, b, ascending) {
+        var ra = expirySortMillis(a);
+        var rb = expirySortMillis(b);
+        var na = ra == null;
+        var nb = rb == null;
+        if (na && nb) return 0;
+        if (na) return 1;
+        if (nb) return -1;
+        if (ra === rb) return 0;
+        if (ascending) return ra < rb ? -1 : 1;
+        return ra > rb ? -1 : 1;
+    }
+
+    function getInventorySortColumn() {
+        var el = document.getElementById('inventorySortColumn');
+        if (el && el.value && VALID_INV_SORT_COLS.indexOf(el.value) !== -1) return el.value;
+        try {
+            var s = sessionStorage.getItem(INV_SORT_COL_KEY);
+            if (s && VALID_INV_SORT_COLS.indexOf(s) !== -1) return s;
+        } catch (e) { /* noop */ }
+        return 'name';
+    }
+
+    function getInventorySortAscending() {
+        var el = document.getElementById('inventorySortDirection');
+        if (el) return el.value === 'asc';
+        try {
+            return sessionStorage.getItem(INV_SORT_DIR_KEY) !== 'desc';
+        } catch (e) { /* noop */ }
+        return true;
+    }
+
+    function compareInventoryByColumn(a, b, column, isMisc, ascending) {
+        var mul = ascending ? 1 : -1;
+        function nameTie() {
+            return mul * String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+        }
+        function cmpNum(va, vb) {
+            var na = Number(va);
+            var nb = Number(vb);
+            if (!Number.isFinite(na)) na = 0;
+            if (!Number.isFinite(nb)) nb = 0;
+            if (na === nb) return 0;
+            return na < nb ? -mul : mul;
+        }
+        switch (column) {
+            case 'quantity': {
+                var q = cmpNum(a.quantity, b.quantity);
+                return q !== 0 ? q : nameTie();
+            }
+            case 'unit': {
+                var u = mul * String(a.unit || '').localeCompare(String(b.unit || ''), undefined, { sensitivity: 'base' });
+                return u !== 0 ? u : nameTie();
+            }
+            case 'price': {
+                var p = cmpNum(a.unitCost, b.unitCost);
+                return p !== 0 ? p : nameTie();
+            }
+            case 'reorder': {
+                var r = cmpNum(a.reorderLevel, b.reorderLevel);
+                return r !== 0 ? r : nameTie();
+            }
+            case 'expiry': {
+                if (isMisc) return nameTie();
+                var x = compareInventoryExpiry(a, b, ascending);
+                return x !== 0 ? x : nameTie();
+            }
+            case 'name':
+            default:
+                return nameTie();
+        }
+    }
+
+    function persistInventorySortFromUi() {
+        var c = document.getElementById('inventorySortColumn');
+        var d = document.getElementById('inventorySortDirection');
+        try {
+            if (c && c.value && VALID_INV_SORT_COLS.indexOf(c.value) !== -1) {
+                sessionStorage.setItem(INV_SORT_COL_KEY, c.value);
+            }
+            if (d && (d.value === 'asc' || d.value === 'desc')) {
+                sessionStorage.setItem(INV_SORT_DIR_KEY, d.value);
+            }
+        } catch (e) { /* noop */ }
+    }
+
+    function restoreInventorySortUi() {
+        var c = document.getElementById('inventorySortColumn');
+        var d = document.getElementById('inventorySortDirection');
+        try {
+            var sc = sessionStorage.getItem(INV_SORT_COL_KEY);
+            var sd = sessionStorage.getItem(INV_SORT_DIR_KEY);
+            if (currentCategory === 'misc' && sc === 'expiry') {
+                sc = 'name';
+                sessionStorage.setItem(INV_SORT_COL_KEY, 'name');
+            }
+            if (c && sc && VALID_INV_SORT_COLS.indexOf(sc) !== -1) c.value = sc;
+            if (d && (sd === 'asc' || sd === 'desc')) d.value = sd;
+        } catch (e) { /* noop */ }
+    }
     const DEFAULT_INGREDIENTS = [
         'Fondant', 'Flour', 'Sugar', 'Cocoa', 'Compound Chocolate',
         'Baking Soda', 'Baking Powder', 'Evaporated Milk', 'Condensed Milk',
@@ -31,6 +143,32 @@
     function loadInventory() {
         const raw = localStorage.getItem(storageKey());
         inventoryItems = raw ? JSON.parse(raw) : [];
+    }
+
+    /** Ingredients + miscellaneous combined for dashboard alerts only (misc names prefixed). */
+    function loadDashboardInventoryItemsForAlerts() {
+        var ingRaw = localStorage.getItem(INVENTORY_STORAGE_KEY);
+        var miscRaw = localStorage.getItem(MISC_STORAGE_KEY);
+        var ing = [];
+        var misc = [];
+        try {
+            ing = ingRaw ? JSON.parse(ingRaw) : [];
+            if (!Array.isArray(ing)) ing = [];
+        } catch (e) {
+            ing = [];
+        }
+        try {
+            misc = miscRaw ? JSON.parse(miscRaw) : [];
+            if (!Array.isArray(misc)) misc = [];
+        } catch (e) {
+            misc = [];
+        }
+        inventoryItems = ing.concat(misc.map(function (item) {
+            var o = Object.assign({}, item);
+            var nm = String(item.name || '').trim() || '(unnamed)';
+            o.name = 'Misc — ' + nm;
+            return o;
+        }));
     }
 
     function saveInventory() {
@@ -140,6 +278,16 @@
         if (wMisc) wMisc.classList.toggle('hidden', isIng);
         var unitSel = document.getElementById('invUnit');
         if (unitSel && !unitSel.value) unitSel.value = isIng ? 'units' : 'N/A';
+
+        var sortColSel = document.getElementById('inventorySortColumn');
+        var expOpt = sortColSel && sortColSel.querySelector('option[value="expiry"]');
+        if (expOpt) expOpt.disabled = !isIng;
+        if (sortColSel && !isIng && sortColSel.value === 'expiry') {
+            sortColSel.value = 'name';
+            try {
+                sessionStorage.setItem(INV_SORT_COL_KEY, 'name');
+            } catch (e) { /* noop */ }
+        }
     }
 
     /** Normalize for case-insensitive substring match (trim + collapse whitespace). */
@@ -298,6 +446,11 @@
     }
 
     function renderInventory() {
+        if (document.getElementById('dashboardInventoryAlertsOnly')) {
+            loadDashboardInventoryItemsForAlerts();
+            updateLowStockBanner();
+            return;
+        }
         loadInventory();
         var isMisc = currentCategory === 'misc';
         var tbody = document.getElementById('inventoryTableBody');
@@ -324,6 +477,12 @@
                 var hay = normalizeInventorySearchText(item.name);
                 return hay.indexOf(searchQ) !== -1;
             });
+        var sortCol = getInventorySortColumn();
+        if (isMisc && sortCol === 'expiry') sortCol = 'name';
+        var sortAsc = getInventorySortAscending();
+        visibleItems = visibleItems.slice().sort(function (a, b) {
+            return compareInventoryByColumn(a, b, sortCol, isMisc, sortAsc);
+        });
         var totalVisible = visibleItems.length;
         var pageSize = inventoryPageSize;
         var pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalVisible / pageSize));
@@ -832,6 +991,21 @@
         }
         bindInventorySearchInput('inventorySearchInputIngredient');
         bindInventorySearchInput('inventorySearchInputMisc');
+        function onInventorySortFilterChange() {
+            persistInventorySortFromUi();
+            inventoryPage = 1;
+            renderInventory();
+        }
+        var sortColEl = document.getElementById('inventorySortColumn');
+        if (sortColEl && !sortColEl.dataset.boundInvSortCol) {
+            sortColEl.addEventListener('change', onInventorySortFilterChange);
+            sortColEl.dataset.boundInvSortCol = '1';
+        }
+        var sortDirEl = document.getElementById('inventorySortDirection');
+        if (sortDirEl && !sortDirEl.dataset.boundInvSortDir) {
+            sortDirEl.addEventListener('change', onInventorySortFilterChange);
+            sortDirEl.dataset.boundInvSortDir = '1';
+        }
         var pageSizeSel = document.getElementById('inventoryPageSize');
         if (pageSizeSel && !pageSizeSel.dataset.boundPager) {
             pageSizeSel.addEventListener('change', function (e) {
@@ -1228,6 +1402,7 @@
         if (window.OrderIngredients && window.OrderIngredients.restoreCancelledOrdersIngredientStock) {
             window.OrderIngredients.restoreCancelledOrdersIngredientStock();
         }
+        restoreInventorySortUi();
         renderInventory();
         setupInventoryHandlers();
         var logoutModal = document.getElementById('logoutModal');
@@ -1245,7 +1420,7 @@
     }
 
     function init() {
-        if (!document.getElementById('inventoryTableBody')) return;
+        if (!document.getElementById('inventoryTableBody') && !document.getElementById('inventoryAddForm') && !document.getElementById('dashboardInventoryAlertsOnly')) return;
         try {
             var s = sessionStorage.getItem('adminInventoryCategory');
             if (s === 'misc' || s === 'ingredient') currentCategory = s;
@@ -1302,7 +1477,7 @@
     document.addEventListener('DOMContentLoaded', init);
 
     document.addEventListener('visibilitychange', function () {
-        if (!document.hidden && document.getElementById('inventoryTableBody')) {
+        if (!document.hidden && (document.getElementById('inventoryTableBody') || document.getElementById('dashboardInventoryAlertsOnly'))) {
             if (window.InventorySupabase || window.MiscInventorySupabase) {
                 scheduleInventoryCloudRefresh();
             } else {
@@ -1311,7 +1486,7 @@
         }
     });
     window.addEventListener('focus', function () {
-        if (document.getElementById('inventoryTableBody')) {
+        if (document.getElementById('inventoryTableBody') || document.getElementById('dashboardInventoryAlertsOnly')) {
             if (window.InventorySupabase || window.MiscInventorySupabase) {
                 scheduleInventoryCloudRefresh();
             } else {

@@ -51,11 +51,21 @@ function saveLocalAll(rows) {
   localStorage.setItem(LS_KEY, JSON.stringify(rows || []));
 }
 
+/** Map legacy `type` values (e.g. "purchase expenses") to the canonical keys used by tabs. */
+function canonicalRecordType(t) {
+  const s = String(t || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+  if (s === 'daily_expenses') return 'purchase_expenses';
+  return s || String(t || '').trim();
+}
+
 function normalizeRow(row) {
   if (!row) return null;
   return {
     id: row.id,
-    type: row.type,
+    type: canonicalRecordType(row.type),
     record_date: row.record_date,
     title: row.title || '',
     amount: row.amount != null ? Number(row.amount) : null,
@@ -121,9 +131,38 @@ function parseFilterToMs(v) {
   return Number.isNaN(t) ? null : t;
 }
 
+function isYmd(s) {
+  return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(String(s).trim());
+}
+
+/** First 10 chars YYYY-MM-DD from record_date (DATE or timestamptz). */
+function recordCanonicalYmd(r) {
+  if (!r || r.record_date == null) return '';
+  const s = String(r.record_date).trim();
+  return s.length >= 10 ? s.slice(0, 10) : '';
+}
+
+function supabaseErrMessage(e) {
+  if (e == null) return '';
+  if (typeof e === 'string') return e;
+  const m = e.message || e.error_description || e.hint;
+  return m ? String(m) : String(e);
+}
+
+function supabaseTypeVariants(filterType) {
+  const c = canonicalRecordType(filterType);
+  const spaced = c.replace(/_/g, ' ');
+  const out = new Set([filterType, c, spaced]);
+  return [...out].filter(Boolean);
+}
+
 async function trySupabaseSelect(filters = {}) {
   let q = supabase.from(TABLE).select('*').order('record_date', { ascending: false }).order('created_at', { ascending: false });
-  if (filters.type) q = q.eq('type', filters.type);
+  if (filters.type) {
+    const variants = supabaseTypeVariants(filters.type);
+    if (variants.length <= 1) q = q.eq('type', variants[0]);
+    else q = q.in('type', variants);
+  }
   if (filters.from) q = q.gte('record_date', filters.from);
   if (filters.to) q = q.lte('record_date', filters.to);
   const { data, error } = await q;
@@ -146,33 +185,48 @@ async function trySupabaseDelete(id) {
 export async function listAdminRecords(filters = {}) {
   try {
     const rows = await trySupabaseSelect(filters);
-    return { rows, source: 'supabase' };
+    return { rows, source: 'supabase', supabaseError: null };
   } catch (e) {
+    try {
+      console.warn('[adminRecordsModel] Supabase select failed, using localStorage:', supabaseErrMessage(e));
+    } catch (_) {}
     const all = loadLocalAll();
     let rows = all;
-    if (filters.type) rows = rows.filter(r => r.type === filters.type);
-    if (filters.from) {
-      const fromMs = parseFilterFromMs(filters.from);
-      if (fromMs != null) {
-        rows = rows.filter(r => {
-          const t = parseRecordDateMs(r.record_date);
-          return t != null && t >= fromMs;
-        });
-      }
+    if (filters.type) {
+      const want = canonicalRecordType(filters.type);
+      rows = rows.filter(r => canonicalRecordType(r.type) === want);
     }
-    if (filters.to) {
-      const toMs = parseFilterToMs(filters.to);
-      if (toMs != null) {
-        rows = rows.filter(r => {
-          const t = parseRecordDateMs(r.record_date);
-          return t != null && t <= toMs;
-        });
+    if (filters.from && filters.to && isYmd(filters.from) && isYmd(filters.to)) {
+      const a = String(filters.from).trim();
+      const b = String(filters.to).trim();
+      rows = rows.filter(r => {
+        const y = recordCanonicalYmd(r);
+        return y && y >= a && y <= b;
+      });
+    } else {
+      if (filters.from) {
+        const fromMs = parseFilterFromMs(filters.from);
+        if (fromMs != null) {
+          rows = rows.filter(r => {
+            const t = parseRecordDateMs(r.record_date);
+            return t != null && t >= fromMs;
+          });
+        }
+      }
+      if (filters.to) {
+        const toMs = parseFilterToMs(filters.to);
+        if (toMs != null) {
+          rows = rows.filter(r => {
+            const t = parseRecordDateMs(r.record_date);
+            return t != null && t <= toMs;
+          });
+        }
       }
     }
     rows = rows
       .slice()
       .sort((a, b) => String(b.record_date || '').localeCompare(String(a.record_date || '')) || String(b.created_at || '').localeCompare(String(a.created_at || '')));
-    return { rows, source: 'local' };
+    return { rows, source: 'local', supabaseError: supabaseErrMessage(e) };
   }
 }
 

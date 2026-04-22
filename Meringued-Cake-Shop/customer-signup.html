@@ -59,10 +59,6 @@
 
     <script>
         window._authSignupRole = 'customer';
-        document.getElementById('customerSignupForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            if (typeof window.handleSignup === 'function') window.handleSignup();
-        });
     </script>
     <script type="module" src="js/controllers/authController.js"></script>
 </body>

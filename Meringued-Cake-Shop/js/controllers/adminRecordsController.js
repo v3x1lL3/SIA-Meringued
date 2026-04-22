@@ -1,7 +1,7 @@
 import { ensureAuthenticated, handleLogoutRedirectToHome } from './authController.js';
 import { showToast, showLoadingOverlay, hideLoadingOverlay } from '../core/utils.js';
 import { listAdminRecords, upsertAdminRecord, deleteAdminRecord } from '../models/adminRecordsModel.js';
-import { listInventoryItemsForApp } from '../models/inventoryModel.js';
+import { listInventoryAndMiscForEod } from '../models/inventoryModel.js';
 
 const TYPE_LABEL = {
   eod_inventory_audit: 'EOD inventory',
@@ -14,9 +14,9 @@ const TYPE_LABEL = {
 const ADMIN_RECORDS_TAB_KEY = 'adminRecordsActiveTab';
 /**
  * Per record-type saved filters in sessionStorage: from, to, search, datePreset ('today' | 'all' | 'custom').
- * On each full page load we reset every tab to datePreset today (Manila); search strings are kept.
  */
 const ADMIN_RECORDS_FILTERS_PREFIX = 'adminRecordsFilters_v1_';
+const ADMIN_RECORDS_SORT_KEY = 'adminRecordsDateSort_v1';
 
 function getActiveDatePreset() {
   const active = qs('.records-date-preset-btn.date-preset-active');
@@ -67,7 +67,7 @@ function saveTabFilters(type) {
 }
 
 function loadTabFilters(type) {
-  if (!type) return { from: '', to: '', search: '', datePreset: 'today' };
+  if (!type) return { from: '', to: '', search: '', datePreset: 'all' };
   try {
     const raw = sessionStorage.getItem(ADMIN_RECORDS_FILTERS_PREFIX + type);
     if (raw) {
@@ -90,7 +90,8 @@ function loadTabFilters(type) {
   } catch (_) {
     /* ignore */
   }
-  return { from: '', to: '', search: '', datePreset: 'today' };
+  // Default "All dates" so historical Supabase rows are visible (today-only hid old data on every fresh session).
+  return { from: '', to: '', search: '', datePreset: 'all' };
 }
 
 function applyTabFiltersToInputs(f) {
@@ -270,14 +271,78 @@ function formatDate(yyyyMmDd) {
   }
 }
 
-/** Table / PDF: show calendar date + time (records may be date-only or full timestamps). */
-function formatRecordDate(value) {
+/** Format one stored instant (ISO string or YYYY-MM-DD). */
+function formatRecordInstant(value) {
   if (value == null || value === '') return '—';
   const s = String(value).trim();
   if (!s) return '—';
-  const d = s.length <= 10 ? new Date(`${s}T00:00:00`) : new Date(s);
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00`) : new Date(s);
   if (Number.isNaN(d.getTime())) return s;
   return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+/**
+ * Table / PDF: show when the event occurred.
+ * If `record_date` is date-only (common when the DB column is `DATE`), use `created_at`
+ * for the clock time so rows don’t all show 12:00 AM.
+ */
+function formatRecordDisplayDateTime(r) {
+  if (!r) return '—';
+  const rd = r.record_date;
+  const ca = r.created_at;
+  if (rd == null || String(rd).trim() === '') {
+    return formatRecordInstant(ca);
+  }
+  const s = String(rd).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s) && ca != null && String(ca).trim() !== '') {
+    return formatRecordInstant(ca);
+  }
+  return formatRecordInstant(s);
+}
+
+/** Milliseconds for sorting: `record_date` (date or datetime), then `created_at`. */
+function recordRowInstantMs(r) {
+  if (!r) return 0;
+  const rd = r.record_date;
+  let t = NaN;
+  if (rd != null && String(rd).trim() !== '') {
+    const s = String(rd).trim();
+    t = s.length <= 10 ? Date.parse(`${s}T00:00:00`) : Date.parse(s);
+  }
+  if (Number.isNaN(t) && r.created_at) {
+    t = Date.parse(String(r.created_at));
+  }
+  return Number.isNaN(t) ? 0 : t;
+}
+
+/**
+ * @param {unknown[]} rows
+ * @param {boolean} newestFirst - true = descending by date/time
+ */
+function sortRowsByRecordDateTime(rows, newestFirst) {
+  const arr = Array.isArray(rows) ? rows.slice() : [];
+  arr.sort((a, b) => {
+    const ta = recordRowInstantMs(a);
+    const tb = recordRowInstantMs(b);
+    if (ta !== tb) return newestFirst ? tb - ta : ta - tb;
+    const ca = String(a.created_at || '').localeCompare(String(b.created_at || ''));
+    if (ca !== 0) return newestFirst ? -ca : ca;
+    return String(a.id || '').localeCompare(String(b.id || ''));
+  });
+  return arr;
+}
+
+/** EOD helpers must not depend on UI sort order — keep latest row per title. */
+function mergeRowsByLatestInstant(rows) {
+  const map = new Map();
+  for (const r of rows || []) {
+    if (!r?.title) continue;
+    const key = String(r.title).toLowerCase().trim();
+    if (!key) continue;
+    const prev = map.get(key);
+    if (!prev || recordRowInstantMs(r) >= recordRowInstantMs(prev)) map.set(key, r);
+  }
+  return map;
 }
 
 /** Value for &lt;input type="datetime-local"&gt; from ISO or YYYY-MM-DD. */
@@ -326,7 +391,7 @@ function exportCurrentRecordsPdf() {
       const amount = r.amount == null ? '—' : ('₱' + formatMoney(r.amount));
       return (
         '<tr>' +
-        '<td>' + escapeHtml(formatRecordDate(r.record_date)) + '</td>' +
+        '<td>' + escapeHtml(formatRecordDisplayDateTime(r)) + '</td>' +
         '<td>' + escapeHtml(r.title || '') + '</td>' +
         '<td class="right">' + escapeHtml(amount) + '</td>' +
         '<td>' + escapeHtml(r.ref || '—') + '</td>' +
@@ -639,7 +704,7 @@ function renderRows(rows) {
       }
       return `
         <tr class="border-b border-gray-100 hover:bg-[#FFF8F0]/60">
-          <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">${escapeHtml(formatRecordDate(r.record_date))}</td>
+          <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">${escapeHtml(formatRecordDisplayDateTime(r))}</td>
           <td class="py-3 px-3 text-sm font-semibold text-gray-800">${escapeHtml(displayTitle || '')}${subLine ? `<div class="text-xs text-gray-400 mt-0.5">${escapeHtml(subLine)}</div>` : ''}</td>
           <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap records-amount-cell">${escapeHtml(amount)}</td>
           <td class="py-3 px-3 text-sm text-gray-600">${notesCell}</td>
@@ -663,6 +728,8 @@ function renderRows(rows) {
 
 let lastLoaded = [];
 let lastSource = 'local';
+/** Set when listAdminRecords falls back to localStorage (RLS, missing table, etc.). */
+let lastSupabaseListError = '';
 let recordsPage = 1;
 let recordsPageSize = 10;
 
@@ -704,10 +771,21 @@ async function refresh() {
   showLoadingOverlay('Loading records...');
   // Use filter From/To for all types (including EOD inventory) so you can view yesterday and earlier days.
   // Do NOT overwrite #filterFrom / #filterTo — that broke other tabs' date filters after EOD init.
-  const effectiveFrom = from ? filterFromToIsoUtc(from) : '';
-  const effectiveTo = to ? filterToToIsoUtc(to) : '';
+  // "Today" preset: use Manila calendar YYYY-MM-DD only. Converting datetime-local via toISOString()
+  // shifts instants vs PostgreSQL DATE and can include the previous calendar day.
+  const preset = getActiveDatePreset();
+  let effectiveFrom = '';
+  let effectiveTo = '';
+  if (preset === 'today') {
+    const y = getTodayYmd();
+    effectiveFrom = y;
+    effectiveTo = y;
+  } else {
+    effectiveFrom = from ? filterFromToIsoUtc(from) : '';
+    effectiveTo = to ? filterToToIsoUtc(to) : '';
+  }
 
-  const { rows, source } = await listAdminRecords({
+  const { rows, source, supabaseError } = await listAdminRecords({
     type: activeType,
     from: effectiveFrom || undefined,
     to: effectiveTo || undefined,
@@ -715,8 +793,17 @@ async function refresh() {
   hideLoadingOverlay();
 
   const searched = applySearch(rows, search);
-  lastLoaded = applyStockInOutFilter(searched, activeType);
+  const sortSel = qs('#recordsSortOrder');
+  const sortVal = sortSel?.value === 'asc' ? 'asc' : 'desc';
+  try {
+    sessionStorage.setItem(ADMIN_RECORDS_SORT_KEY, sortVal);
+  } catch (_) {
+    /* ignore */
+  }
+  const newestFirst = sortVal !== 'asc';
+  lastLoaded = sortRowsByRecordDateTime(applyStockInOutFilter(searched, activeType), newestFirst);
   lastSource = source;
+  lastSupabaseListError = source === 'local' ? (supabaseError || '') : '';
   const paged = paginateRows(lastLoaded);
   renderRows(paged.rows);
   updateRecordsPager(paged.total, paged.pageCount, paged.start, paged.end);
@@ -730,7 +817,17 @@ async function refresh() {
     const shown = paged.rows.length;
     summary.textContent = `${TYPE_LABEL[activeType] || activeType}: ${paged.total} record${paged.total === 1 ? '' : 's'} (showing ${shown})`;
   }
-  if (src) src.textContent = source === 'supabase' ? 'Source: Supabase' : 'Source: localStorage (Supabase table not configured yet)';
+  if (src) {
+    if (source === 'supabase') {
+      src.textContent = 'Source: Supabase (all matching rows for this tab)';
+    } else {
+      const err = (lastSupabaseListError || '').trim();
+      const short = err.length > 140 ? `${err.slice(0, 137)}…` : err;
+      src.textContent = short
+        ? `Source: this browser only — Supabase failed: ${short}`
+        : 'Source: this browser only (could not load Supabase — check admin login, RLS on admin_records, and SQL in SUPABASE-ADMIN-RECORDS.sql.md)';
+    }
+  }
 }
 
 function findById(id) {
@@ -770,19 +867,31 @@ function resetAllRecordsDateFiltersToToday() {
 }
 
 function loadLocalInventoryItemsForEod() {
-  const INVENTORY_STORAGE_KEY = 'adminInventoryItems';
-  try {
-    const raw = localStorage.getItem(INVENTORY_STORAGE_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(arr)) return [];
-    return arr.map(it => ({
-      name: String(it?.name || '').trim(),
-      quantity: Number(it?.quantity) || 0,
-      unit: String(it?.unit || 'units').trim() || 'units',
-    })).filter(x => x.name);
-  } catch {
-    return [];
+  function loadKey(storageKey) {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map(it => ({
+          name: String(it?.name || '').trim(),
+          quantity: Number(it?.quantity) || 0,
+          unit: String(it?.unit || 'units').trim() || 'units',
+        }))
+        .filter(x => x.name);
+    } catch {
+      return [];
+    }
   }
+  const ing = loadKey('adminInventoryItems');
+  const misc = loadKey('adminMiscInventoryItems');
+  const ingNames = new Set(ing.map(i => i.name.toLowerCase()));
+  const out = ing.map(i => ({ ...i, eodTitle: i.name }));
+  for (const m of misc) {
+    const t = ingNames.has(m.name.toLowerCase()) ? `${m.name} [Misc]` : m.name;
+    out.push({ ...m, eodTitle: t });
+  }
+  return out;
 }
 
 function getNextMidnightManilaMs(now = new Date()) {
@@ -815,13 +924,7 @@ async function ensureEodAutoSnapshotForToday() {
   // Get existing EOD rows for today (we will update them by UUID, not delete/recreate).
   const existingRes = await listAdminRecords({ type: eodType, from: today, to: today });
   const existingRows = existingRes?.rows || [];
-  const existingByTitle = new Map(); // titleKey -> row (latest we see first due to model ordering)
-  for (const r of existingRows) {
-    if (!r?.title) continue;
-    const key = String(r.title).toLowerCase().trim();
-    if (!key) continue;
-    if (!existingByTitle.has(key)) existingByTitle.set(key, r);
-  }
+  const existingByTitle = mergeRowsByLatestInstant(existingRows);
 
   // Latest inventory movements today (type=`inventory_audit`) used to infer Stock In/Out in EOD notes.
   let movementRows = [];
@@ -832,12 +935,7 @@ async function ensureEodAutoSnapshotForToday() {
     movementRows = [];
   }
 
-  const lastMovementByTitle = new Map(); // titleKey -> movement row
-  for (const r of movementRows) {
-    const key = String(r?.title || '').toLowerCase().trim();
-    if (!key) continue;
-    if (!lastMovementByTitle.has(key)) lastMovementByTitle.set(key, r);
-  }
+  const lastMovementByTitle = mergeRowsByLatestInstant(movementRows);
 
   // Fallback: if movement data is missing, infer direction from yesterday’s EOD qty.
   function getYmdManilaOffset(days) {
@@ -859,7 +957,8 @@ async function ensureEodAutoSnapshotForToday() {
   }
 
   const prevQtyByTitle = new Map();
-  for (const r of yesterdayEodRows) {
+  const yesterdayByTitle = mergeRowsByLatestInstant(yesterdayEodRows);
+  for (const r of yesterdayByTitle.values()) {
     if (!r?.title || !r?.notes) continue;
     const key = String(r.title).toLowerCase().trim();
     if (!key) continue;
@@ -867,7 +966,7 @@ async function ensureEodAutoSnapshotForToday() {
     const mQty = s.match(/^Qty:\s*([+-]?\d+(?:\.\d+)?)/i);
     const mNew = s.match(/New\s*qty:\s*([+-]?\d+(?:\.\d+)?)/i);
     const val = mQty ? Number(mQty[1]) : (mNew ? Number(mNew[1]) : null);
-    if (val != null && Number.isFinite(val) && !prevQtyByTitle.has(key)) prevQtyByTitle.set(key, val);
+    if (val != null && Number.isFinite(val)) prevQtyByTitle.set(key, val);
   }
 
   function parseMovementNotes(notesRaw, fallbackUnit) {
@@ -901,10 +1000,10 @@ async function ensureEodAutoSnapshotForToday() {
     };
   }
 
-  // Inventory items source of truth for end-of-day qty.
+  // Inventory + miscellaneous items: source of truth for end-of-day qty.
   let items = [];
   try {
-    items = await listInventoryItemsForApp();
+    items = await listInventoryAndMiscForEod();
   } catch {
     items = [];
   }
@@ -918,16 +1017,22 @@ async function ensureEodAutoSnapshotForToday() {
   for (const item of items) {
     const qty = Number(item?.quantity) || 0;
     const unit = String(item?.unit || 'units').trim() || 'units';
-    const title = String(item?.name || '').trim();
+    const title = String(item?.eodTitle != null ? item.eodTitle : item?.name || '').trim();
     if (!title) continue;
 
     const titleKey = title.toLowerCase().trim();
+    const nameKey = String(item?.name || '')
+      .trim()
+      .toLowerCase();
     const existingRow = existingByTitle.get(titleKey);
     const existingNotes = String(existingRow?.notes || '').trim();
     const existingHasStock = /^Stock\s+(In|Out)\b/i.test(existingNotes);
     if (existingHasStock) continue;
 
-    const lastMovement = lastMovementByTitle.get(titleKey);
+    // inventory_audit rows use the catalog name; EOD title may be "Name [Misc]" if the name matched an ingredient.
+    const lastMovement =
+      lastMovementByTitle.get(titleKey) ||
+      (nameKey && nameKey !== titleKey ? lastMovementByTitle.get(nameKey) : null);
 
     let notes = `Qty: ${qty.toFixed(2)} ${unit}`;
     if (lastMovement?.notes) {
@@ -997,7 +1102,8 @@ async function init() {
   const session = await ensureAuthenticated('admin');
   if (!session) return;
 
-  resetAllRecordsDateFiltersToToday();
+  // Do not call resetAllRecordsDateFiltersToToday() here — it forced every tab to "today" on each load,
+  // so rows in Supabase with older record_date never appeared until the user clicked "All".
 
   // Wire logout to real Supabase logout when user confirms (reuse existing helper)
   window.confirmLogout = async function () {
@@ -1091,6 +1197,16 @@ async function init() {
     }
   });
 
+  qs('#recordsSortOrder')?.addEventListener('change', async () => {
+    try {
+      const v = qs('#recordsSortOrder')?.value === 'asc' ? 'asc' : 'desc';
+      sessionStorage.setItem(ADMIN_RECORDS_SORT_KEY, v);
+    } catch (_) {
+      /* ignore */
+    }
+    recordsPage = 1;
+    await refresh();
+  });
   qs('#recordsPageSize')?.addEventListener('change', async (e) => {
     const raw = e.target.value;
     recordsPageSize = raw === 'all' ? 'all' : Math.max(1, parseInt(raw, 10) || 10);
@@ -1224,10 +1340,21 @@ async function init() {
   toggleStockFilterForType(activeTab);
   updateAddRecordButtonForType(activeTab);
   updateActionsVisibility(activeTab);
+  try {
+    const sv = sessionStorage.getItem(ADMIN_RECORDS_SORT_KEY);
+    const sortEl = qs('#recordsSortOrder');
+    if (sortEl && (sv === 'asc' || sv === 'desc')) sortEl.value = sv;
+  } catch (_) {
+    /* ignore */
+  }
   await refresh();
 
   if (lastSource === 'local') {
-    showToast('Records page ready (localStorage mode). Run Supabase SQL to sync across devices.', 'info');
+    const extra = lastSupabaseListError ? lastSupabaseListError : '';
+    showToast(
+      `Showing records stored in this browser only.${extra ? ' Error: ' + extra.slice(0, 120) + (extra.length > 120 ? '…' : '') : ''} Fix Supabase (gray source line + SUPABASE-ADMIN-RECORDS.sql.md).`,
+      'info'
+    );
   } else {
     showToast('Records page ready (Supabase).', 'info');
   }

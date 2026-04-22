@@ -85,12 +85,21 @@
                 padding: 0.5rem;
             }
         }
-        .cake-wireframe {
-            margin: 0.25rem auto 0;
-            border: 2px solid #d1d5db;
-            border-top-width: 3px;
-            border-radius: 9999px / 55%;
-            background: linear-gradient(180deg, #fff 0%, #fffaf0 100%);
+        /* Illustrated cake (replaces plain wireframe) — scales with card selection via parent .peer:checked */
+        .cake-illo {
+            margin: 0.35rem auto 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 3rem;
+        }
+        .cake-illo svg {
+            display: block;
+            transition: transform 0.2s ease, filter 0.2s ease;
+        }
+        label:has(.peer:checked) .cake-illo svg {
+            transform: scale(1.04);
+            filter: drop-shadow(0 2px 6px rgba(212, 175, 55, 0.35));
         }
         
         .sidebar-active {
@@ -361,7 +370,15 @@
                                         <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
                                             <p class="font-semibold">Small</p>
                                             <p class="text-sm text-gray-600 mt-1 leading-snug">6&quot; × 4&quot;</p>
-                                            <div class="cake-wireframe" style="width: 38px; height: 22px;"></div>
+                                            <div class="cake-illo" aria-hidden="true">
+                                                <svg width="46" height="36" viewBox="0 0 56 44" xmlns="http://www.w3.org/2000/svg">
+                                                    <ellipse cx="28" cy="39" rx="20" ry="2.8" fill="#ede4d6" stroke="#D4AF37" stroke-width="0.75" opacity="0.9"/>
+                                                    <path d="M14 33 V18 Q28 12 42 18 V33 Q28 36 14 33 Z" fill="#FFF8F0" stroke="#c9b896" stroke-width="1"/>
+                                                    <ellipse cx="28" cy="18" rx="14" ry="5.5" fill="#FFFAF4" stroke="#e5d4b0" stroke-width="0.85"/>
+                                                    <path d="M16 21 Q20 25 24 21 Q28 25 32 21 Q36 25 40 21" fill="none" stroke="#D4AF37" stroke-width="1" stroke-linecap="round" opacity="0.65"/>
+                                                    <circle cx="28" cy="13.5" r="3" fill="#f0a8a8" stroke="#c97a7a" stroke-width="0.5"/>
+                                                </svg>
+                                            </div>
                                         </div>
                                     </label>
                                     <label class="relative cursor-pointer">
@@ -369,7 +386,15 @@
                                         <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
                                             <p class="font-semibold">Medium</p>
                                             <p class="text-sm text-gray-600 mt-1 leading-snug">8&quot; × 4&quot;</p>
-                                            <div class="cake-wireframe" style="width: 48px; height: 22px;"></div>
+                                            <div class="cake-illo" aria-hidden="true">
+                                                <svg width="56" height="36" viewBox="0 0 72 44" xmlns="http://www.w3.org/2000/svg">
+                                                    <ellipse cx="36" cy="39" rx="26" ry="3" fill="#ede4d6" stroke="#D4AF37" stroke-width="0.75" opacity="0.9"/>
+                                                    <path d="M12 33 V18 Q36 11 60 18 V33 Q36 37 12 33 Z" fill="#FFF8F0" stroke="#c9b896" stroke-width="1"/>
+                                                    <ellipse cx="36" cy="18" rx="19" ry="5.5" fill="#FFFAF4" stroke="#e5d4b0" stroke-width="0.85"/>
+                                                    <path d="M18 21 Q24 25 30 21 Q36 25 42 21 Q48 25 54 21" fill="none" stroke="#D4AF37" stroke-width="1" stroke-linecap="round" opacity="0.65"/>
+                                                    <circle cx="36" cy="13.5" r="3.2" fill="#f0a8a8" stroke="#c97a7a" stroke-width="0.5"/>
+                                                </svg>
+                                            </div>
                                         </div>
                                     </label>
                                     <label class="relative cursor-pointer">
@@ -377,7 +402,15 @@
                                         <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-[#D4AF37] peer-checked:bg-[#FFF8F0] transition-all">
                                             <p class="font-semibold">Large</p>
                                             <p class="text-sm text-gray-600 mt-1 leading-snug">8&quot; × 6&quot;</p>
-                                            <div class="cake-wireframe" style="width: 54px; height: 27px;"></div>
+                                            <div class="cake-illo" aria-hidden="true">
+                                                <svg width="58" height="44" viewBox="0 0 72 54" xmlns="http://www.w3.org/2000/svg">
+                                                    <ellipse cx="36" cy="49" rx="27" ry="3" fill="#ede4d6" stroke="#D4AF37" stroke-width="0.75" opacity="0.9"/>
+                                                    <path d="M12 43 V20 Q36 12 60 20 V43 Q36 48 12 43 Z" fill="#FFF8F0" stroke="#c9b896" stroke-width="1"/>
+                                                    <ellipse cx="36" cy="20" rx="19" ry="6" fill="#FFFAF4" stroke="#e5d4b0" stroke-width="0.85"/>
+                                                    <path d="M18 24 Q24 29 30 24 Q36 29 42 24 Q48 29 54 24" fill="none" stroke="#D4AF37" stroke-width="1" stroke-linecap="round" opacity="0.65"/>
+                                                    <circle cx="36" cy="14" r="3.4" fill="#f0a8a8" stroke="#c97a7a" stroke-width="0.5"/>
+                                                </svg>
+                                            </div>
                                         </div>
                                     </label>
                                 </div>

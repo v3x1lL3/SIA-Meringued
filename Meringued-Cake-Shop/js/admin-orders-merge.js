@@ -43,11 +43,15 @@ export function mapSupabaseRowToAppOrder(row) {
   const det = parseDetails(row);
   const localId = det.localId != null ? det.localId : null;
   const phones = resolvePhonesFromRow(row, det);
+  const emailFromDet = (det.customerEmail || det.email || '').trim();
+  const customerEmail = emailFromDet || null;
   return {
     id: localId != null ? localId : 'sb-' + row.id,
     supabase_id: row.id,
     orderGroupId: det.orderGroupId || String(row.id).slice(0, 8),
     customer: det.customer || null,
+    customerEmail,
+    email: customerEmail,
     userId: row.customer_id || det.userId || null,
     name: det.name || det.cake || 'Custom Order',
     cake: det.cake || det.name,
@@ -116,6 +120,14 @@ export async function fetchMergedOrdersForAdmin() {
       mapped.receipt = loc.receipt;
       if (loc.receiptFileName) mapped.receiptFileName = loc.receiptFileName;
     }
+    if (loc) {
+      const le = (loc.customerEmail || loc.email || '').trim();
+      const me = (mapped.customerEmail || mapped.email || '').trim();
+      if (le && !me) {
+        mapped.customerEmail = le;
+        mapped.email = le;
+      }
+    }
   });
 
   // Fallback: match by orderGroupId when supabase_id exists on remote but local copy differs
@@ -154,5 +166,33 @@ export async function fetchMergedOrdersForAdmin() {
     merged.push(o);
   });
 
-  return { orders: merged, source: 'supabase' };
+  return { orders: dedupeMergedAdminOrders(merged), source: 'supabase' };
+}
+
+/**
+ * After merge, the same logical order can appear twice: once from Supabase (has supabase_id,
+ * id from details.localId) and once as a stale local row with the same id but no supabase_id.
+ * Keep the Supabase-backed row; drop the redundant local-only copy.
+ */
+function dedupeMergedAdminOrders(merged) {
+  if (!Array.isArray(merged) || merged.length < 2) return merged;
+  const withSb = [];
+  const withoutSb = [];
+  merged.forEach(function (o) {
+    if (!o) return;
+    if (o.supabase_id != null && String(o.supabase_id).trim() !== '') withSb.push(o);
+    else withoutSb.push(o);
+  });
+  const result = withSb.slice();
+  const idsClaimedByCloud = new Set();
+  result.forEach(function (o) {
+    if (o.id != null) idsClaimedByCloud.add(String(o.id));
+  });
+  withoutSb.forEach(function (o) {
+    const idStr = o.id != null ? String(o.id) : '';
+    if (idStr && idsClaimedByCloud.has(idStr)) return;
+    result.push(o);
+    if (idStr) idsClaimedByCloud.add(idStr);
+  });
+  return result;
 }

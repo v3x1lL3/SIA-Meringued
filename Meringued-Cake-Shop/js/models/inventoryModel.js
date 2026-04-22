@@ -1,6 +1,7 @@
 // Inventory model: basic helpers for inventory tables.
 
 import { supabase } from '../core/supabaseClient.js';
+import { listMiscInventoryItemsForApp } from './miscInventoryModel.js';
 
 const ITEMS_TABLE = 'inventory_items';
 
@@ -51,6 +52,39 @@ function rowToItem(row) {
 export async function listInventoryItemsForApp() {
   const rows = await listInventoryItems();
   return rows.map(rowToItem);
+}
+
+/**
+ * Ingredients + miscellaneous inventory for EOD snapshots (Records → EOD inventory).
+ * Each item includes `eodTitle` (unique row title; misc lines use `[Misc]` if the name matches an ingredient).
+ */
+export async function listInventoryAndMiscForEod() {
+  let ing = [];
+  try {
+    ing = await listInventoryItemsForApp();
+  } catch (e) {
+    console.warn('[inventoryModel] EOD: ingredients failed:', e?.message || e);
+  }
+  let misc = [];
+  try {
+    misc = await listMiscInventoryItemsForApp();
+  } catch (e) {
+    console.warn('[inventoryModel] EOD: misc inventory failed:', e?.message || e);
+  }
+  const ingNames = new Set(ing.map(i => String(i?.name || '').toLowerCase().trim()).filter(Boolean));
+  const out = [];
+  for (const it of ing) {
+    const nm = String(it?.name || '').trim();
+    if (!nm) continue;
+    out.push({ ...it, eodTitle: nm });
+  }
+  for (const it of misc) {
+    const nm = String(it?.name || '').trim();
+    if (!nm) continue;
+    const title = ingNames.has(nm.toLowerCase()) ? `${nm} [Misc]` : nm;
+    out.push({ ...it, eodTitle: title });
+  }
+  return out;
 }
 
 /** Map app item to DB payload (snake_case) */

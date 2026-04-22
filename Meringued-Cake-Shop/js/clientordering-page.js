@@ -1079,6 +1079,10 @@
                 id: Date.now(),
                 orderGroupId: generateOrderGroupId(),
                 customer: localStorage.getItem('userName') || 'Guest',
+                customerEmail: (function () {
+                    var e = (localStorage.getItem('userEmail') || '').trim();
+                    return e || null;
+                })(),
                 name: cake,
                 cake: cake,
                 size: document.querySelector('input[name="size"]:checked').value,
@@ -1340,6 +1344,10 @@
                     orderGroupId,
                     ...item,
                     customer: localStorage.getItem('userName') || 'Guest',
+                    customerEmail: (function () {
+                        var e = (localStorage.getItem('userEmail') || '').trim();
+                        return e || null;
+                    })(),
                     status: 'Pending',
                     date: new Date().toLocaleDateString(),
                     userId: uid

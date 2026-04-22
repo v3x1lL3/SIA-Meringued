@@ -118,7 +118,27 @@ async function complete2FAAndRedirect() {
 }
 window.complete2FAAndRedirect = complete2FAAndRedirect;
 
+let _signupInFlight = false;
+
+/** Bind signup forms here so submit always runs after this module loads (avoids race with inline scripts). */
+function bindStandaloneSignupForms() {
+  ['customerSignupForm', 'adminSignupForm'].forEach((id) => {
+    const form = document.getElementById(id);
+    if (!form || form.dataset.meringuedAuthBound === '1') return;
+    form.dataset.meringuedAuthBound = '1';
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleSignupClick();
+    });
+  });
+}
+bindStandaloneSignupForms();
+if (typeof document !== 'undefined' && document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bindStandaloneSignupForms);
+}
+
 async function handleSignupClick() {
+  if (_signupInFlight) return;
   const fullName = document.getElementById('signupName')?.value.trim();
   const email = document.getElementById('signupEmail')?.value.trim();
   const password = document.getElementById('signupPassword')?.value;
@@ -134,24 +154,57 @@ async function handleSignupClick() {
     return;
   }
 
+  _signupInFlight = true;
   try {
     showLoadingOverlay('Creating your account...');
-    const { user, profile } = await signUpWithEmail({ email, password, fullName, role });
-    hideLoadingOverlay();
+    const { user, profile, session } = await signUpWithEmail({ email, password, fullName, role });
 
-    if (user) {
-      const intent = window._authSignupRole;
-      if (!checkLoginIntentMatch(intent, profile)) {
-        await handleMismatchAndReset(intent === 'customer', profile);
+    let effectiveUser = user;
+    let effectiveProfile = profile;
+
+    // Email confirmation OFF → Supabase usually returns a session. If not, sign in immediately
+    // so clientdashboard / admindashboard (ensureAuthenticated) still work.
+    if (user && !session) {
+      try {
+        showLoadingOverlay('Signing you in...');
+        const signedIn = await signInWithEmail({ email, password });
+        effectiveUser = signedIn.user;
+        effectiveProfile = signedIn.profile;
+      } catch (signInErr) {
+        hideLoadingOverlay();
+        const sm = (signInErr?.message || '').toLowerCase();
+        const needConfirm =
+          sm.includes('confirm') || sm.includes('verified') || sm.includes('not confirmed');
+        showToast(
+          needConfirm
+            ? 'Check your email to confirm your account, then sign in.'
+            : 'Account may be created. Try signing in, or confirm your email if your project requires it.',
+          'info'
+        );
+        window.location.href = window._authSignupRole === 'admin' ? 'admin-login.html' : 'customer-login.html';
         return;
       }
-      persistCustomerIdentityLocal(user, profile, fullName);
+    }
+
+    hideLoadingOverlay();
+
+    if (effectiveUser) {
+      const intent = window._authSignupRole;
+      if (!checkLoginIntentMatch(intent, effectiveProfile)) {
+        await handleMismatchAndReset(intent === 'customer', effectiveProfile);
+        return;
+      }
+      persistCustomerIdentityLocal(effectiveUser, effectiveProfile, fullName);
       showToast('Account created!', 'success');
-      redirectByRole(profile);
+      redirectByRole(effectiveProfile);
     }
   } catch (err) {
     hideLoadingOverlay();
-    showToast(err.message || 'Signup failed.', 'error');
+    const m = err?.message || 'Signup failed.';
+    showToast(m.length > 380 ? m.slice(0, 377) + '…' : m, 'error');
+    console.warn('[auth] signUp failed:', err);
+  } finally {
+    _signupInFlight = false;
   }
 }
 
