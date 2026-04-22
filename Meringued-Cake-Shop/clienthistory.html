@@ -413,6 +413,28 @@
         </div>
     </div>
 
+    <!-- Order Details Modal -->
+    <div id="orderDetailsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden transform transition-all">
+            <div class="bg-white border-b-2 border-[#D4AF37]/20 p-6 flex justify-between items-center">
+                <h2 class="font-display text-2xl font-bold text-[#D4AF37]">
+                    <i class="fas fa-info-circle mr-2"></i> Order Details
+                </h2>
+                <button onclick="closeOrderDetailsModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div id="orderDetailsContent"></div>
+            </div>
+            <div class="border-t-2 border-[#D4AF37]/20 p-6 bg-gray-50">
+                <button onclick="closeOrderDetailsModal()" class="w-full px-6 py-3 rounded-lg text-gray-700 font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Receipt View Modal -->
     <div id="receiptViewModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
         <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden transform transition-all">
@@ -786,12 +808,13 @@
             const rowsHTML = completedOrders
                 .map(order => {
                     const statusColor = getStatusColor(order.status);
+                    const idLit = JSON.stringify(order.id);
                     return `
                         <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
                             <td class="py-4 px-4 text-gray-700 text-sm font-mono">${escapeHtml(order.orderGroupId || '-')}</td>
                             <td class="py-4 px-4 text-gray-600 text-sm">${escapeHtml(order.date || new Date().toLocaleDateString())}</td>
                             <td class="py-4 px-4">
-                                <button onclick="viewOrderDetails(${order.id})" class="text-left">
+                                <button onclick="viewOrderDetails(${idLit})" class="text-left">
                                     <div class="font-semibold text-gray-800 hover:text-[#D4AF37] transition cursor-pointer">${escapeHtml(order.name || order.cake || 'Custom Order')}</div>
                                     <div class="text-xs text-gray-500 mt-1">Click to view details</div>
                                 </button>
@@ -799,7 +822,7 @@
                             <td class="py-4 px-4 text-gray-700">${escapeHtml(order.deliveryType || 'Pick up')}</td>
                             <td class="py-4 px-4 text-gray-700">
                                 ${order.paymentMethod === 'Online Payment' && order.receipt ? 
-                                    `<button onclick="viewReceipt(${order.id})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">
+                                    `<button onclick="viewReceipt(${idLit})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">
                                         ${escapeHtml(order.paymentMethod || 'Online Payment')}
                                     </button>` :
                                     `${escapeHtml(order.paymentMethod || 'Online Payment')}`
@@ -838,12 +861,13 @@
             const rowsHTML = cancelledOrders
                 .map(order => {
                     const statusColor = getStatusColor(order.status);
+                    const idLit = JSON.stringify(order.id);
                     return `
                         <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
                             <td class="py-4 px-4 text-gray-700 text-sm font-mono">${escapeHtml(order.orderGroupId || '-')}</td>
                             <td class="py-4 px-4 text-gray-600 text-sm">${escapeHtml(order.date || new Date().toLocaleDateString())}</td>
                             <td class="py-4 px-4">
-                                <button onclick="viewOrderDetails(${order.id})" class="text-left">
+                                <button onclick="viewOrderDetails(${idLit})" class="text-left">
                                     <div class="font-semibold text-gray-800 hover:text-[#D4AF37] transition cursor-pointer">${escapeHtml(order.name || order.cake || 'Custom Order')}</div>
                                     <div class="text-xs text-gray-500 mt-1">Click to view details</div>
                                 </button>
@@ -851,7 +875,7 @@
                             <td class="py-4 px-4 text-gray-700">${escapeHtml(order.deliveryType || 'Pick up')}</td>
                             <td class="py-4 px-4 text-gray-700">
                                 ${order.paymentMethod === 'Online Payment' && order.receipt ? 
-                                    `<button onclick="viewReceipt(${order.id})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">
+                                    `<button onclick="viewReceipt(${idLit})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">
                                         ${escapeHtml(order.paymentMethod || 'Online Payment')}
                                     </button>` :
                                     `${escapeHtml(order.paymentMethod || 'Online Payment')}`
@@ -880,10 +904,54 @@
 
         // ===== RECEIPT VIEW MODAL FUNCTIONS =====
         
+        // View order details
+        function viewOrderDetails(orderId) {
+            const order = orders.find(o => String(o.id) === String(orderId));
+            if (!order) {
+                alert('Order not found');
+                return;
+            }
+            const detailsContent = document.getElementById('orderDetailsContent');
+            if (!detailsContent) return;
+            const designBlock = order.cakeDesign
+                ? `<div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1"><i class="fas fa-palette mr-1 text-[#D4AF37]"></i>Cake design</p><p class="text-gray-800">${escapeHtml(order.cakeDesign)}</p></div>`
+                : '';
+            const dedicationBlock = order.dedication
+                ? `<div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1"><i class="fas fa-pen-fancy mr-1 text-[#D4AF37]"></i>Dedication</p><p class="text-gray-800 italic">"${escapeHtml(order.dedication)}"</p></div>`
+                : '';
+            detailsContent.innerHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Cake</p><p class="font-semibold text-gray-800">${escapeHtml(order.name || order.cake || 'Custom Order')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Size</p><p class="font-semibold text-gray-800">${escapeHtml(typeof window.formatCakeSizeForDisplay === 'function' ? window.formatCakeSizeForDisplay(order.size) : (order.size || 'N/A'))}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Quantity</p><p class="font-semibold text-gray-800">${Number(order.quantity) || 1}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">To be consumed on</p><p class="font-semibold text-gray-800">${order.dateNeeded ? new Date(order.dateNeeded).toLocaleDateString() : 'N/A'}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Flavor</p><p class="font-semibold text-gray-800">${escapeHtml(order.flavor || order.cake || 'N/A')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Frosting</p><p class="font-semibold text-gray-800">${escapeHtml(order.frosting || 'N/A')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Delivery</p><p class="font-semibold text-gray-800">${escapeHtml(order.deliveryType || 'Pick up')}</p></div>
+                        <div class="bg-[#FFF8F0] rounded-lg p-4"><p class="text-xs text-gray-500 mb-1">Price</p><p class="font-semibold text-[#D4AF37]">₱${(Number(order.price) || 0).toFixed(2)}</p></div>
+                    </div>
+                    ${designBlock}
+                    ${dedicationBlock}
+                </div>
+            `;
+            document.getElementById('orderDetailsModal').classList.remove('hidden');
+            document.getElementById('orderDetailsModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeOrderDetailsModal() {
+            document.getElementById('orderDetailsModal').classList.add('hidden');
+            document.getElementById('orderDetailsModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            const detailsContent = document.getElementById('orderDetailsContent');
+            if (detailsContent) detailsContent.innerHTML = '';
+        }
+        
         // View receipt
         function viewReceipt(orderId) {
             // Find the order by ID
-            const order = orders.find(o => o.id === orderId);
+            const order = orders.find(o => String(o.id) === String(orderId));
             
             if (!order || !order.receipt) {
                 alert('Receipt not found for this order');
@@ -1223,6 +1291,11 @@
                     closeReceiptViewModal();
                     return;
                 }
+                const detailsModal = document.getElementById('orderDetailsModal');
+                if (detailsModal && !detailsModal.classList.contains('hidden')) {
+                    closeOrderDetailsModal();
+                    return;
+                }
                 const receiptModal = document.getElementById('receiptUploadModal');
                 if (receiptModal && !receiptModal.classList.contains('hidden')) {
                     closeReceiptUploadModal();
@@ -1234,6 +1307,11 @@
         document.getElementById('receiptViewModal')?.addEventListener('click', function(e) {
             if (e.target === this) {
                 closeReceiptViewModal();
+            }
+        });
+        document.getElementById('orderDetailsModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeOrderDetailsModal();
             }
         });
     </script>

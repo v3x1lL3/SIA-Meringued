@@ -510,8 +510,9 @@
         function rowHtml(order) {
             const oc = orderDisplayContact(order);
             const idLit = JSON.stringify(order.id);
-            const paymentHtml = (order.paymentMethod === 'Online Payment' && order.receipt)
-                ? `<button onclick="viewReceipt(${idLit})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">${escapeHtml(order.paymentMethod || 'Online Payment')}</button>`
+            const hasReceipt = typeof order.receipt === 'string' ? order.receipt.trim().length > 0 : Boolean(order.receipt);
+            const paymentHtml = hasReceipt
+                ? `<button onclick="viewReceipt(${idLit})" class="px-3 py-1 rounded-lg text-[#D4AF37] bg-[#FFF8F0] hover:bg-[#D4AF37] hover:text-white transition-all font-medium text-sm">${escapeHtml(order.paymentMethod || 'Payment')}</button>`
                 : `${escapeHtml(order.paymentMethod || '')}`;
             return `
                 <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
