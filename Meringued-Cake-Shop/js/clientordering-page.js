@@ -1774,7 +1774,7 @@
       </tr>
       <tr>
         <th>Total</th>
-        <td class="right">${escapeHtml(total)}</td>
+        <td>${escapeHtml(total)}</td>
       </tr>
       <tr>
         <th>Status</th>
@@ -1856,7 +1856,7 @@
                     '<td>' + escapeHtml(delivery) + '</td>' +
                     '<td>' + escapeHtml(payment) + down + '</td>' +
                     '<td>' + escapeHtml(needed) + '</td>' +
-                    '<td class="right">' + escapeHtml(total) + '</td>' +
+                    '<td>' + escapeHtml(total) + '</td>' +
                     '<td>' + escapeHtml(status) + '</td>' +
                     '</tr>'
                 );
