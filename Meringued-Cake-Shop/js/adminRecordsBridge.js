@@ -78,19 +78,30 @@ export async function logInventoryMovement({ itemId, itemName, delta, newQty, un
   await upsertAdminRecord(payload);
 }
 
-export async function logPurchaseExpense({ itemName, quantity, unit, unitCost, totalCost, ref, notes }) {
+/** Pass linePurchasePrice for g, ml, kg, L: saved amount is one purchase total for this stock-in, not × quantity. */
+export async function logPurchaseExpense({
+  itemName,
+  quantity,
+  unit,
+  unitCost,
+  totalCost,
+  ref,
+  notes,
+  linePurchasePrice = false,
+}) {
   if (!itemName) return;
+  const priceNote = linePurchasePrice
+    ? `Purchase price: ₱${unitCost != null ? Number(unitCost).toFixed(2) : '—'}`
+    : `Cost/unit: ₱${unitCost != null ? Number(unitCost).toFixed(2) : '—'}`;
   const payload = {
     type: 'purchase_expenses',
     record_date: recordTimestampIso(),
     title: `Purchase — ${itemName}`,
     amount: Number(totalCost),
     ref: ref != null && String(ref).trim() !== '' ? String(ref).trim() : 'Inventory stock-in',
-    notes: [
-      notes || null,
-      `Qty: ${quantity != null ? Number(quantity).toFixed(2) : '—'} ${unit || 'units'}`,
-      `Cost/unit: ₱${unitCost != null ? Number(unitCost).toFixed(2) : '—'}`
-    ].filter(Boolean).join(' • '),
+    notes: [notes || null, `Qty: ${quantity != null ? Number(quantity).toFixed(2) : '—'} ${unit || 'units'}`, priceNote]
+      .filter(Boolean)
+      .join(' • '),
   };
   await upsertAdminRecord(payload);
 }

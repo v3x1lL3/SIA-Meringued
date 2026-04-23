@@ -495,6 +495,20 @@
         }).join('');
     }
 
+    /** Weight/volume units: saved price = one purchase total for this stock-in (not × qty). Count units: qty × saved price. */
+    function purchaseAmountForStockIn(unit, qtyRaw, costPerUnit) {
+        var u = String(unit || '').trim().toLowerCase();
+        if (u === 'g' || u === 'ml' || u === 'kg' || u === 'l') {
+            return costPerUnit;
+        }
+        return qtyRaw * costPerUnit;
+    }
+
+    function isLinePurchasePriceUnit(unit) {
+        var u = String(unit || '').trim().toLowerCase();
+        return u === 'g' || u === 'ml' || u === 'kg' || u === 'l';
+    }
+
     function renderInventory() {
         if (document.getElementById('dashboardInventoryAlertsOnly')) {
             loadDashboardInventoryItemsForAlerts();
@@ -1250,7 +1264,8 @@
                 // packaging/supplies appear in Records → Purchase expenses even before a price is set.
                 if (action === 'stockIn' && applied && applied.item && window.AdminRecords && typeof window.AdminRecords.logPurchaseExpense === 'function') {
                     var costPerUnit = Number(applied.item.unitCost != null ? applied.item.unitCost : 0) || 0;
-                    var totalCost = raw * costPerUnit;
+                    var linePrice = isLinePurchasePriceUnit(applied.item.unit);
+                    var totalCost = purchaseAmountForStockIn(applied.item.unit, raw, costPerUnit);
                     var isMisc = currentCategory === 'misc';
                     if (isMisc || costPerUnit > 0) {
                         try {
@@ -1260,7 +1275,8 @@
                                 unit: applied.item.unit,
                                 unitCost: costPerUnit,
                                 totalCost: totalCost,
-                                ref: isMisc ? 'Inventory stock-in (miscellaneous)' : 'Inventory stock-in'
+                                ref: isMisc ? 'Inventory stock-in (miscellaneous)' : 'Inventory stock-in',
+                                linePurchasePrice: linePrice
                             });
                         } catch (err) { /* noop */ }
                     }
