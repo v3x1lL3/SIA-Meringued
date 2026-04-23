@@ -345,7 +345,7 @@
             return statusColors[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
         }
 
-        // Minimum delivery fee (from Admin Settings → Delivery & pickup; falls back to 150)
+        // Minimum delivery fee (from Admin Settings → Delivery; falls back to 150)
         function getDeliveryConfig() {
             try {
                 var raw = localStorage.getItem('adminSettings');

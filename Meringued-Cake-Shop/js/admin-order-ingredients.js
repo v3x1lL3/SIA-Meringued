@@ -118,6 +118,9 @@
             delta: delta,
             reason: (meta && meta.reason) ? String(meta.reason) : 'Misc stock change'
         };
+        if (typeof window.persistInventoryLastStockMove === 'function') {
+            window.persistInventoryLastStockMove(item.id, item.lastStockMove);
+        }
         saveMiscInventory(items);
         if (window.MiscOrderStockSupabase && typeof window.MiscOrderStockSupabase.applyDeltaByName === 'function') {
             window.MiscOrderStockSupabase.applyDeltaByName(itemName, delta);
@@ -159,6 +162,9 @@
             delta: delta,
             reason: (meta && meta.reason) ? String(meta.reason) : 'Order stock change'
         };
+        if (typeof window.persistInventoryLastStockMove === 'function') {
+            window.persistInventoryLastStockMove(item.id, item.lastStockMove);
+        }
         saveInventory(items);
         if (window.OrderIngredientsSupabase && typeof window.OrderIngredientsSupabase.applyDeltaByName === 'function') {
             window.OrderIngredientsSupabase.applyDeltaByName(ingredientName, delta);

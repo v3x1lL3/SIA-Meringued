@@ -300,6 +300,27 @@ function formatRecordDisplayDateTime(r) {
   return formatRecordInstant(s);
 }
 
+/**
+ * Same instant as {@link formatRecordDisplayDateTime} (not raw record_date alone).
+ * Needed so date filters match what the table shows when the DB stores DATE + created_at.
+ */
+function recordDisplayInstantMs(r) {
+  if (!r) return NaN;
+  const rd = r.record_date;
+  const ca = r.created_at;
+  if (rd == null || String(rd).trim() === '') {
+    return ca != null && String(ca).trim() !== '' ? Date.parse(String(ca)) : NaN;
+  }
+  const s = String(rd).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s) && ca != null && String(ca).trim() !== '') {
+    return Date.parse(String(ca));
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return Date.parse(`${s}T00:00:00`);
+  }
+  return Date.parse(s);
+}
+
 /** Milliseconds for sorting: `record_date` (date or datetime), then `created_at`. */
 function recordRowInstantMs(r) {
   if (!r) return 0;
@@ -355,14 +376,28 @@ function toDatetimeLocalInputValue(isoOrYmd) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Naive YYYY-MM-DDTHH:mm(:ss)? from datetime-local → interpret as Asia/Manila (shop TZ). */
+function filterInputToIsoWithManilaOffset(value) {
+  const v = String(value || '').trim();
+  if (!v) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return `${v}T00:00:00+08:00`;
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(v)) return v;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?$/.test(v)) {
+    const withSec = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v) ? `${v}:00` : v;
+    return `${withSec}+08:00`;
+  }
+  return v;
+}
+
 function filterFromToIsoUtc(value) {
   const v = String(value || '').trim();
   if (!v) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-    const d = new Date(`${v}T00:00:00`);
+    const d = new Date(`${v}T00:00:00+08:00`);
     return Number.isNaN(d.getTime()) ? '' : d.toISOString();
   }
-  const d = new Date(v);
+  const marked = filterInputToIsoWithManilaOffset(v);
+  const d = new Date(marked);
   return Number.isNaN(d.getTime()) ? '' : d.toISOString();
 }
 
@@ -370,10 +405,11 @@ function filterToToIsoUtc(value) {
   const v = String(value || '').trim();
   if (!v) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-    const d = new Date(`${v}T23:59:59.999`);
+    const d = new Date(`${v}T23:59:59.999+08:00`);
     return Number.isNaN(d.getTime()) ? '' : d.toISOString();
   }
-  const d = new Date(v);
+  const marked = filterInputToIsoWithManilaOffset(v);
+  const d = new Date(marked);
   return Number.isNaN(d.getTime()) ? '' : d.toISOString();
 }
 
@@ -386,6 +422,23 @@ function getTodayIsoRangeManilaUtc() {
     fromIso: Number.isNaN(start.getTime()) ? '' : start.toISOString(),
     toIso: Number.isNaN(end.getTime()) ? '' : end.toISOString(),
   };
+}
+
+/**
+ * UI/PDF only — does not change Supabase. Legacy stock-in rows stored
+ * "Stock In … • saved unit … • Qty … • Cost/unit …"; drop the first two when the last two exist.
+ */
+function dedupePurchaseExpenseNotesForDisplay(notesRaw) {
+  const s = String(notesRaw || '').trim();
+  if (!s) return '';
+  if (!/\bQty:\s*/i.test(s) || !/\bCost\/unit:\s*/i.test(s)) return s;
+  const parts = s.split(/\s*[•·]\s*/g).map(p => p.trim()).filter(Boolean);
+  const filtered = parts.filter(p => {
+    if (/^Stock\s+In:\s*.+$/i.test(p)) return false;
+    if (/^saved\s+unit\s+/i.test(p)) return false;
+    return true;
+  });
+  return filtered.length ? filtered.join(' • ') : s;
 }
 
 function exportCurrentRecordsPdf() {
@@ -406,7 +459,11 @@ function exportCurrentRecordsPdf() {
         '<td>' + escapeHtml(r.title || '') + '</td>' +
         '<td class="right">' + escapeHtml(amount) + '</td>' +
         '<td>' + escapeHtml(r.ref || '—') + '</td>' +
-        '<td>' + escapeHtml((r.notes || '').trim() || '—') + '</td>' +
+        '<td>' + escapeHtml(
+          (r.type === 'purchase_expenses'
+            ? dedupePurchaseExpenseNotesForDisplay(r.notes || '')
+            : String(r.notes || '').trim()) || '—'
+        ) + '</td>' +
         '</tr>'
       );
     })
@@ -666,6 +723,9 @@ function renderRows(rows) {
     .map(r => {
       const amount = r.amount == null ? '—' : formatMoney(r.amount);
       let notes = (r.notes || '').trim();
+      if (r.type === 'purchase_expenses' && notes) {
+        notes = dedupePurchaseExpenseNotesForDisplay(notes);
+      }
       // Clean up inventory notes: remove verbose "Reason: ..." chunk.
       if (r.type === 'inventory_audit' && notes) {
         notes = notes
@@ -804,12 +864,31 @@ async function refresh() {
     effectiveTo = to ? filterToToIsoUtc(to) : '';
   }
 
-  const { rows, source, supabaseError } = await listAdminRecords({
+  const { rows: fetchedRows, source, supabaseError } = await listAdminRecords({
     type: activeType,
     from: effectiveFrom || undefined,
     to: effectiveTo || undefined,
   });
   hideLoadingOverlay();
+
+  let rows = fetchedRows;
+  // Supabase filters on `record_date`, but the table can show `created_at` when `record_date` is DATE-only.
+  // Re-filter by the same instant as the UI so "Today" / custom range matches visible rows.
+  if (activeType !== 'eod_inventory_audit' && (effectiveFrom || effectiveTo)) {
+    rows = rows.filter(r => {
+      const t = recordDisplayInstantMs(r);
+      if (Number.isNaN(t)) return false;
+      if (effectiveFrom) {
+        const b = Date.parse(effectiveFrom);
+        if (!Number.isNaN(b) && t < b) return false;
+      }
+      if (effectiveTo) {
+        const b = Date.parse(effectiveTo);
+        if (!Number.isNaN(b) && t > b) return false;
+      }
+      return true;
+    });
+  }
 
   const searched = applySearch(rows, search);
   const sortSel = qs('#recordsSortOrder');

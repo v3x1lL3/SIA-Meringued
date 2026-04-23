@@ -8,6 +8,55 @@
     let inventoryItems = [];
     const INVENTORY_STORAGE_KEY = 'adminInventoryItems';
     const MISC_STORAGE_KEY = 'adminMiscInventoryItems';
+    /** Survives Supabase refresh (row payloads omit this). Keyed by item id. */
+    const LAST_STOCK_MOVES_KEY = 'adminInventoryLastStockMoves_v1';
+
+    function loadLastStockMovesMap() {
+        try {
+            var raw = localStorage.getItem(LAST_STOCK_MOVES_KEY);
+            if (!raw) return {};
+            var o = JSON.parse(raw);
+            return o && typeof o === 'object' ? o : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function persistLastStockMoveForItem(id, move) {
+        if (id == null || !move || move.at == null || move.delta == null) return;
+        var d = Number(move.delta);
+        if (!Number.isFinite(d)) return;
+        try {
+            var map = loadLastStockMovesMap();
+            map[String(id)] = {
+                at: move.at,
+                delta: d,
+                reason: move.reason != null ? String(move.reason) : ''
+            };
+            localStorage.setItem(LAST_STOCK_MOVES_KEY, JSON.stringify(map));
+        } catch (e) { /* noop */ }
+    }
+
+    function hydrateInventoryLastStockMoves(items) {
+        if (!Array.isArray(items) || items.length === 0) return;
+        var map = loadLastStockMovesMap();
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            if (!it || it.id == null) continue;
+            var embedded = it.lastStockMove;
+            if (embedded && embedded.at != null && embedded.delta != null && Number.isFinite(Number(embedded.delta))) {
+                continue;
+            }
+            var m = map[String(it.id)];
+            if (m && m.at != null && m.delta != null && Number.isFinite(Number(m.delta))) {
+                it.lastStockMove = {
+                    at: m.at,
+                    delta: Number(m.delta),
+                    reason: m.reason != null ? String(m.reason) : ''
+                };
+            }
+        }
+    }
     var currentCategory = 'ingredient';
     var inventoryPage = 1;
     var inventoryPageSize = 10;
@@ -169,6 +218,7 @@
             o.name = 'Misc — ' + nm;
             return o;
         }));
+        hydrateInventoryLastStockMoves(inventoryItems);
     }
 
     function saveInventory() {
@@ -452,6 +502,7 @@
             return;
         }
         loadInventory();
+        hydrateInventoryLastStockMoves(inventoryItems);
         var isMisc = currentCategory === 'misc';
         var tbody = document.getElementById('inventoryTableBody');
         var emptyEl = document.getElementById('inventoryEmpty');
@@ -835,6 +886,7 @@
             delta: delta,
             reason: reason
         };
+        persistLastStockMoveForItem(item.id, item.lastStockMove);
         saveInventory();
         renderInventory();
         inventorySupabaseUpdate(item.id, { quantity: item.quantity });
@@ -1193,12 +1245,14 @@
                     } catch (err) { /* noop */ }
                 }
 
-                // When stocking IN, log Purchase expenses using the **saved** unit price only
-                // (use "Save price" or Done so market/brand changes are deliberate; avoids unsaved typos in the field).
+                // When stocking IN, log Purchase expenses using the **saved** unit price (Done on the row).
+                // Ingredients: skip logging when unit price is 0 (avoids noise). Miscellaneous: always log so
+                // packaging/supplies appear in Records → Purchase expenses even before a price is set.
                 if (action === 'stockIn' && applied && applied.item && window.AdminRecords && typeof window.AdminRecords.logPurchaseExpense === 'function') {
                     var costPerUnit = Number(applied.item.unitCost != null ? applied.item.unitCost : 0) || 0;
-                    if (costPerUnit > 0) {
-                        var totalCost = raw * costPerUnit;
+                    var totalCost = raw * costPerUnit;
+                    var isMisc = currentCategory === 'misc';
+                    if (isMisc || costPerUnit > 0) {
                         try {
                             window.AdminRecords.logPurchaseExpense({
                                 itemName: applied.item.name,
@@ -1206,8 +1260,7 @@
                                 unit: applied.item.unit,
                                 unitCost: costPerUnit,
                                 totalCost: totalCost,
-                                ref: 'Inventory stock-in',
-                                notes: 'Stock In: ' + raw + ' ' + (applied.item.unit || 'units') + ' • saved unit ₱' + costPerUnit.toFixed(2)
+                                ref: isMisc ? 'Inventory stock-in (miscellaneous)' : 'Inventory stock-in'
                             });
                         } catch (err) { /* noop */ }
                     }
@@ -1496,6 +1549,8 @@
     });
 
     window.renderInventory = renderInventory;
+    /** Called from admin-order-ingredients when orders adjust stock (script loads before this file). */
+    window.persistInventoryLastStockMove = persistLastStockMoveForItem;
     window.refreshAdminInventoryFromCloud = refreshInventoryFromCloud;
     window.setInventoryCategory = setInventoryCategory;
     window.openLogoutModal = openLogoutModal;
