@@ -35,3 +35,7 @@ CREATE POLICY "business_public_settings_admin_write"
   TO authenticated
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
+
+-- Optional (recommended): live updates on the customer site when admin saves settings.
+-- Supabase Dashboard → Database → Publications → supabase_realtime → add table `business_public_settings`
+-- (or run: ALTER PUBLICATION supabase_realtime ADD TABLE public.business_public_settings;)

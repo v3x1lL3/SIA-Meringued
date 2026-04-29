@@ -163,7 +163,7 @@
             try {
                 const { upsertPublicBusinessSettingsToSupabase } = await import('./js/models/shopSettingsModel.js');
                 const r = await upsertPublicBusinessSettingsToSupabase(s);
-                if (r && r.ok) msg += ' Customers (including other devices / incognito) will see pickup phone and business info after refresh.';
+                if (r && r.ok) msg += ' Customers should see pickup phone, fees, hours, and order rules update automatically (or within about a minute). Enable Realtime on table business_public_settings in Supabase for instant updates.';
                 else msg += ' Cloud sync failed — run SUPABASE-BUSINESS-PUBLIC-SETTINGS.sql and ensure you are logged in as admin.';
             } catch (err) {
                 console.warn('Shop settings cloud sync', err);

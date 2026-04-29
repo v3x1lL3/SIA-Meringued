@@ -185,13 +185,83 @@
         return div.innerHTML;
     }
 
+    /** Drop huge data-URLs from localStorage (they break the table UI). ~130KB base64 ≈ 175k chars. */
+    var MAX_INVENTORY_IMAGE_SRC_CHARS = 175000;
+    var MAX_ADD_IMAGE_FILE_BYTES = Math.floor(1.25 * 1024 * 1024);
+
+    function isCloudInventoryId(id) {
+        return typeof id === 'string' && id.length > 0 && id.indexOf('inv_') !== 0;
+    }
+
+    function summarizeImageSrcForDisplay(src) {
+        if (!src || !String(src).trim()) return '—';
+        var s = String(src);
+        if (s.indexOf('data:image') === 0) return 'Photo (embedded)';
+        if (s.length > 96) return escapeHtml(s.slice(0, 80)) + '…';
+        return escapeHtml(s);
+    }
+
+    function imageSrcForInputField(src) {
+        if (!src) return '';
+        if (String(src).length > 4096) return '';
+        return String(src);
+    }
+
+    /**
+     * Remove test/broken rows (e.g. name "AS") and strip oversized image payloads.
+     * Returns removed cloud ids so callers can DELETE in Supabase.
+     */
+    function normalizeInventoryList(items) {
+        if (!Array.isArray(items)) return { items: [], changed: false, removedCloudIds: [] };
+        var removedCloudIds = [];
+        var filtered = items.filter(function (item) {
+            var n = String(item && item.name != null ? item.name : '').trim();
+            if (/^as$/i.test(n)) {
+                if (isCloudInventoryId(item.id)) removedCloudIds.push(item.id);
+                return false;
+            }
+            return true;
+        });
+        var changed = filtered.length !== items.length;
+        for (var i = 0; i < filtered.length; i++) {
+            var src = filtered[i].imageSrc;
+            if (typeof src === 'string' && src.length > MAX_INVENTORY_IMAGE_SRC_CHARS) {
+                filtered[i].imageSrc = '';
+                changed = true;
+            }
+        }
+        return { items: filtered, changed: changed, removedCloudIds: removedCloudIds };
+    }
+
+    function deleteCloudInventoryRows(ids, isMisc) {
+        if (!ids || !ids.length) return;
+        var bridge = isMisc ? window.MiscInventorySupabase : window.InventorySupabase;
+        if (!bridge || typeof bridge.delete !== 'function') return;
+        ids.forEach(function (rid) {
+            if (isCloudInventoryId(rid)) bridge.delete(rid).catch(function () {});
+        });
+    }
+
     function storageKey() {
         return currentCategory === 'misc' ? MISC_STORAGE_KEY : INVENTORY_STORAGE_KEY;
     }
 
     function loadInventory() {
-        const raw = localStorage.getItem(storageKey());
-        inventoryItems = raw ? JSON.parse(raw) : [];
+        var raw = localStorage.getItem(storageKey());
+        var parsed = [];
+        try {
+            parsed = raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            parsed = [];
+        }
+        if (!Array.isArray(parsed)) parsed = [];
+        var isMisc = currentCategory === 'misc';
+        var r = normalizeInventoryList(parsed);
+        inventoryItems = r.items;
+        if (r.changed || r.removedCloudIds.length > 0) {
+            deleteCloudInventoryRows(r.removedCloudIds, isMisc);
+            saveInventory();
+        }
     }
 
     /** Ingredients + miscellaneous combined for dashboard alerts only (misc names prefixed). */
@@ -212,7 +282,21 @@
         } catch (e) {
             misc = [];
         }
-        inventoryItems = ing.concat(misc.map(function (item) {
+        var ri = normalizeInventoryList(ing);
+        var rm = normalizeInventoryList(misc);
+        if (ri.changed || ri.removedCloudIds.length > 0) {
+            deleteCloudInventoryRows(ri.removedCloudIds, false);
+            try {
+                localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(ri.items));
+            } catch (e2) { /* noop */ }
+        }
+        if (rm.changed || rm.removedCloudIds.length > 0) {
+            deleteCloudInventoryRows(rm.removedCloudIds, true);
+            try {
+                localStorage.setItem(MISC_STORAGE_KEY, JSON.stringify(rm.items));
+            } catch (e3) { /* noop */ }
+        }
+        inventoryItems = ri.items.concat(rm.items.map(function (item) {
             var o = Object.assign({}, item);
             var nm = String(item.name || '').trim() || '(unnamed)';
             o.name = 'Misc — ' + nm;
@@ -635,9 +719,9 @@
                 '<td class="py-3 px-3">' + imgHtml + '</td>' +
                 '<td class="py-3 px-3">' +
                 '<div class="font-semibold text-gray-800">' + escapeHtml(item.name) + '</div>' +
-                '<div class="text-xs text-gray-500 mt-1 inv-view-only"><span class="font-medium">Image:</span> <span class="break-all">' + (item.imageSrc ? escapeHtml(item.imageSrc) : '—') + '</span></div>' +
+                '<div class="text-xs text-gray-500 mt-1 inv-view-only max-w-md"><span class="font-medium">Image:</span> <span class="break-words">' + summarizeImageSrcForDisplay(item.imageSrc) + '</span></div>' +
                 '<div class="mt-1 flex flex-col md:flex-row gap-1 inv-edit-only">' +
-                '<input data-action="imgUrl" data-id="' + escapeHtml(item.id) + '" type="text" class="flex-1 px-2 py-1 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-xs" placeholder="Image path" value="' + escapeHtml(item.imageSrc || '') + '">' +
+                '<input data-action="imgUrl" data-id="' + escapeHtml(item.id) + '" type="text" class="flex-1 px-2 py-1 rounded-lg border border-gray-200 focus:border-[#D4AF37] focus:outline-none text-xs" placeholder="' + (item.imageSrc && String(item.imageSrc).length > 4096 ? 'Large embedded photo — upload a new file to replace' : 'Image path') + '" value="' + escapeHtml(imageSrcForInputField(item.imageSrc)) + '">' +
                 '<input data-action="imgFile" data-id="' + escapeHtml(item.id) + '" type="file" accept="image/*" class="flex-1 text-[11px]">' +
                 '</div>' +
                 '<div class="mt-1 flex justify-end inv-edit-only">' +
@@ -937,6 +1021,15 @@
         var fileInput = document.getElementById('invImageFile');
         var file = fileInput && fileInput.files && fileInput.files[0];
 
+        if (imageUrl && imageUrl.indexOf('data:image') === 0 && imageUrl.length > MAX_INVENTORY_IMAGE_SRC_CHARS) {
+            alert('That image data is too large to store in the browser. Use a file under 1.25 MB, or a short image URL.');
+            return;
+        }
+        if (file && file.size > MAX_ADD_IMAGE_FILE_BYTES) {
+            alert('Image file is too large. Maximum size is 1.25 MB. Compress the image or use a link instead.');
+            return;
+        }
+
         var exists = inventoryItems.some(function (x) { return (x.name || '').toLowerCase() === name.toLowerCase(); });
         if (exists && !confirm(currentCategory === 'misc'
             ? 'This item name already exists in Miscellaneous. Add another entry anyway?'
@@ -945,12 +1038,19 @@
         var imageSrc = imageUrl;
         if (file) {
             readFileAsDataUrl(file).then(function (dataUrl) {
+                if (dataUrl && String(dataUrl).length > MAX_INVENTORY_IMAGE_SRC_CHARS) {
+                    alert('That image is still too large after loading. Try a smaller file (max 1.25 MB) or use an image URL.');
+                    return;
+                }
                 imageSrc = dataUrl;
                 finishAdd();
             }).catch(function () { finishAdd(); });
         } else { finishAdd(); }
 
         function finishAdd() {
+            if (imageSrc && String(imageSrc).length > MAX_INVENTORY_IMAGE_SRC_CHARS) {
+                imageSrc = '';
+            }
             var newItem = {
                 id: 'inv_' + Date.now() + '_' + Math.floor(Math.random() * 100000),
                 name: name,
@@ -975,14 +1075,29 @@
             if (unitEl) unitEl.value = currentCategory === 'misc' ? 'N/A' : 'units';
             if (invExpiryDateEl) invExpiryDateEl.value = '';
             var createBridge = currentCategory === 'misc' ? window.MiscInventorySupabase : window.InventorySupabase;
-            if (createBridge && createBridge.create) {
-                createBridge.create(newItem).then(function (created) {
-                    if (created && created.id) {
-                        newItem.id = created.id;
-                        saveInventory();
-                    }
-                    scheduleInventoryCloudRefresh();
-                });
+            if (createBridge && typeof createBridge.create === 'function') {
+                createBridge
+                    .create(newItem)
+                    .then(function (created) {
+                        if (created && created.id) {
+                            newItem.id = created.id;
+                            saveInventory();
+                            renderInventory();
+                            scheduleInventoryCloudRefresh();
+                        } else {
+                            console.warn('[admin-inventory] Cloud create returned no id — keeping local row only.');
+                            alert(
+                                'Added locally, but could not save to the cloud (check you are logged in as admin and RLS allows insert). ' +
+                                    'Your new row is still in this browser — fix auth/policies, then use Edit or re-add.'
+                            );
+                        }
+                    })
+                    .catch(function (err) {
+                        console.warn('[admin-inventory] Cloud create failed', err);
+                        alert(
+                            'Added locally, but cloud save failed. The item stays on this page; check the console and your Supabase policies.'
+                        );
+                    });
             }
         }
     }
@@ -1021,6 +1136,23 @@
                 e.preventDefault();
                 addInventoryItemFromForm();
             });
+        }
+
+        var scrollAddBtn = document.getElementById('scrollToAddIngredientBtn');
+        if (scrollAddBtn && !scrollAddBtn.dataset.invScrollAddBound) {
+            scrollAddBtn.addEventListener('click', function () {
+                var el = document.getElementById('invAddSection');
+                if (el) {
+                    try {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } catch (err) {
+                        el.scrollIntoView(true);
+                    }
+                }
+                var nameInp = document.getElementById('invName');
+                if (nameInp) try { nameInp.focus(); } catch (e2) { /* noop */ }
+            });
+            scrollAddBtn.dataset.invScrollAddBound = '1';
         }
 
         var resetBtn = document.getElementById('resetInventoryBtn');
@@ -1382,15 +1514,19 @@
             var items = pair[0];
             var miscItems = pair[1];
             if (Array.isArray(items)) {
+                var ni = normalizeInventoryList(items);
+                deleteCloudInventoryRows(ni.removedCloudIds, false);
                 try {
-                    localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(items));
+                    localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(ni.items));
                 } catch (e) {
                     console.warn('[admin-inventory] could not write ingredients to localStorage', e);
                 }
             }
             if (Array.isArray(miscItems)) {
+                var nm = normalizeInventoryList(miscItems);
+                deleteCloudInventoryRows(nm.removedCloudIds, true);
                 try {
-                    localStorage.setItem(MISC_STORAGE_KEY, JSON.stringify(miscItems));
+                    localStorage.setItem(MISC_STORAGE_KEY, JSON.stringify(nm.items));
                 } catch (e) {
                     console.warn('[admin-inventory] could not write misc to localStorage', e);
                 }
@@ -1509,7 +1645,9 @@
 
                 if (Array.isArray(items)) {
                     if (items.length > 0) {
-                        localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(items));
+                        var ni0 = normalizeInventoryList(items);
+                        deleteCloudInventoryRows(ni0.removedCloudIds, false);
+                        localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(ni0.items));
                     } else {
                         seedIngredientTemplateIfEmpty(false);
                         pushLocalInventoryToSupabase();
@@ -1521,7 +1659,9 @@
 
                 if (Array.isArray(miscItems)) {
                     if (miscItems.length > 0) {
-                        localStorage.setItem(MISC_STORAGE_KEY, JSON.stringify(miscItems));
+                        var nm0 = normalizeInventoryList(miscItems);
+                        deleteCloudInventoryRows(nm0.removedCloudIds, true);
+                        localStorage.setItem(MISC_STORAGE_KEY, JSON.stringify(nm0.items));
                     } else {
                         ensureMiscKeyExists();
                         pushLocalMiscToSupabase();

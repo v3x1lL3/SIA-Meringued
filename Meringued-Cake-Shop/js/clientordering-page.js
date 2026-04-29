@@ -363,8 +363,19 @@
                 return { deliveryFee: 150, minAdvanceDays: null, minRushDays: null };
             }
         }
-        const DELIVERY_CONFIG = getDeliveryConfig();
-        const MIN_DELIVERY_FEE = DELIVERY_CONFIG.deliveryFee;
+        var DELIVERY_CONFIG = getDeliveryConfig();
+
+        function applyUpdatedShopSettingsToPos() {
+            DELIVERY_CONFIG = getDeliveryConfig();
+            if (!document.getElementById('quantity')) return;
+            try {
+                calculatePrice();
+                toggleDeliveryAddressSection();
+            } catch (e) {
+                console.warn('[clientordering] applyUpdatedShopSettingsToPos', e);
+            }
+        }
+        document.addEventListener('meringued:shopSettingsUpdated', applyUpdatedShopSettingsToPos);
 
         // ===== POS pricing: edit amounts below (flavor + frosting + size). Quantity multiplies per-cake unit. =====
         var POS_FROSTING_ORDER = [
@@ -446,7 +457,7 @@
             const quantity = parseInt(document.getElementById('quantity')?.value) || 1;
             const deliveryRadio = document.querySelector('input[name="deliveryType"]:checked');
             const isDeliver = deliveryRadio && deliveryRadio.value === 'Deliver';
-            const deliveryFee = isDeliver ? MIN_DELIVERY_FEE : 0;
+            const deliveryFee = isDeliver ? DELIVERY_CONFIG.deliveryFee : 0;
             return unitPrice * quantity + deliveryFee;
         }
 
@@ -457,7 +468,7 @@
             const quantity = parseInt(document.getElementById('quantity').value) || 1;
             const deliveryRadio = document.querySelector('input[name="deliveryType"]:checked');
             const isDeliver = deliveryRadio && deliveryRadio.value === 'Deliver';
-            const deliveryFee = isDeliver ? MIN_DELIVERY_FEE : 0;
+            const deliveryFee = isDeliver ? DELIVERY_CONFIG.deliveryFee : 0;
             const baseTotal = unitPrice * quantity;
             const total = baseTotal + deliveryFee;
 
@@ -482,7 +493,7 @@
             const deliveryFeeAmountEl = document.getElementById('summaryDeliveryFeeAmount');
             if (deliveryFeeRow && deliveryFeeAmountEl) {
                 if (isDeliver) {
-                    deliveryFeeAmountEl.textContent = '₱' + MIN_DELIVERY_FEE;
+                    deliveryFeeAmountEl.textContent = '₱' + DELIVERY_CONFIG.deliveryFee;
                     deliveryFeeRow.classList.remove('hidden');
                 } else {
                     deliveryFeeRow.classList.add('hidden');
@@ -985,7 +996,7 @@
                 })(),
                 paymentPlan: document.querySelector('input[name="paymentPlan"]:checked')?.value || 'Full Payment',
                 price: (function () { calculatePrice(); return getFormTotalForReceipt(); })(),
-                deliveryFee: document.querySelector('input[name="deliveryType"]:checked')?.value === 'Deliver' ? MIN_DELIVERY_FEE : 0
+                deliveryFee: document.querySelector('input[name="deliveryType"]:checked')?.value === 'Deliver' ? DELIVERY_CONFIG.deliveryFee : 0
             };
             var pm = cartItem.paymentMethod;
             if (cartItem.paymentPlan === '50% Down Payment') {
@@ -1108,7 +1119,7 @@
                 price: fullPrice,
                 status: 'Pending',
                 date: new Date().toLocaleDateString(),
-                deliveryFee: document.querySelector('input[name="deliveryType"]:checked')?.value === 'Deliver' ? MIN_DELIVERY_FEE : 0
+                deliveryFee: document.querySelector('input[name="deliveryType"]:checked')?.value === 'Deliver' ? DELIVERY_CONFIG.deliveryFee : 0
             };
             if (paymentPlan === '50% Down Payment') {
                 order.downPaymentAmount = Math.round(fullPrice * 0.5);

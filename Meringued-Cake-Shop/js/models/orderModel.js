@@ -96,6 +96,11 @@ function mapOrderToPayload(order) {
         Array.isArray(order.designImages) && order.designImages.length > 0 ? order.designImages : null,
       customerPhone: order.customerPhone || null,
       ownerPhone: order.ownerPhone || null,
+      balancePaymentMethod: order.balancePaymentMethod || null,
+      balanceReceipt: order.balanceReceipt || null,
+      balanceReceiptFileName: order.balanceReceiptFileName || null,
+      balanceRecordedAt: order.balanceRecordedAt || null,
+      balanceReceiptStoredLocallyOnly: order.balanceReceiptStoredLocallyOnly === true ? true : undefined,
     },
   };
 }
@@ -103,6 +108,7 @@ function mapOrderToPayload(order) {
 function detailsHasHeavyAttachments(d) {
   if (!d || typeof d !== 'object') return false;
   if (typeof d.receipt === 'string' && d.receipt.trim().length > 0) return true;
+  if (typeof d.balanceReceipt === 'string' && d.balanceReceipt.trim().length > 0) return true;
   if (typeof d.designImage === 'string' && d.designImage.trim().length > 0) return true;
   if (Array.isArray(d.designImages) && d.designImages.some((x) => x && typeof x.dataUrl === 'string' && x.dataUrl.trim().length > 0))
     return true;
@@ -115,9 +121,11 @@ function slimOrderPayloadForInsert(payload) {
   const d = { ...payload.details };
   if (!detailsHasHeavyAttachments(d)) return null;
   delete d.receipt;
+  delete d.balanceReceipt;
   delete d.designImage;
   delete d.designImages;
   d.receiptStoredLocallyOnly = true;
+  d.balanceReceiptStoredLocallyOnly = true;
   return { ...payload, details: d };
 }
 
@@ -160,6 +168,28 @@ export async function insertOrder(order) {
   }
 
   return null;
+}
+
+/**
+ * Single order row (e.g. for Records → payment receipt lookup).
+ * @param {string} orderId - Supabase orders.id (UUID)
+ * @returns {Promise<object|null>}
+ */
+export async function fetchOrderByIdForAdmin(orderId) {
+  const id = orderId != null ? String(orderId).trim() : '';
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      id
+    )
+  ) {
+    return null;
+  }
+  const { data, error } = await supabase.from(ORDERS_TABLE).select('*').eq('id', id).maybeSingle();
+  if (error) {
+    console.warn('[OrderModel] fetchOrderByIdForAdmin:', error.message);
+    return null;
+  }
+  return data || null;
 }
 
 /**

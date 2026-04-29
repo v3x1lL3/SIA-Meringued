@@ -92,6 +92,11 @@ export function mapSupabaseRowToAppOrder(row) {
     created_at: row.created_at,
     ingredientsDeducted: det.ingredientsDeducted === true,
     bakingMiscLines: normalizeMiscLines(det.bakingMiscLines),
+    balancePaymentMethod: det.balancePaymentMethod || null,
+    balanceReceipt: det.balanceReceipt || null,
+    balanceReceiptFileName: det.balanceReceiptFileName || null,
+    balanceRecordedAt: det.balanceRecordedAt || null,
+    balanceReceiptStoredLocallyOnly: det.balanceReceiptStoredLocallyOnly === true,
   };
 }
 
@@ -132,6 +137,14 @@ export async function fetchMergedOrdersForAdmin() {
     if (loc && !nonEmptyReceipt(mapped) && nonEmptyReceipt(loc)) {
       mapped.receipt = loc.receipt;
       if (loc.receiptFileName) mapped.receiptFileName = loc.receiptFileName;
+    }
+    var balRem = loc && loc.balanceReceipt != null ? String(loc.balanceReceipt).trim() : '';
+    var balMap = mapped.balanceReceipt != null ? String(mapped.balanceReceipt).trim() : '';
+    if (loc && balRem && !balMap) {
+      mapped.balanceReceipt = loc.balanceReceipt;
+      if (loc.balanceReceiptFileName) mapped.balanceReceiptFileName = loc.balanceReceiptFileName;
+      if (loc.balancePaymentMethod) mapped.balancePaymentMethod = loc.balancePaymentMethod;
+      if (loc.balanceRecordedAt) mapped.balanceRecordedAt = loc.balanceRecordedAt;
     }
     if (loc) {
       const le = (loc.customerEmail || loc.email || '').trim();

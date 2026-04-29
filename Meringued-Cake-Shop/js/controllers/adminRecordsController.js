@@ -1,6 +1,7 @@
 import { ensureAuthenticated, handleLogoutRedirectToHome } from './authController.js';
 import { showToast, showLoadingOverlay, hideLoadingOverlay } from '../core/utils.js';
 import { listAdminRecords, upsertAdminRecord, deleteAdminRecord } from '../models/adminRecordsModel.js';
+import { fetchOrderByIdForAdmin } from '../models/orderModel.js';
 import { listInventoryAndMiscForEod } from '../models/inventoryModel.js';
 
 const TYPE_LABEL = {
@@ -441,6 +442,40 @@ function dedupePurchaseExpenseNotesForDisplay(notesRaw) {
   return filtered.length ? filtered.join(' • ') : s;
 }
 
+/**
+ * Sales receipt rows are only created when an order is marked Completed.
+ * Older notes may still say "50% due now" from checkout copy — rewrite for display only.
+ */
+function sanitizeSalesReceiptNotesForDisplay(notesRaw, amount) {
+  let t = String(notesRaw || '').trim();
+  if (!t) return t;
+  t = t
+    .replace(/\b50%\s*due\s*now:\s*₱?\s*([\d,.]+)/gi, 'Down payment paid online: ₱$1')
+    .replace(/\(\s*₱?\s*([\d,.]+)\s*due\s*now\s*\)/gi, '(down payment ₱$1)')
+    // Legacy copy assumed balance was always on hand; balance may be online (proof on order).
+    .replace(/\bbalance\s*on\s*hand\s*at\s*completion/gi, 'balance settled at completion')
+    .replace(/\bBalance collected:/gi, 'Remaining amount:')
+    .replace(
+      /Payment:\s*50%\s*down\s*\(online\)\s*\+\s*balance at pickup\/delivery — settled on completion/gi,
+      'Payment: 50% down (customer receipt) + remaining balance settled at completion (on hand and/or online — see payment proofs)'
+    );
+
+  const parts = t.split(/\s*[•·]\s*/g).map(p => p.trim()).filter(Boolean);
+  const out = parts.map((p) => {
+    if (/^Payment:\s*50%\s*Down\s*Payment\s*$/i.test(p)) {
+      return 'Payment: 50% down online + balance settled at completion — fully paid (see payment proofs for down + balance if online)';
+    }
+    return p;
+  });
+  t = out.join(' • ');
+
+  const n = Number(amount);
+  if (Number.isFinite(n) && n > 0 && !/\bTotal sale\b/i.test(t)) {
+    t = `${t} • Total sale (completed): ₱${formatMoney(n)}`;
+  }
+  return t;
+}
+
 function exportCurrentRecordsPdf() {
   const type = getActiveType();
   const label = TYPE_LABEL[type] || type;
@@ -462,7 +497,9 @@ function exportCurrentRecordsPdf() {
         '<td>' + escapeHtml(
           (r.type === 'purchase_expenses'
             ? dedupePurchaseExpenseNotesForDisplay(r.notes || '')
-            : String(r.notes || '').trim()) || '—'
+            : r.type === 'sales_receipts'
+              ? sanitizeSalesReceiptNotesForDisplay(String(r.notes || '').trim(), r.amount)
+              : String(r.notes || '').trim()) || '—'
         ) + '</td>' +
         '</tr>'
       );
@@ -522,6 +559,254 @@ function closeModal() {
   modal.classList.add('hidden');
   modal.classList.remove('flex');
   document.body.style.overflow = 'auto';
+}
+
+function fillRecordDetailNotesEl(el, notesRaw) {
+  if (!el) return;
+  if (!notesRaw) {
+    el.innerHTML = '<p class="text-gray-400">—</p>';
+    return;
+  }
+  const parts = notesRaw
+    .split(/\s*[•·]\s*/g)
+    .map(p => p.trim())
+    .filter(Boolean);
+  if (parts.length > 1) {
+    el.innerHTML =
+      '<ul class="list-disc pl-5 space-y-1.5 text-gray-800">' +
+      parts.map(p => `<li>${escapeHtml(p)}</li>`).join('') +
+      '</ul>';
+  } else {
+    el.innerHTML =
+      '<p class="whitespace-pre-wrap break-words text-gray-800">' + escapeHtml(notesRaw) + '</p>';
+  }
+}
+
+function isUuidLike(s) {
+  const x = String(s || '').trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(x);
+}
+
+function parseOrderDetailsFromRow(row) {
+  if (!row || row.details == null) return {};
+  let d = row.details;
+  if (typeof d === 'string') {
+    try {
+      const p = JSON.parse(d);
+      return typeof p === 'object' && p !== null ? p : {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof d === 'object' ? d : {};
+}
+
+/** Only allow http(s) or data:image for <img src>. */
+function safeReceiptImgSrc(receipt) {
+  const s = String(receipt || '').trim();
+  if (!s) return '';
+  if (s.startsWith('data:image/')) return s;
+  if (/^https?:\/\//i.test(s)) return s;
+  return '';
+}
+
+function escapeAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+function isFiftyPercentDownOrderFromRow(det, paymentMethodRow) {
+  const pm = String(paymentMethodRow || '');
+  const pp = String(det.paymentPlan || '');
+  if (/50\s*%/i.test(pm)) return true;
+  if (/50\s*%/i.test(pp) && /down/i.test(pp)) return true;
+  return false;
+}
+
+function resetRecordDetailPaymentSection() {
+  const wrap = qs('#recordDetailPaymentWrap');
+  const body = qs('#recordDetailPaymentBody');
+  if (body) body.innerHTML = '';
+  if (wrap) wrap.classList.add('hidden');
+}
+
+async function hydrateRecordDetailPayment(r) {
+  const wrap = qs('#recordDetailPaymentWrap');
+  const body = qs('#recordDetailPaymentBody');
+  if (!wrap || !body) return;
+  body.innerHTML = '';
+  wrap.classList.add('hidden');
+
+  if (!r || r.type !== 'sales_receipts') return;
+
+  const ref = (r.ref || '').trim();
+  wrap.classList.remove('hidden');
+  body.innerHTML = '<p class="text-xs text-gray-500"><i class="fas fa-spinner fa-spin mr-1"></i>Loading payment…</p>';
+
+  if (!ref) {
+    body.innerHTML =
+      '<p class="text-gray-600 text-sm">No order reference is stored on this row, so the payment screenshot cannot be loaded from the order.</p>';
+    return;
+  }
+
+  if (!isUuidLike(ref)) {
+    body.innerHTML =
+      '<p class="text-sm text-gray-700">This sale uses a non-cloud reference. Open <strong>Orders</strong> and search by order id to see the customer payment screenshot if the order was saved locally.</p>';
+    return;
+  }
+
+  let row;
+  try {
+    row = await Promise.race([
+      fetchOrderByIdForAdmin(ref),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000)),
+    ]);
+  } catch {
+    body.innerHTML =
+      '<p class="text-sm text-amber-900">Could not load order payment details in time (network or session). Reference:<br /><span class="font-mono text-xs break-all">' +
+      escapeHtml(ref) +
+      '</span></p>';
+    return;
+  }
+
+  if (!row) {
+    body.innerHTML =
+      '<p class="text-sm text-amber-900">Could not load this order from Supabase (check admin login and RLS). Reference:<br /><span class="font-mono text-xs break-all">' +
+      escapeHtml(ref) +
+      '</span></p>';
+    return;
+  }
+
+  const det = parseOrderDetailsFromRow(row);
+  const total = Number(row.total_amount);
+  const paymentMethod = row.payment_method || det.paymentMethod || '';
+  const down = det.downPaymentAmount != null ? Number(det.downPaymentAmount) : null;
+  const receiptRaw = det.receipt != null ? String(det.receipt).trim() : '';
+  const receiptSrc = safeReceiptImgSrc(receiptRaw);
+  const receiptName = (det.receiptFileName || '').trim();
+  const slim = det.receiptStoredLocallyOnly === true;
+  const fifty = isFiftyPercentDownOrderFromRow(det, paymentMethod);
+  const balMethod = String(det == null ? '' : det.balancePaymentMethod || '').trim();
+  const balanceRaw = det && det.balanceReceipt != null ? String(det.balanceReceipt).trim() : '';
+  const balanceSrc = safeReceiptImgSrc(balanceRaw);
+  const balanceName = det && (det.balanceReceiptFileName || '').trim();
+  const balanceSlim = det && det.balanceReceiptStoredLocallyOnly === true;
+
+  const parts = [];
+
+  if (fifty && down != null && Number.isFinite(down) && Number.isFinite(total)) {
+    const bal = Math.max(0, total - down);
+    let balNote = '';
+    if (balMethod === 'online') {
+      balNote =
+        'Owner recorded the balance as <strong>paid online</strong>' +
+        (balanceSrc ? ' (screenshot below).' : ' — add proof from <strong>Orders</strong> if needed.');
+    } else if (balMethod === 'on_hand') {
+      balNote = 'Owner recorded the balance as <strong>paid on hand</strong> at pickup or delivery.';
+    } else {
+      balNote =
+        'Use <strong>Orders → Record balance</strong> to note whether the remaining amount was <strong>on hand</strong> or <strong>online</strong> (with screenshot).';
+    }
+    parts.push(
+      '<div class="rounded-lg bg-white/90 border border-emerald-100 px-3 py-2.5 space-y-2">' +
+        `<p><span class="text-gray-600">Down payment (customer receipt below)</span> · <strong class="tabular-nums">₱${formatMoney(down)}</strong></p>` +
+        `<p><span class="text-gray-600">Balance</span> · <strong class="tabular-nums">₱${formatMoney(bal)}</strong></p>` +
+        '<p class="text-xs text-emerald-900 pt-2 border-t border-emerald-100 leading-relaxed">' +
+        '<i class="fas fa-check-circle mr-1"></i>This sales row is logged when the order is <strong>Completed</strong>. ' +
+        balNote +
+        '</p>' +
+        '</div>'
+    );
+  } else {
+    parts.push(
+      `<p><span class="text-gray-600">Payment</span> · <strong>${escapeHtml(paymentMethod || 'Online / receipt')}</strong> — full amount for this order.</p>` +
+      '<p class="text-xs text-gray-600">Order completed — total below matches this sales record.</p>'
+    );
+  }
+
+  if (receiptSrc) {
+    parts.push(
+      '<div class="mt-1">' +
+      '<p class="text-xs font-medium text-gray-700 mb-1">Customer payment screenshot</p>' +
+      `<img src="${escapeAttr(receiptSrc)}" alt="Payment receipt" class="max-h-80 max-w-full rounded-lg border border-gray-200 object-contain mx-auto block shadow-sm" loading="lazy" />` +
+      (receiptName ? '<p class="text-[11px] text-gray-500 mt-1">File: ' + escapeHtml(receiptName) + '</p>' : '') +
+      '</div>'
+    );
+  } else if (slim) {
+    parts.push(
+      '<p class="text-amber-900 text-xs leading-relaxed">' +
+      'Receipt image was not stored in Supabase (large upload or slim insert). It may exist only on the customer’s browser from checkout — use <strong>Orders</strong> if you still have access there.</p>'
+    );
+  } else if (fifty || paymentMethod) {
+    parts.push('<p class="text-gray-500 text-xs">No down payment receipt image is stored in the cloud for this order.</p>');
+  }
+
+  if (fifty && balanceSrc) {
+    parts.push(
+      '<div class="mt-3">' +
+        '<p class="text-xs font-medium text-gray-700 mb-1">Balance payment proof (owner upload)</p>' +
+        `<img src="${escapeAttr(balanceSrc)}" alt="Balance payment proof" class="max-h-80 max-w-full rounded-lg border border-gray-200 object-contain mx-auto block shadow-sm" loading="lazy" />` +
+        (balanceName ? '<p class="text-[11px] text-gray-500 mt-1">File: ' + escapeHtml(balanceName) + '</p>' : '') +
+        '</div>'
+    );
+  } else if (fifty && balMethod === 'online' && balanceSlim) {
+    parts.push(
+      '<p class="text-amber-900 text-xs leading-relaxed mt-2">' +
+        'Balance proof image was not stored in Supabase (large upload). It may exist only on this browser — open <strong>Orders</strong> on the device that uploaded it.</p>'
+    );
+  }
+
+  body.innerHTML = parts.join('');
+}
+
+function openRecordDetailModal(r) {
+  if (!r) return;
+  const modal = qs('#recordDetailModal');
+  if (!modal) return;
+  resetRecordDetailPaymentSection();
+  const typeLabel = TYPE_LABEL[r.type] || r.type || '—';
+  const typeEl = qs('#recordDetailType');
+  const dateEl = qs('#recordDetailDate');
+  const titleEl = qs('#recordDetailTitle');
+  const amountEl = qs('#recordDetailAmount');
+  const refEl = qs('#recordDetailRef');
+  const idEl = qs('#recordDetailId');
+  if (typeEl) typeEl.textContent = typeLabel;
+  if (dateEl) dateEl.textContent = formatRecordDisplayDateTime(r);
+  if (titleEl) titleEl.textContent = r.title || '—';
+  if (amountEl) amountEl.textContent = r.amount == null ? '—' : `₱${formatMoney(r.amount)}`;
+  if (refEl) refEl.textContent = (r.ref || '').trim() || '—';
+  let notesRaw = (r.notes || '').trim();
+  if (r.type === 'purchase_expenses' && notesRaw) notesRaw = dedupePurchaseExpenseNotesForDisplay(notesRaw);
+  if (r.type === 'sales_receipts' && notesRaw) notesRaw = sanitizeSalesReceiptNotesForDisplay(notesRaw, r.amount);
+  if (r.type === 'inventory_audit' && notesRaw) {
+    notesRaw = notesRaw
+      .split(' • ')
+      .filter(part => !String(part || '').toLowerCase().startsWith('reason:'))
+      .join(' • ');
+  }
+  fillRecordDetailNotesEl(qs('#recordDetailNotes'), notesRaw);
+  if (idEl) idEl.textContent = r.id || '—';
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  document.body.style.overflow = 'hidden';
+
+  hydrateRecordDetailPayment(r).catch(() => {
+    const body = qs('#recordDetailPaymentBody');
+    const wrap = qs('#recordDetailPaymentWrap');
+    if (r.type === 'sales_receipts' && wrap && body) {
+      wrap.classList.remove('hidden');
+      body.innerHTML = '<p class="text-sm text-red-700">Could not load payment details.</p>';
+    }
+  });
+}
+
+function closeRecordDetailModal() {
+  const modal = qs('#recordDetailModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  document.body.style.overflow = 'auto';
+  resetRecordDetailPaymentSection();
 }
 
 function setActiveTab(type) {
@@ -726,6 +1011,9 @@ function renderRows(rows) {
       if (r.type === 'purchase_expenses' && notes) {
         notes = dedupePurchaseExpenseNotesForDisplay(notes);
       }
+      if (r.type === 'sales_receipts' && notes) {
+        notes = sanitizeSalesReceiptNotesForDisplay(notes, r.amount);
+      }
       // Clean up inventory notes: remove verbose "Reason: ..." chunk.
       if (r.type === 'inventory_audit' && notes) {
         notes = notes
@@ -776,7 +1064,11 @@ function renderRows(rows) {
       return `
         <tr class="border-b border-gray-100 hover:bg-[#FFF8F0]/60">
           <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">${escapeHtml(formatRecordDisplayDateTime(r))}</td>
-          <td class="py-3 px-3 text-sm font-semibold text-gray-800">${escapeHtml(displayTitle || '')}${subLine ? `<div class="text-xs text-gray-400 mt-0.5">${escapeHtml(subLine)}</div>` : ''}</td>
+          <td class="py-3 px-3 text-sm text-gray-800">
+            <button type="button" class="view-record-detail text-left font-semibold text-gray-800 hover:text-[#B8941E] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50 rounded" data-id="${escapeHtml(r.id)}" title="View full record">
+              ${escapeHtml(displayTitle || '')}
+            </button>${subLine ? `<div class="text-xs text-gray-400 mt-0.5">${escapeHtml(subLine)}</div>` : ''}
+          </td>
           <td class="py-3 px-3 text-sm text-gray-700 whitespace-nowrap records-amount-cell">${escapeHtml(amount)}</td>
           <td class="py-3 px-3 text-sm text-gray-600">${notesCell}</td>
           <td class="py-3 px-3 text-sm records-actions-cell">
@@ -1335,6 +1627,12 @@ async function init() {
     openModal();
   });
 
+  qs('#closeRecordDetailModalBtn')?.addEventListener('click', closeRecordDetailModal);
+  qs('#closeRecordDetailFooterBtn')?.addEventListener('click', closeRecordDetailModal);
+  qs('#recordDetailModal')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeRecordDetailModal();
+  });
+
   qs('#closeRecordModalBtn')?.addEventListener('click', closeModal);
   qs('#cancelRecordBtn')?.addEventListener('click', closeModal);
   qs('#recordModal')?.addEventListener('click', (e) => {
@@ -1389,6 +1687,16 @@ async function init() {
   });
 
   qs('#recordsTableBody')?.addEventListener('click', async (e) => {
+    const detailBtn = e.target?.closest('.view-record-detail');
+    if (detailBtn) {
+      const id = detailBtn.getAttribute('data-id');
+      if (id) {
+        const row = findById(id);
+        if (row) openRecordDetailModal(row);
+      }
+      return;
+    }
+
     const target = e.target?.closest('button');
     if (!target) return;
     const id = target.getAttribute('data-id');

@@ -100,3 +100,34 @@ export async function upsertPublicBusinessSettingsToSupabase(settingsObject) {
   }
   return { ok: true };
 }
+
+/**
+ * Subscribe to admin updates so customer POS/footer refresh without reload.
+ * Enable replication: Supabase Dashboard → Database → Publications → supabase_realtime → add `business_public_settings`.
+ */
+export function subscribePublicBusinessSettingsChanges(onApplied) {
+  const channel = supabase
+    .channel(`meringued_business_public_settings_${ROW_ID}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: TABLE, filter: `id=eq.${ROW_ID}` },
+      async () => {
+        try {
+          await hydrateShopSettingsToLocalStorage();
+          if (typeof onApplied === 'function') onApplied();
+        } catch (e) {
+          console.warn('[shopSettingsModel] realtime handler:', e?.message || e);
+        }
+      }
+    )
+    .subscribe((status, err) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.warn(
+          '[shopSettingsModel] Realtime status:',
+          status,
+          err?.message || err || '(if updates never arrive, enable replication for business_public_settings)'
+        );
+      }
+    });
+  return channel;
+}

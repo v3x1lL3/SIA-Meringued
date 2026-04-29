@@ -16,6 +16,9 @@
     var ordersLoadGen = 0;
     var ordersStatusFilter = 'open';
     var bakingMiscOrderId = null;
+    var balancePayOrderId = null;
+    /** When set, saving balance will then move this order to Completed (pipeline "Mark completed" flow). */
+    var balancePayPendingCompleteOrderId = null;
     var adminOrdersPage = 1;
     var adminOrdersPageSize = 10;
     var adminOrdersAutoRefreshTimer = null;
@@ -165,6 +168,60 @@
         return s.length > 0;
     }
 
+    function orderHasBalanceReceipt(order) {
+        if (!order || order.balanceReceipt == null) return false;
+        return String(order.balanceReceipt).trim().length > 0;
+    }
+
+    function orderBalanceRemainingLabel(order) {
+        var price = Number(order.price);
+        var down = order.downPaymentAmount != null ? Number(order.downPaymentAmount) : null;
+        if (!Number.isFinite(price) || down == null || !Number.isFinite(down)) return '';
+        var rem = Math.max(0, price - down);
+        return 'Remaining (50%): ₱' + rem.toFixed(2);
+    }
+
+    function buildBalancePaymentColumnHtml(order, idAttr) {
+        if (!isOrder50PercentDown(order)) return '';
+        var m = order.balancePaymentMethod;
+        var html =
+            '<div class="mt-2 pt-2 border-t border-amber-100/80 text-left max-w-[210px]">';
+        html +=
+            '<p class="text-[10px] font-semibold uppercase tracking-wide text-amber-900/90 mb-1">Balance (other 50%)</p>';
+        if (m === 'on_hand') {
+            html +=
+                '<div class="text-xs font-medium text-emerald-800"><i class="fas fa-hand-holding-usd mr-1"></i>Paid on hand</div>';
+        } else if (m === 'online') {
+            html +=
+                '<div class="text-xs font-medium text-emerald-800"><i class="fas fa-mobile-alt mr-1"></i>Paid online</div>';
+            if (orderHasBalanceReceipt(order)) {
+                html +=
+                    '<button type="button" data-order-action="balance-receipt" data-order-id="' +
+                    idAttr +
+                    '" class="mt-1 inline-block text-xs font-medium text-[#D4AF37] hover:text-[#B8941E] underline underline-offset-2 cursor-pointer bg-transparent border-0 p-0">Balance proof</button>';
+            } else {
+                html +=
+                    '<p class="text-[10px] text-amber-800 mt-0.5">No proof image on file — use Edit to add.</p>';
+            }
+        } else {
+            html +=
+                '<button type="button" data-order-action="balance-pay" data-order-id="' +
+                idAttr +
+                '" class="inline-flex items-center gap-1 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-md px-2 py-1 border-0 cursor-pointer shadow-sm">' +
+                '<i class="fas fa-coins" aria-hidden="true"></i>Record balance</button>';
+            html +=
+                '<p class="text-[10px] text-gray-500 mt-1">You’ll be asked to record this when you <strong>Mark completed</strong> if it’s still empty.</p>';
+        }
+        if (m) {
+            html +=
+                '<button type="button" data-order-action="balance-pay" data-order-id="' +
+                idAttr +
+                '" class="mt-1.5 block text-[10px] text-gray-500 hover:text-[#B8941E] underline bg-transparent border-0 p-0 cursor-pointer">Edit…</button>';
+        }
+        html += '</div>';
+        return html;
+    }
+
     function adminPaymentDisplayLabel(order) {
         if (isOrder50PercentDown(order)) return '50% down payment';
         return 'Pay in full';
@@ -278,6 +335,48 @@
         return Object.keys(bucket).map(function (k) { return bucket[k]; });
     }
 
+    function buildCloudDetailsForSupabase(order) {
+        return {
+            localId: order.id != null ? order.id : null,
+            orderGroupId: order.orderGroupId || null,
+            customer: order.customer || null,
+            customerEmail: order.customerEmail || order.email || null,
+            email: order.customerEmail || order.email || null,
+            name: order.name || null,
+            cake: order.cake || null,
+            size: order.size || null,
+            quantity: order.quantity != null ? order.quantity : null,
+            flavor: order.flavor || null,
+            frosting: order.frosting || null,
+            cakeDesign: order.cakeDesign || null,
+            dedication: order.dedication || null,
+            receiptFileName: order.receiptFileName || null,
+            designImageName: order.designImageName || null,
+            date: order.date || null,
+            paymentPlan: order.paymentPlan || null,
+            downPaymentAmount: order.downPaymentAmount != null ? order.downPaymentAmount : null,
+            receipt: order.receipt || null,
+            designImage: order.designImage || null,
+            designImages: Array.isArray(order.designImages) && order.designImages.length ? order.designImages : null,
+            customerPhone: order.customerPhone || null,
+            ownerPhone: order.ownerPhone || null,
+            ingredientsDeducted: order.ingredientsDeducted === true,
+            bakingMiscLines: normalizeBakingMiscLines(order.bakingMiscLines),
+            balancePaymentMethod: order.balancePaymentMethod || null,
+            balanceReceipt: order.balanceReceipt || null,
+            balanceReceiptFileName: order.balanceReceiptFileName || null,
+            balanceRecordedAt: order.balanceRecordedAt || null,
+            balanceReceiptStoredLocallyOnly: order.balanceReceiptStoredLocallyOnly === true ? true : undefined,
+        };
+    }
+
+    function syncOrderDetailsToSupabase(order) {
+        if (!order || !order.supabase_id || typeof window.updateOrderInSupabase !== 'function') {
+            return Promise.resolve();
+        }
+        return window.updateOrderInSupabase(order.supabase_id, { details: buildCloudDetailsForSupabase(order) });
+    }
+
     function updateOrderInLocalStorage(order) {
         var uid = order && order.userId;
         if (uid && typeof getOrdersForUser === 'function' && typeof saveOrdersForUser === 'function') {
@@ -289,7 +388,12 @@
             updateOrderInStorage(order.id, {
                 status: order.status,
                 ingredientsDeducted: order.ingredientsDeducted,
-                bakingMiscLines: order.bakingMiscLines
+                bakingMiscLines: order.bakingMiscLines,
+                balancePaymentMethod: order.balancePaymentMethod,
+                balanceReceipt: order.balanceReceipt,
+                balanceReceiptFileName: order.balanceReceiptFileName,
+                balanceRecordedAt: order.balanceRecordedAt,
+                balanceReceiptStoredLocallyOnly: order.balanceReceiptStoredLocallyOnly,
             });
         } else {
             try { localStorage.setItem('customerOrders', JSON.stringify(orders)); } catch (e) {}
@@ -304,10 +408,14 @@
 
         if (newStatus === 'Completed' && currentStatus !== 'Completed') {
             if (window.AdminRecords && typeof window.AdminRecords.logSaleFromOrder === 'function') {
-                try { window.AdminRecords.logSaleFromOrder(order); } catch (err) {}
+                try {
+                    await window.AdminRecords.logSaleFromOrder(order);
+                } catch (err) {}
             }
             if (window.AdminPayments && typeof window.AdminPayments.logPaymentFromOrder === 'function') {
-                try { window.AdminPayments.logPaymentFromOrder(order); } catch (err) {}
+                try {
+                    await window.AdminPayments.logPaymentFromOrder(order);
+                } catch (err) {}
             }
         }
 
@@ -356,6 +464,12 @@
             return;
         }
         if (next === 'Completed') {
+            var ord = orders[orderIndex];
+            if (isOrder50PercentDown(ord) && !ord.balancePaymentMethod) {
+                balancePayPendingCompleteOrderId = String(orderId);
+                openBalancePaymentModal(orderId, true);
+                return;
+            }
             if (!confirm('Mark this order as Completed? Sales / payment logging will run if configured.')) return;
         }
         await performOrderStatusUpdate(orderIndex, next);
@@ -535,9 +649,13 @@
                         '<button type="button" data-order-action="receipt" data-order-id="' +
                         idAttr +
                         '" class="mt-1 inline-block text-sm font-medium text-[#D4AF37] hover:text-[#B8941E] underline underline-offset-2 cursor-pointer bg-transparent border-0 p-0">' +
-                        'receipt</button>';
+                        (isOrder50PercentDown(order) ? 'Down payment receipt' : 'receipt') +
+                        '</button>';
                 } else {
                     receiptBtn = '<div class="' + labelClass + '">' + escapeHtml(payLabel) + '</div>';
+                }
+                if (isOrder50PercentDown(order)) {
+                    receiptBtn += buildBalancePaymentColumnHtml(order, idAttr);
                 }
 
                 var progressInnerHtml;
@@ -813,26 +931,12 @@
             return;
         }
         var receiptContent = document.getElementById('receiptViewContent');
-        var receiptFileName = order.receiptFileName || 'receipt';
-        var rec = String(order.receipt);
-        if (rec.startsWith('data:image/')) {
-            receiptContent.innerHTML =
-                '<div class="mb-4"><p class="text-sm text-gray-600 mb-2"><i class="fas fa-file-image mr-1"></i> ' +
-                escapeHtml(receiptFileName) +
-                '</p><img src="' +
-                rec +
-                '" alt="Receipt" class="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-gray-200"></div>';
-        } else if (rec.startsWith('data:application/pdf')) {
-            receiptContent.innerHTML =
-                '<div class="mb-4"><p class="text-sm text-gray-600 mb-2"><i class="fas fa-file-pdf mr-1"></i> ' +
-                escapeHtml(receiptFileName) +
-                '</p><iframe src="' +
-                rec +
-                '" class="w-full h-[600px] rounded-lg shadow-lg border-2 border-gray-200" frameborder="0"></iframe></div>';
-        } else {
-            receiptContent.innerHTML =
-                '<div class="mb-4"><img src="' + rec.replace(/"/g, '&quot;') + '" alt="Receipt" class="max-w-full h-auto rounded-lg"></div>';
-        }
+        renderReceiptHtmlContent(
+            receiptContent,
+            order.receipt,
+            order.receiptFileName || 'receipt',
+            isOrder50PercentDown(order) ? 'Down payment (customer receipt)' : ''
+        );
         document.getElementById('receiptViewModal').classList.remove('hidden');
         document.getElementById('receiptViewModal').classList.add('flex');
         document.body.style.overflow = 'hidden';
@@ -843,6 +947,242 @@
         document.getElementById('receiptViewModal').classList.remove('flex');
         document.body.style.overflow = 'auto';
         document.getElementById('receiptViewContent').innerHTML = '';
+    }
+
+    function renderReceiptHtmlContent(receiptContent, dataUrlOrUrl, fileName, titleLine) {
+        if (!receiptContent) return;
+        var name = fileName || 'receipt';
+        var rec = String(dataUrlOrUrl || '');
+        var cap =
+            titleLine &&
+            '<p class="text-sm text-gray-700 mb-3 font-semibold border-b border-amber-100 pb-2">' +
+                escapeHtml(titleLine) +
+                '</p>';
+        var inner = cap || '';
+        if (rec.startsWith('data:image/')) {
+            inner +=
+                '<div class="mb-4"><p class="text-sm text-gray-600 mb-2"><i class="fas fa-file-image mr-1"></i> ' +
+                escapeHtml(name) +
+                '</p><img src="' +
+                rec +
+                '" alt="Receipt" class="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-gray-200"></div>';
+        } else if (rec.startsWith('data:application/pdf')) {
+            inner +=
+                '<div class="mb-4"><p class="text-sm text-gray-600 mb-2"><i class="fas fa-file-pdf mr-1"></i> ' +
+                escapeHtml(name) +
+                '</p><iframe src="' +
+                rec +
+                '" class="w-full h-[600px] rounded-lg shadow-lg border-2 border-gray-200" frameborder="0"></iframe></div>';
+        } else if (rec) {
+            inner +=
+                '<div class="mb-4"><img src="' +
+                rec.replace(/"/g, '&quot;') +
+                '" alt="Receipt" class="max-w-full h-auto rounded-lg"></div>';
+        } else {
+            inner += '<p class="text-gray-600">No image on file.</p>';
+        }
+        receiptContent.innerHTML = inner;
+    }
+
+    function viewBalanceReceipt(orderId) {
+        var order = orders.find(function (o) { return String(o.id) === String(orderId); });
+        if (!order || !orderHasBalanceReceipt(order)) {
+            alert('Balance payment proof not found for this order.');
+            return;
+        }
+        var receiptContent = document.getElementById('receiptViewContent');
+        renderReceiptHtmlContent(
+            receiptContent,
+            order.balanceReceipt,
+            order.balanceReceiptFileName || 'balance-receipt',
+            'Balance payment (remaining 50%)'
+        );
+        document.getElementById('receiptViewModal').classList.remove('hidden');
+        document.getElementById('receiptViewModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function readFileAsDataURL(file) {
+        return new Promise(function (resolve, reject) {
+            var r = new FileReader();
+            r.onload = function () {
+                resolve(r.result);
+            };
+            r.onerror = function () {
+                reject(new Error('read'));
+            };
+            r.readAsDataURL(file);
+        });
+    }
+
+    function updateBalancePayFileVisibility() {
+        var onHand = document.getElementById('balancePayMethodOnHand');
+        var wrap = document.getElementById('balancePayFileWrap');
+        if (!wrap) return;
+        var showOnlineUpload = onHand && !onHand.checked;
+        wrap.classList.toggle('hidden', !showOnlineUpload);
+        wrap.setAttribute('aria-hidden', showOnlineUpload ? 'false' : 'true');
+    }
+
+    function openBalancePaymentModal(orderId, forCompletion) {
+        var order = orders.find(function (o) { return String(o.id) === String(orderId); });
+        if (!order) {
+            alert('Order not found.');
+            return;
+        }
+        if (!isOrder50PercentDown(order)) {
+            alert('This order is not on a 50% down payment plan.');
+            return;
+        }
+        balancePayOrderId = String(orderId);
+        var hint = document.getElementById('balancePayCompletionHint');
+        if (hint) {
+            if (forCompletion) hint.classList.remove('hidden');
+            else hint.classList.add('hidden');
+        }
+        var labelEl = document.getElementById('balancePayOrderLabel');
+        if (labelEl) labelEl.textContent = order.orderGroupId || String(order.id);
+        var remEl = document.getElementById('balancePayRemainText');
+        if (remEl) remEl.textContent = orderBalanceRemainingLabel(order) || '—';
+        var errEl = document.getElementById('balancePaymentErr');
+        if (errEl) errEl.textContent = '';
+        var fileInput = document.getElementById('balancePayFile');
+        if (fileInput) fileInput.value = '';
+        var ro = document.getElementById('balancePayMethodOnHand');
+        var rn = document.getElementById('balancePayMethodOnline');
+        if (order.balancePaymentMethod === 'online' && rn && ro) {
+            rn.checked = true;
+            ro.checked = false;
+        } else if (ro && rn) {
+            ro.checked = true;
+            rn.checked = false;
+        }
+        updateBalancePayFileVisibility();
+        requestAnimationFrame(function () {
+            updateBalancePayFileVisibility();
+        });
+        var modal = document.getElementById('balancePaymentModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function resetBalancePaymentModalUi() {
+        balancePayOrderId = null;
+        var modal = document.getElementById('balancePaymentModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        document.body.style.overflow = 'auto';
+        var fileInput = document.getElementById('balancePayFile');
+        if (fileInput) fileInput.value = '';
+        var errEl = document.getElementById('balancePaymentErr');
+        if (errEl) errEl.textContent = '';
+        var hint = document.getElementById('balancePayCompletionHint');
+        if (hint) hint.classList.add('hidden');
+    }
+
+    function closeBalancePaymentModal() {
+        balancePayPendingCompleteOrderId = null;
+        resetBalancePaymentModalUi();
+    }
+
+    async function saveBalancePaymentRecord() {
+        if (balancePayOrderId == null) return;
+        var order = orders.find(function (o) { return String(o.id) === String(balancePayOrderId); });
+        var errEl = document.getElementById('balancePaymentErr');
+        if (errEl) errEl.textContent = '';
+        if (!order) {
+            alert('Order not found.');
+            closeBalancePaymentModal();
+            return;
+        }
+        var savedOrderId = String(order.id);
+        var pendingCompleteId = balancePayPendingCompleteOrderId;
+        var ro = document.getElementById('balancePayMethodOnHand');
+        var rn = document.getElementById('balancePayMethodOnline');
+        var onHandChosen = ro && ro.checked;
+        var onlineChosen = rn && rn.checked;
+        if (!onHandChosen && !onlineChosen) {
+            if (errEl) errEl.textContent = 'Choose how the balance was paid.';
+            return;
+        }
+        var fileInput = document.getElementById('balancePayFile');
+        var file = fileInput && fileInput.files && fileInput.files[0];
+
+        if (onlineChosen) {
+            var existing = orderHasBalanceReceipt(order);
+            if (!file && !existing) {
+                if (errEl) errEl.textContent = 'Upload a screenshot for online balance payment.';
+                return;
+            }
+            if (file && file.size > 6 * 1024 * 1024) {
+                if (errEl) errEl.textContent = 'Image must be 6 MB or smaller.';
+                return;
+            }
+            try {
+                if (file) {
+                    order.balanceReceipt = await readFileAsDataURL(file);
+                    order.balanceReceiptFileName = file.name;
+                }
+                order.balancePaymentMethod = 'online';
+                order.balanceRecordedAt = new Date().toISOString();
+                order.balanceReceiptStoredLocallyOnly = false;
+            } catch (e) {
+                if (errEl) errEl.textContent = 'Could not read the file. Try another image.';
+                return;
+            }
+        } else {
+            order.balancePaymentMethod = 'on_hand';
+            order.balanceReceipt = null;
+            order.balanceReceiptFileName = null;
+            order.balanceRecordedAt = new Date().toISOString();
+            order.balanceReceiptStoredLocallyOnly = false;
+        }
+
+        updateOrderInLocalStorage(order);
+        try {
+            await syncOrderDetailsToSupabase(order);
+        } catch (e) {
+            console.warn('[admin-ordering-page] syncOrderDetailsToSupabase (balance)', e);
+            if (errEl) errEl.textContent = 'Could not sync to cloud. Check connection and try again.';
+            return;
+        }
+
+        balancePayPendingCompleteOrderId = null;
+        resetBalancePaymentModalUi();
+
+        showToast(pendingCompleteId ? 'Balance saved — marking order completed…' : 'Balance payment saved');
+        renderOrdersTable();
+        try {
+            await reloadOrdersMerged({ localFirst: false });
+        } catch (e2) {}
+
+        if (pendingCompleteId) {
+            var idx = findOrderIndexById(pendingCompleteId);
+            if (idx !== -1) {
+                var st = normalizeOrderStatus(orders[idx]);
+                if (st !== 'Completed' && st !== 'Cancelled') {
+                    await performOrderStatusUpdate(idx, 'Completed');
+                }
+            }
+        } else {
+            var ordAfter = orders.find(function (o) {
+                return String(o.id) === String(savedOrderId);
+            });
+            if (
+                ordAfter &&
+                normalizeOrderStatus(ordAfter) === 'Completed' &&
+                window.AdminRecords &&
+                typeof window.AdminRecords.logSaleFromOrder === 'function'
+            ) {
+                try {
+                    await window.AdminRecords.logSaleFromOrder(ordAfter);
+                } catch (e3) {}
+            }
+        }
     }
 
     function openStatusModal(orderId) {
@@ -908,6 +1248,13 @@
             return;
         }
         if (newStatus === 'Completed' && currentStatus !== 'Completed') {
+            var ord = orders[orderIndex];
+            if (isOrder50PercentDown(ord) && !ord.balancePaymentMethod) {
+                balancePayPendingCompleteOrderId = String(currentOrderId);
+                openBalancePaymentModal(currentOrderId, true);
+                closeStatusModal();
+                return;
+            }
             if (!confirm('Mark this order as Completed? Sales / payment logging will run if configured.')) return;
         }
         await performOrderStatusUpdate(orderIndex, newStatus);
@@ -1291,34 +1638,7 @@
         updateOrderInLocalStorage(order);
 
         if (order.supabase_id && typeof window.updateOrderInSupabase === 'function') {
-            var cloudDetails = {
-                localId: order.id != null ? order.id : null,
-                orderGroupId: order.orderGroupId || null,
-                customer: order.customer || null,
-                customerEmail: order.customerEmail || order.email || null,
-                email: order.customerEmail || order.email || null,
-                name: order.name || null,
-                cake: order.cake || null,
-                size: order.size || null,
-                quantity: order.quantity != null ? order.quantity : null,
-                flavor: order.flavor || null,
-                frosting: order.frosting || null,
-                cakeDesign: order.cakeDesign || null,
-                dedication: order.dedication || null,
-                receiptFileName: order.receiptFileName || null,
-                designImageName: order.designImageName || null,
-                date: order.date || null,
-                paymentPlan: order.paymentPlan || null,
-                downPaymentAmount: order.downPaymentAmount != null ? order.downPaymentAmount : null,
-                receipt: order.receipt || null,
-                designImage: order.designImage || null,
-                designImages: Array.isArray(order.designImages) && order.designImages.length ? order.designImages : null,
-                customerPhone: order.customerPhone || null,
-                ownerPhone: order.ownerPhone || null,
-                ingredientsDeducted: order.ingredientsDeducted === true,
-                bakingMiscLines: nextLines
-            };
-            window.updateOrderInSupabase(order.supabase_id, { details: cloudDetails });
+            syncOrderDetailsToSupabase(order);
         }
 
         closeBakingMiscModal();
@@ -1384,6 +1704,8 @@
                 if (action === 'details') viewOrderDetails(id);
                 else if (action === 'status') openStatusModal(id);
                 else if (action === 'receipt') viewReceipt(id);
+                else if (action === 'balance-pay') openBalancePaymentModal(id);
+                else if (action === 'balance-receipt') viewBalanceReceipt(id);
                 else if (action === 'next-step') advanceOrderNextStep(id);
                 else if (action === 'baking-misc') openBakingMiscModal(id);
             });
@@ -1425,6 +1747,21 @@
         document.getElementById('bakingMiscAddRow') && document.getElementById('bakingMiscAddRow').addEventListener('click', addBakingMiscRow);
         document.getElementById('bakingMiscApplyBtn') && document.getElementById('bakingMiscApplyBtn').addEventListener('click', confirmBakingMiscStockOut);
 
+        var balSave = document.getElementById('balancePaySaveBtn');
+        if (balSave) {
+            balSave.addEventListener('click', function () {
+                saveBalancePaymentRecord();
+            });
+        }
+        ['balancePayMethodOnHand', 'balancePayMethodOnline'].forEach(function (rid) {
+            var el = document.getElementById(rid);
+            if (!el) return;
+            el.addEventListener('change', updateBalancePayFileVisibility);
+            el.addEventListener('click', function () {
+                requestAnimationFrame(updateBalancePayFileVisibility);
+            });
+        });
+
         reloadOrdersMerged();
         startAdminOrdersAutoRefresh();
     });
@@ -1436,6 +1773,10 @@
     document.getElementById('receiptViewModal') &&
         document.getElementById('receiptViewModal').addEventListener('click', function (e) {
             if (e.target === this) closeReceiptViewModal();
+        });
+    document.getElementById('balancePaymentModal') &&
+        document.getElementById('balancePaymentModal').addEventListener('click', function (e) {
+            if (e.target === this) closeBalancePaymentModal();
         });
     document.getElementById('statusModal') &&
         document.getElementById('statusModal').addEventListener('click', function (e) {
@@ -1467,6 +1808,11 @@
             closeReceiptViewModal();
             return;
         }
+        var balancePaymentModal = document.getElementById('balancePaymentModal');
+        if (balancePaymentModal && !balancePaymentModal.classList.contains('hidden')) {
+            closeBalancePaymentModal();
+            return;
+        }
         var statusModal = document.getElementById('statusModal');
         if (statusModal && !statusModal.classList.contains('hidden')) {
             closeStatusModal();
@@ -1495,8 +1841,10 @@
     window.closeStatusModal = closeStatusModal;
     window.confirmStatusChange = confirmStatusChange;
     window.confirmDeleteOrderPermanently = confirmDeleteOrderPermanently;
-    window.closeBakingMiscModal = closeBakingMiscModal;
-    window.viewOrderDetails = viewOrderDetails;
+    window.closeBalancePaymentModal = closeBalancePaymentModal;
+    window.saveBalancePaymentRecord = saveBalancePaymentRecord;
+    window.openBalancePaymentModal = openBalancePaymentModal;
+    window.viewBalanceReceipt = viewBalanceReceipt;
     window.viewReceipt = viewReceipt;
     window.openStatusModal = openStatusModal;
     window.__reloadAdminOrdersMerged = reloadOrdersMerged;

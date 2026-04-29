@@ -29,22 +29,72 @@ function makeSaleId(order) {
   return key ? `sale_${String(key)}` : `sale_${Date.now()}`;
 }
 
+/** Same rule as admin ordering UI — order used 50% down + balance later. */
+function isFiftyPercentDownOrder(order) {
+  if (!order) return false;
+  const pp = String(order.paymentPlan || '');
+  const pm = String(order.paymentMethod || '');
+  if (/50\s*%/i.test(pm)) return true;
+  if (/50\s*%/i.test(pp) && /down/i.test(pp)) return true;
+  return false;
+}
+
+/**
+ * Full order total for accounting. This runs only when the order is marked Completed
+ * (pickup/delivery done, balance assumed collected).
+ */
+function resolveFullSaleAmount(order) {
+  const n1 = Number(order.total_amount);
+  if (Number.isFinite(n1) && n1 > 0) return n1;
+  const n2 = Number(order.price);
+  if (Number.isFinite(n2) && n2 > 0) return n2;
+  if (isFiftyPercentDownOrder(order) && order.downPaymentAmount != null) {
+    const d = Number(order.downPaymentAmount);
+    if (Number.isFinite(d) && d > 0) return d * 2;
+  }
+  return null;
+}
+
 export async function logSaleFromOrder(order) {
   if (!order) return;
   const id = makeSaleId(order);
   const title = `Order ${order.orderGroupId || order.supabase_id || order.id || ''}`.trim();
+  const fullAmt = resolveFullSaleAmount(order);
   const notesParts = [];
   if (order.name || order.cake) notesParts.push(`Cake: ${order.name || order.cake}`);
   if (order.quantity != null) notesParts.push(`Qty: ${order.quantity}`);
   if (order.deliveryType) notesParts.push(`Delivery: ${order.deliveryType}`);
-  if (order.paymentMethod) notesParts.push(`Payment: ${order.paymentMethod}`);
-  if (order.downPaymentAmount != null) notesParts.push(`50% due now: ₱${order.downPaymentAmount}`);
+
+  if (isFiftyPercentDownOrder(order)) {
+    const balMethod = String(order.balancePaymentMethod || '').trim();
+    let payLine =
+      'Payment: 50% down (customer receipt) + remaining balance — settled when order completed (record on-hand vs online in Orders)';
+    if (balMethod === 'online') {
+      payLine =
+        'Payment: 50% down (customer receipt) + remaining balance paid online at completion (owner proof on order / payment section)';
+    } else if (balMethod === 'on_hand') {
+      payLine =
+        'Payment: 50% down (customer receipt) + remaining balance paid on hand at pickup/delivery';
+    }
+    notesParts.push(payLine);
+    if (fullAmt != null) notesParts.push(`Total sale: ₱${fullAmt.toFixed(2)}`);
+    if (order.downPaymentAmount != null && fullAmt != null) {
+      const down = Number(order.downPaymentAmount);
+      if (Number.isFinite(down)) {
+        const bal = Math.max(0, fullAmt - down);
+        notesParts.push(`Down payment: ₱${down.toFixed(2)} · Remaining amount: ₱${bal.toFixed(2)}`);
+      }
+    }
+  } else if (order.paymentMethod) {
+    notesParts.push(`Payment: ${order.paymentMethod}`);
+  }
+
   const payload = {
     id,
     type: 'sales_receipts',
     record_date: recordTimestampIso(),
     title: title || 'Sale',
-    amount: safeMoney(order.total_amount ?? order.price),
+    amount: safeMoney(fullAmt ?? order.total_amount ?? order.price),
     ref: order.supabase_id ? String(order.supabase_id) : (order.orderGroupId ? String(order.orderGroupId) : ''),
     notes: notesParts.join(' • '),
   };

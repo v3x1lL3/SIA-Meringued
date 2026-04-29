@@ -180,7 +180,10 @@
                         </h2>
                         <p id="invBlockSubtitle" class="text-gray-600">Add ingredients, upload images, and track stock in/out.</p>
                     </div>
-                    <div class="flex gap-3">
+                    <div class="flex flex-wrap gap-3">
+                        <button type="button" id="scrollToAddIngredientBtn" class="px-4 py-3 rounded-xl font-semibold bg-[#FFF8F0] text-[#B8941E] border-2 border-[#D4AF37]/35 hover:bg-[#FFEFD6] transition">
+                            <i class="fas fa-plus mr-2"></i>Add new
+                        </button>
                         <button id="resetInventoryBtn" class="px-4 py-3 rounded-xl font-semibold bg-gray-100 hover:bg-gray-200 transition text-gray-700">
                             <i class="fas fa-rotate-left mr-2"></i>Reset template
                         </button>
@@ -193,7 +196,7 @@
                 </div>
 
                 <!-- Add Ingredient Template -->
-                <div class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-4 md:p-5 mb-4">
+                <div id="invAddSection" class="bg-white/80 rounded-2xl border-2 border-[#D4AF37]/15 p-4 md:p-5 mb-4 scroll-mt-24">
                     <h3 id="invAddCardTitle" class="font-display text-lg font-bold text-gray-800 mb-3">
                         <i class="fas fa-plus-circle mr-2 text-[#D4AF37]"></i>Add Ingredient
                     </h3>

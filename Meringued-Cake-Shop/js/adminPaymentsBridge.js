@@ -16,7 +16,7 @@ export async function logPaymentFromOrder(order) {
   const order_id = pickOrderIdForPayments(order);
   if (!order_id) return;
 
-  const amount = Number(order.price || 0);
+  const amount = Number(order.total_amount != null ? order.total_amount : order.price || 0);
   if (!Number.isFinite(amount) || amount <= 0) return;
 
   // Map your app payment method string into the `payments.method` column.
